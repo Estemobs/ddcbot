@@ -1,0 +1,14 @@
+{
+    "611086800647356417": {
+        "name": "\ud83d\udcbc \u2022 Administrateur",
+        "amount": 100.0,
+        "collect_interval": 18000,
+        "last_collect": 1696770124.8467712
+    },
+    "591683595043602436": {
+        "name": "\ud83c\udfb0 \u2022 G\u00e9rant du casino",
+        "amount": 1000.0,
+        "collect_interval": 3600,
+        "last_collect": 1696770124.8467712
+    }
+}

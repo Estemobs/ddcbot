@@ -1,0 +1,26 @@
+{
+    "BoxTest": {
+        "num_lots": "1",
+        "lots": [
+            {
+                "grade": "948654777389174824"
+            }
+        ],
+        "game_price": "1"
+    },
+    "BoxDemo": {
+        "num_lots": "3",
+        "lots": [
+            {
+                "grade": "1020254834160574535"
+            },
+            {
+                "ticket": "BoxTest"
+            },
+            {
+                "argent": "600"
+            }
+        ],
+        "game_price": "0"
+    }
+}
