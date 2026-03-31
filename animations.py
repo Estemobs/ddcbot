@@ -39,7 +39,7 @@ class cmdanim(commands.Cog):
             return await ctx.send("Il n'y a pas de Giveaway en cours.")
         self.giveaways[ctx.guild.id]["RUNNING"] = False
         await ctx.send(f"Giveaway annulé! Le prix était {self.giveaways[ctx.guild.id]['PRIZE']}")
-        self.botgiveaways.pop(ctx.guild.id)
+        self.giveaways.pop(ctx.guild.id)
 
 
 def setup(bot):

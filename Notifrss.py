@@ -140,18 +140,13 @@ class cmdrss(commands.Cog):
             await ctx.send("Aucun épisode à venir.")
 
     # Load the notifications from the JSON file
-        if os.path.exists(self.notifications_path) and os.path.getsize(self.notifications_path) > 0:
-        # Charger le contenu du fichier existant
+        try:
             with open(self.notifications_path, 'r') as f:
                 notifications = json.load(f)
-        else:
-        # Vérifier si le fichier est vide
-            if os.path.exists(self.notifications_path) and os.path.getsize(self.notifications_path) == 0:
-        # Remplir le fichier avec une liste vide
-                with open(self.notifications_path, 'w') as f:
-                    f.write("")
-        # Initialiser une liste vide
-                notifications = [] 
+            if not isinstance(notifications, list):
+                notifications = []
+        except (json.JSONDecodeError, FileNotFoundError):
+            notifications = []
 
     # Create a list of dictionaries for future episodes
         future_episodes = []
@@ -177,7 +172,7 @@ class cmdrss(commands.Cog):
             json.dump(notifications, f, indent=2)
 
     # Envoyer un message de confirmation
-        if len(episode) > 0:
+        if future_episodes:
             await ctx.send(f"Je vous notifierai en message privé lorsque les nouveaux épisodes de {show_name} sortiront.")
             
 

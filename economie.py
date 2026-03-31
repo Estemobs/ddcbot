@@ -17,6 +17,17 @@ class cmdeco(commands.Cog):
 
 
     @commands.command()
+    async def mybalance(self, ctx):
+        member = ctx.author
+        if str(member.id) not in self.balances:
+            self.balances[str(member.id)] = 0
+            with open(self.tags_path, 'w') as f:
+                json.dump(self.balances, f, indent=4)
+            await ctx.send(f'Votre solde est de **0.00** pièces.')
+        else:
+            await ctx.send(f'Votre solde est de **{self.balances[str(member.id)]:.2f}** pièces.')
+
+    @commands.command()
     async def balance(self, ctx, member: discord.Member):
             # Vérifier si l'utilisateur a déjà un compte
             if str(member.id) not in self.balances:
@@ -139,7 +150,6 @@ class cmdeco(commands.Cog):
     @commands.command()
     @commands.has_role(591683595043602436)
     async def reset_economy(self, ctx):
-        global balances # Utilisez la variable globale définie dans le code précédent
         for user_id in self.balances:
             self.balances[user_id] = 0.0
         with open(self.tags_path, 'w') as f:

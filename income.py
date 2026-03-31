@@ -25,8 +25,11 @@ class cmdincome(commands.Cog):
     @commands.has_role(591683595043602436)
     async def role_income_add(self, ctx, role_id: int, amount: float, collect_interval: str):
         role = discord.utils.get(ctx.guild.roles, id=role_id)
+        if role is None:
+            await ctx.send(f"Le rôle avec l'ID {role_id} n'existe pas sur ce serveur.")
+            return
         # Vérifier si le rôle n'est pas déjà dans la liste des rôles avec gains associés
-        if role.id in self.role_income:
+        if str(role.id) in self.role_income:
             await ctx.send(f"Le rôle {role_id} a déjà un gain associé.")
             return
 
@@ -39,7 +42,7 @@ class cmdincome(commands.Cog):
             return
 
         # Ajouter le rôle et le gain associé à la liste
-        self.role_income[role.id] = {
+        self.role_income[str(role.id)] = {
             "name": role.name,
             "amount": amount,
             "collect_interval": collect_interval_sec,
@@ -48,20 +51,19 @@ class cmdincome(commands.Cog):
         with open(self.role_income_path, 'w') as f:
             json.dump(self.role_income, f, indent=4)
 
-        await ctx.send(f"Le rôle {role_id} a été ajouté à la liste des rôles avec un gains de : {amount} collectable toute les {collect_interval} heures.")
+        await ctx.send(f"Le rôle {role.name} a été ajouté à la liste des rôles avec un gain de : {amount} collectable toutes les {collect_interval} heures.")
 
 
     @commands.command()
     @commands.has_role(591683595043602436)
     async def role_income_remove(self, ctx, role_id: int):
-        role = discord.utils.get(ctx.guild.roles, id=role_id)
         # Vérifier si le rôle est dans la liste des rôles avec gains associés
-        if role.id not in self.role_income:
+        if str(role_id) not in self.role_income:
             await ctx.send(f"Le rôle {role_id} n'a pas de gain associé.")
             return
         
         # Supprimer le rôle de la liste
-        del self.role_income[role.id]
+        del self.role_income[str(role_id)]
         with open(self.role_income_path, 'w') as f:
             json.dump(self.role_income, f, indent=4)
         
@@ -86,7 +88,7 @@ class cmdincome(commands.Cog):
     @commands.has_role(591683595043602436)
     async def role_income_edit(self, ctx, role_id: int, amount: float, collect_interval: str):
         # Vérifier si le rôle existe dans la liste des rôles avec gains associés
-        if role_id not in self.role_income:
+        if str(role_id) not in self.role_income:
             await ctx.send(f"Le rôle {role_id} n'a pas de gain associé.")
             return
 
@@ -99,8 +101,8 @@ class cmdincome(commands.Cog):
             return
 
         # Modifier le rôle et le gain associé dans la liste
-        self.role_income[role_id]["amount"] = amount
-        self.role_income[role_id]["collect_interval"] = collect_interval_sec
+        self.role_income[str(role_id)]["amount"] = amount
+        self.role_income[str(role_id)]["collect_interval"] = collect_interval_sec
         with open(self.role_income_path, 'w') as f:
             json.dump(self.role_income, f, indent=4)
 
@@ -117,9 +119,19 @@ class cmdincome(commands.Cog):
             await ctx.send(f"{member.mention}, vous n'avez pas de compte. Utilisez la commande `,addmoney` pour en créer un.")
             return
 
-        # Vérifier si suffisamment de temps s'est écoulé depuis la dernière collecte
+        # Recharger les données depuis le fichier 'balances.json'
+        with open(self.tags_path, 'r') as f:
+            self.balances = json.load(f)
+
         current_time = time.time()
+        collected_any = False
+
         for role_id, role_data in self.role_income.items():
+            # Vérifier si l'utilisateur possède ce rôle
+            role = ctx.guild.get_role(int(role_id))
+            if role is None or role not in member.roles:
+                continue
+
             if current_time - role_data["last_collect"] >= role_data["collect_interval"]:
                 # Ajouter le gain associé au solde de l'utilisateur
                 self.balances[str(member.id)] += role_data["amount"]
@@ -131,14 +143,17 @@ class cmdincome(commands.Cog):
                 with open(self.role_income_path, 'w') as f:
                     json.dump(self.role_income, f, indent=4)
 
-                await ctx.send(f"{member.mention}, vous avez collecté {role_data['amount']} grâce à votre rôle {role_data['name']}. Nouveau solde : {self.balances[str(member.id)]:.2f}.")
+                await ctx.send(f"{member.mention}, vous avez collecté **{role_data['amount']:.2f}** pièces grâce à votre rôle **{role_data['name']}**. Nouveau solde : **{self.balances[str(member.id)]:.2f}** pièces.")
+                collected_any = True
             else:
-                # Calculer le temps restant avant la prochaine collecte
                 time_left = role_data["collect_interval"] - (current_time - role_data["last_collect"])
                 hours_left = int(time_left // 3600)
                 minutes_left = int((time_left % 3600) // 60)
+                await ctx.send(f"{member.mention}, vous devez attendre encore **{hours_left}h {minutes_left}min** avant de collecter votre gain pour le rôle **{role_data['name']}**.")
+                collected_any = True
 
-                await ctx.send(f"{member.mention}, vous devez attendre encore {hours_left} heures et {minutes_left} minutes avant de collecter de nouveau votre gain pour le rôle {role_data['name']}.")
+        if not collected_any:
+            await ctx.send(f"{member.mention}, vous n'avez aucun rôle avec un gain passif associé.")
 
 def setup(bot):
     bot.add_cog(cmdincome(bot))
