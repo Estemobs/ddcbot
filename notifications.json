@@ -1,1 +1,58 @@
-[]
+[
+  {
+    "show_name": "The Boys",
+    "season": 5,
+    "number": 1,
+    "airdate": "2026-04-08T00:00:00",
+    "user_id": 438669868091310092
+  },
+  {
+    "show_name": "The Boys",
+    "season": 5,
+    "number": 2,
+    "airdate": "2026-04-08T00:00:00",
+    "user_id": 438669868091310092
+  },
+  {
+    "show_name": "The Boys",
+    "season": 5,
+    "number": 3,
+    "airdate": "2026-04-15T00:00:00",
+    "user_id": 438669868091310092
+  },
+  {
+    "show_name": "The Boys",
+    "season": 5,
+    "number": 4,
+    "airdate": "2026-04-22T00:00:00",
+    "user_id": 438669868091310092
+  },
+  {
+    "show_name": "The Boys",
+    "season": 5,
+    "number": 5,
+    "airdate": "2026-04-29T00:00:00",
+    "user_id": 438669868091310092
+  },
+  {
+    "show_name": "The Boys",
+    "season": 5,
+    "number": 6,
+    "airdate": "2026-05-06T00:00:00",
+    "user_id": 438669868091310092
+  },
+  {
+    "show_name": "The Boys",
+    "season": 5,
+    "number": 7,
+    "airdate": "2026-05-13T00:00:00",
+    "user_id": 438669868091310092
+  },
+  {
+    "show_name": "The Boys",
+    "season": 5,
+    "number": 8,
+    "airdate": "2026-05-20T00:00:00",
+    "user_id": 438669868091310092
+  }
+]

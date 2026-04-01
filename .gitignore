@@ -1,4 +1,5 @@
 secrets.json
 venv/
+.venv/
 __pycache__/
 
