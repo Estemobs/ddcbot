@@ -117,15 +117,14 @@ class cmddiagnostics(commands.Cog):
         except Exception as exc:
             return False, f"json invalide: {exc}"
 
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def selftest(self, ctx):
+    def run_selftest(self, mode: str = "basic"):
         checks_ok = 0
         checks_total = 0
         details = []
 
-        registered = {command.name for command in self.bot.commands}
-        missing_commands = sorted(EXPECTED_COMMANDS - registered)
+        registered_commands = {command.name: command for command in self.bot.commands}
+        registered_names = set(registered_commands.keys())
+        missing_commands = sorted(EXPECTED_COMMANDS - registered_names)
         checks_total += 1
         if not missing_commands:
             checks_ok += 1
@@ -182,12 +181,80 @@ class cmddiagnostics(commands.Cog):
         else:
             details.append("[OK] JSON optionnels")
 
+        if mode == "deep":
+            callback_issues = []
+            check_issues = []
+            for command_name in sorted(EXPECTED_COMMANDS):
+                checks_total += 1
+                command = registered_commands.get(command_name)
+                if not command:
+                    callback_issues.append(f"{command_name}: absent")
+                    continue
+                if not callable(getattr(command, "callback", None)):
+                    callback_issues.append(f"{command_name}: callback invalide")
+                    continue
+                checks_ok += 1
+
+                checks_total += 1
+                if command.checks is None:
+                    check_issues.append(f"{command_name}: checks None")
+                else:
+                    checks_ok += 1
+
+            if callback_issues:
+                details.append("[KO] Callbacks commandes: " + " | ".join(callback_issues))
+            else:
+                details.append("[OK] Callbacks commandes")
+
+            if check_issues:
+                details.append("[KO] Structure checks commandes: " + " | ".join(check_issues))
+            else:
+                details.append("[OK] Structure checks commandes")
+
+            readability_issues = []
+            for file_name in JSON_FILES + OPTIONAL_JSON_FILES:
+                path = os.path.join(self.base_dir, file_name)
+                if os.path.exists(path):
+                    checks_total += 1
+                    if os.access(path, os.R_OK):
+                        checks_ok += 1
+                    else:
+                        readability_issues.append(f"{file_name}: non lisible")
+
+            if readability_issues:
+                details.append("[KO] Permissions fichiers: " + " | ".join(readability_issues))
+            else:
+                details.append("[OK] Permissions fichiers")
+
+        return {
+            "checks_ok": checks_ok,
+            "checks_total": checks_total,
+            "details": details,
+            "missing_commands": missing_commands,
+            "loaded_cogs": loaded_cogs,
+        }
+
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)
+    async def selftest(self, ctx, mode: str = "basic"):
+        mode = mode.lower().strip()
+        if mode not in {"basic", "deep"}:
+            await ctx.send("Mode invalide. Utilisez `,selftest` ou `,selftest deep`.")
+            return
+
+        result = self.run_selftest(mode=mode)
+        checks_ok = result["checks_ok"]
+        checks_total = result["checks_total"]
+        details = result["details"]
+        missing_commands = result["missing_commands"]
+        loaded_cogs = result["loaded_cogs"]
+
         ratio = f"{checks_ok}/{checks_total}"
         color = discord.Color.green() if checks_ok == checks_total else discord.Color.orange()
 
         embed = discord.Embed(
             title="Selftest Bot",
-            description="Diagnostic global des commandes et fonctionnalites.",
+            description=f"Diagnostic global des commandes et fonctionnalites (mode: {mode}).",
             color=color,
         )
         embed.add_field(name="Resultat", value=ratio, inline=False)

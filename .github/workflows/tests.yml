@@ -34,3 +34,6 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+      - name: Run deep diagnostic criteria
+        run: pytest -q tests/test_diagnostics_deep.py
