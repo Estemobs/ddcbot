@@ -16,6 +16,7 @@ class cmdhelp(commands.Cog):
                 "title": "Modération",
                 "commands": [
                     ("`warn <membre> <raison>`", "Avertir un membre"),
+                    ("`warnconfig`", "Ouvrir le panneau interactif de configuration des warns"),
                     ("`ban <membre> <raison>`", "Bannir un membre"),
                     ("`kick <membre> [raison]`", "Expulser un membre"),
                     ("`clear <nombre>`", "Supprimer N messages du salon"),
