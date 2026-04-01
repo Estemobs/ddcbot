@@ -9,26 +9,12 @@ from discord.ext import commands
 
 
 NO_KEY_PROVIDERS = [
-    "DDG",
-    "PerplexityLabs",
-    "PerplexityAi",
-    "Blackbox",
-    "ChatGpt",
-    "ChatGptEs",
-    "Free2GPT",
-    "FreeChatgpt",
+    "PollinationsAI",
+    "OperaAria",
+    "Perplexity",
+    "Qwen",
+    "WeWordle",
     "TeachAnything",
-    "DeepInfraChat",
-    "Nexra",
-    "Upstage",
-    "MagickPen",
-    "Binjie",
-    "ChatHub",
-    "LiteIcoding",
-    "Pizzagpt",
-    "ReplicateHome",
-    "You",
-    "HuggingChat",
 ]
 
 FALLBACK_MODELS = ["gpt-4o-mini", ""]
@@ -47,6 +33,9 @@ BAD_OUTPUT_MARKERS = [
     "api key",
     "errortext",
     "data: [done]",
+    "403 forbidden",
+    "provider not found",
+    "error:",
 ]
 
 
@@ -105,6 +94,7 @@ class cmdai(commands.Cog):
 
     async def _generate_ai_answer(self, prompt_text: str):
         try:
+            import g4f.Provider as g4f_providers
             from g4f.client import AsyncClient as AIAsyncClient
         except ModuleNotFoundError as exc:
             raise RuntimeError(f"Dependance IA manquante: {exc}") from exc
@@ -113,7 +103,11 @@ class cmdai(commands.Cog):
         for provider_name in NO_KEY_PROVIDERS:
             try:
                 print(f"[DEBUG][AI] Tentative provider: {provider_name}")
-                ai_client = AIAsyncClient(provider=provider_name)
+                provider_obj = getattr(g4f_providers, provider_name, None)
+                if provider_obj is None:
+                    print(f"[DEBUG][AI] Provider inconnu dans g4f: {provider_name}")
+                    continue
+                ai_client = AIAsyncClient(provider=provider_obj)
                 for model_name in FALLBACK_MODELS:
                     response = await asyncio.wait_for(
                         ai_client.chat.completions.create(
@@ -180,14 +174,20 @@ class cmdai(commands.Cog):
         if "errortext" in lowered and "type" in lowered:
             return True
 
+        # Provider introuvable ou acces refuse.
+        if "provider not found" in lowered or "403 forbidden" in lowered:
+            return True
+
+        # Fin de flux SSE sans contenu reel.
+        if "data: [done]" in lowered:
+            return True
+
         marker_hits = sum(1 for marker in BAD_OUTPUT_MARKERS if marker in lowered)
         if marker_hits >= 2:
             return True
 
-        # Si le texte ressemble clairement a une page HTML complete, on ignore.
-        if lowered.startswith("<!doctype html") or (
-            lowered.startswith("<html") and "</html>" in lowered
-        ):
+        # Rejet si le contenu commence par une balise HTML meme sans fermeture.
+        if lowered.startswith("<html") or lowered.startswith("<!doctype"):
             return True
 
         return False
