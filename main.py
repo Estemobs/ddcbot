@@ -22,24 +22,75 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx, error):
+    # Laisse les handlers locaux de commandes prendre la main s'ils existent.
+    if hasattr(ctx.command, "on_error"):
+        return
+
+    original = getattr(error, "original", error)
+    expected_user_errors = (
+        commands.MissingRequiredArgument,
+        commands.BadArgument,
+        commands.MemberNotFound,
+        commands.UserNotFound,
+        commands.ChannelNotFound,
+        commands.RoleNotFound,
+        commands.BadUnionArgument,
+        commands.ArgumentParsingError,
+        commands.MissingPermissions,
+        commands.BotMissingPermissions,
+        commands.CheckFailure,
+        commands.CommandNotFound,
+        commands.CommandOnCooldown,
+    )
+    is_expected = isinstance(original, expected_user_errors)
+
     channel = bot.get_channel(827566899004440666)
     if channel:
-        error_traceback = traceback.format_exception(type(error), error, error.__traceback__)
-        error_msg = ''.join(error_traceback)
-        await channel.send(
-            f"Erreur lors de l'exécution de la commande `{ctx.command}` par {ctx.author}: {error}\n```{error_msg}```"
-        )
-    print(''.join(traceback.format_exception(type(error), error, error.__traceback__)))
+        command_name = ctx.command.qualified_name if ctx.command else "inconnue"
+        if is_expected:
+            await channel.send(
+                f"Erreur utilisateur sur `{command_name}` par {ctx.author}: {original}"
+            )
+        else:
+            error_traceback = traceback.format_exception(type(original), original, original.__traceback__)
+            error_msg = ''.join(error_traceback)
+            await channel.send(
+                f"Erreur lors de l'exécution de la commande `{command_name}` par {ctx.author}: {original}\n```{error_msg}```"
+            )
 
-    if isinstance(error, commands.MissingRequiredArgument):
+    if not is_expected:
+        print(''.join(traceback.format_exception(type(original), original, original.__traceback__)))
+
+    usage = None
+    if ctx.command:
+        signature = ctx.command.signature.strip()
+        usage = f"{ctx.prefix}{ctx.command.qualified_name} {signature}".strip()
+
+    if isinstance(original, commands.MissingRequiredArgument):
+        await ctx.send("❌ Argument manquant.")
+        if usage:
+            await ctx.send(f"Syntaxe: `{usage}`")
         await ctx.send_help(ctx.command)
-        await ctx.send("❌ Erreur de syntaxe : un ou plusieurs arguments manquants.")
-    elif isinstance(error, commands.MissingPermissions):
+    elif isinstance(original, (commands.BadArgument, commands.MemberNotFound, commands.UserNotFound,
+                               commands.ChannelNotFound, commands.RoleNotFound,
+                               commands.BadUnionArgument, commands.ArgumentParsingError)):
+        await ctx.send(f"❌ Argument invalide: {original}")
+        if usage:
+            await ctx.send(f"Syntaxe: `{usage}`")
+        await ctx.send_help(ctx.command)
+    elif isinstance(original, commands.MissingPermissions):
         await ctx.send("❌ Vous n'avez pas la permission d'utiliser cette commande.")
-    elif isinstance(error, commands.CheckFailure):
+    elif isinstance(original, commands.BotMissingPermissions):
+        missing = ", ".join(original.missing_permissions)
+        await ctx.send(f"❌ Il me manque des permissions: {missing}")
+    elif isinstance(original, commands.CheckFailure):
         await ctx.send("❌ Vous n'avez pas le rôle requis pour utiliser cette commande.")
-    elif isinstance(error, commands.CommandNotFound):
+    elif isinstance(original, commands.CommandNotFound):
         pass  # Ignorer les commandes inconnues silencieusement
+    elif isinstance(original, commands.CommandOnCooldown):
+        await ctx.send(f"⏳ Commande en cooldown. Reessaie dans {original.retry_after:.1f}s.")
+    else:
+        await ctx.send("❌ Une erreur inattendue est survenue. L'incident a ete journalise.")
 
 async def main():
     with open('secrets.json') as f:

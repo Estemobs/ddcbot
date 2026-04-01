@@ -19,6 +19,12 @@ class cmdhelp(commands.Cog):
                     ("`ban <membre> <raison>`", "Bannir un membre"),
                     ("`kick <membre> [raison]`", "Expulser un membre"),
                     ("`clear <nombre>`", "Supprimer N messages du salon"),
+                    ("`unban <user_id> [raison]`", "Debannir un utilisateur"),
+                    ("`timeout <membre> <minutes> [raison]`", "Timeout un membre"),
+                    ("`untimeout <membre> [raison]`", "Retirer un timeout"),
+                    ("`slowmode <secondes>`", "Definir le slowmode du salon"),
+                    ("`lock`", "Verrouiller le salon"),
+                    ("`unlock`", "Deverrouiller le salon"),
                 ]
             },
             "utilite": {
