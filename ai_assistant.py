@@ -3,6 +3,7 @@ import io
 import re
 
 import discord
+import nest_asyncio
 import requests
 from discord.ext import commands
 
@@ -21,6 +22,7 @@ class cmdai(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._easyocr_reader = None
+        nest_asyncio.apply()
 
     def _get_easyocr_reader(self):
         try:
@@ -47,17 +49,24 @@ class cmdai(commands.Cog):
         except Exception:
             return "Une erreur s'est produite lors de l'extraction du texte."
 
-    def _improve_image_quality(self, image_url: str):
+    def _improve_image_quality(self, image_source):
         try:
             import cv2
             import numpy as np
         except ModuleNotFoundError as exc:
             raise RuntimeError(f"Dependance image manquante: {exc}") from exc
 
-        response = requests.get(image_url, timeout=30)
-        response.raise_for_status()
-        img = np.array(bytearray(response.content), dtype=np.uint8)
+        if isinstance(image_source, (bytes, bytearray)):
+            raw_bytes = bytes(image_source)
+        else:
+            response = requests.get(image_source, timeout=30)
+            response.raise_for_status()
+            raw_bytes = response.content
+
+        img = np.array(bytearray(raw_bytes), dtype=np.uint8)
         img = cv2.imdecode(img, cv2.IMREAD_COLOR)
+        if img is None:
+            raise RuntimeError("Format d'image invalide ou non supporte")
         img = cv2.bilateralFilter(img, 9, 75, 75)
         _, jpeg = cv2.imencode(".jpg", img)
         return jpeg.tobytes()
@@ -91,10 +100,20 @@ class cmdai(commands.Cog):
                 last_error = exc
                 continue
 
-        raise RuntimeError(
-            "Aucun provider g4f sans cle n'a fonctionne. "
-            f"Derniere erreur: {last_error}"
-        )
+        # Fallback final: laisser g4f choisir son provider automatiquement.
+        try:
+            ai_client = AIAsyncClient()
+            response = await ai_client.chat.completions.create(
+                model="",
+                messages=[{"role": "user", "content": prompt_text}],
+            )
+            content = response.choices[0].message.content
+            if content and content.strip():
+                return content
+        except Exception as exc:
+            last_error = exc
+
+        raise RuntimeError(f"Aucun provider g4f n'a fonctionne. Derniere erreur: {last_error}")
 
     async def _send_markdown_chunks(self, ctx, markdown_content: str):
         char_limit = 1900
@@ -128,9 +147,9 @@ class cmdai(commands.Cog):
             return
 
         if message.attachments:
-            image_url = message.attachments[0].url
+            image_source = await message.attachments[0].read()
         elif message.content:
-            image_url = message.content.strip()
+            image_source = message.content.strip()
         else:
             await ctx.send("Veuillez envoyer une image ou un lien vers une image valide.")
             return
@@ -142,10 +161,10 @@ class cmdai(commands.Cog):
             improved_image_bytes = await loop.run_in_executor(
                 None,
                 self._improve_image_quality,
-                image_url,
+                image_source,
             )
-        except Exception:
-            await ctx.send("Une erreur s'est produite lors de l'amelioration de l'image.")
+        except Exception as exc:
+            await ctx.send(f"Une erreur s'est produite lors de l'amelioration de l'image: {exc}")
             return
 
         await ctx.send("Extraction du texte en cours ...")
@@ -157,8 +176,8 @@ class cmdai(commands.Cog):
         await ctx.send("Generation de reponses en cours ...")
         try:
             markdown_content = await self._generate_ai_answer(text)
-        except Exception:
-            await ctx.send("Erreur IA: aucun provider sans cle n'a repondu. Reessayez plus tard.")
+        except Exception as exc:
+            await ctx.send(f"Erreur IA: {exc}")
             return
 
         await self._send_markdown_chunks(ctx, markdown_content)
@@ -185,8 +204,8 @@ class cmdai(commands.Cog):
         await message.channel.send("Je reflechis ...")
         try:
             answer = await self._generate_ai_answer(content)
-        except Exception:
-            await message.channel.send("Je ne peux pas repondre pour le moment. Reessaie dans quelques minutes.")
+        except Exception as exc:
+            await message.channel.send(f"Je ne peux pas repondre pour le moment ({exc}).")
             return
 
         fake_ctx = type("Ctx", (), {"send": message.channel.send})
