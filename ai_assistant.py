@@ -9,12 +9,44 @@ from discord.ext import commands
 
 
 NO_KEY_PROVIDERS = [
-    "PollinationsAI",
-    "OperaAria",
-    "Perplexity",
-    "Qwen",
-    "WeWordle",
+    "DDG",
+    "PerplexityLabs",
+    "PerplexityAi",
+    "Blackbox",
+    "ChatGpt",
+    "ChatGptEs",
+    "Free2GPT",
+    "FreeChatgpt",
     "TeachAnything",
+    "DeepInfraChat",
+    "Nexra",
+    "Upstage",
+    "MagickPen",
+    "Binjie",
+    "ChatHub",
+    "LiteIcoding",
+    "Pizzagpt",
+    "ReplicateHome",
+    "You",
+    "HuggingChat",
+]
+
+FALLBACK_MODELS = ["gpt-4o-mini", ""]
+REQUEST_TIMEOUT_SECONDS = 18
+
+BAD_OUTPUT_MARKERS = [
+    "<!doctype html",
+    "<html",
+    "<head>",
+    "<body",
+    "astro-island",
+    "free2gpt",
+    "data: {\"type\":\"error\"",
+    "authentication error",
+    "no api key passed in",
+    "api key",
+    "errortext",
+    "data: [done]",
 ]
 
 
@@ -82,22 +114,28 @@ class cmdai(commands.Cog):
             try:
                 print(f"[DEBUG][AI] Tentative provider: {provider_name}")
                 ai_client = AIAsyncClient(provider=provider_name)
-                response = await ai_client.chat.completions.create(
-                    model="",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": (
-                                "Repondez aux exercices ou questions qui suivent : "
-                                f"{prompt_text}"
-                            ),
-                        }
-                    ],
-                )
-                content = response.choices[0].message.content
-                if content and content.strip():
-                    print(f"[DEBUG][AI] Provider OK: {provider_name}")
-                    return content
+                for model_name in FALLBACK_MODELS:
+                    response = await asyncio.wait_for(
+                        ai_client.chat.completions.create(
+                            model=model_name,
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        "Repondez aux exercices ou questions qui suivent : "
+                                        f"{prompt_text}"
+                                    ),
+                                }
+                            ],
+                        ),
+                        timeout=REQUEST_TIMEOUT_SECONDS,
+                    )
+                    content = response.choices[0].message.content
+                    if content and content.strip():
+                        if self._is_bad_provider_output(content):
+                            raise RuntimeError("Sortie provider invalide (HTML/landing page)")
+                        print(f"[DEBUG][AI] Provider OK: {provider_name} | model={model_name}")
+                        return content
             except Exception as exc:
                 print(f"[DEBUG][AI] Provider KO: {provider_name} -> {exc}")
                 last_error = exc
@@ -107,19 +145,52 @@ class cmdai(commands.Cog):
         try:
             print("[DEBUG][AI] Tentative provider automatique g4f")
             ai_client = AIAsyncClient()
-            response = await ai_client.chat.completions.create(
-                model="",
-                messages=[{"role": "user", "content": prompt_text}],
-            )
-            content = response.choices[0].message.content
-            if content and content.strip():
-                print("[DEBUG][AI] Provider auto OK")
-                return content
+            for model_name in FALLBACK_MODELS:
+                response = await asyncio.wait_for(
+                    ai_client.chat.completions.create(
+                        model=model_name,
+                        messages=[{"role": "user", "content": prompt_text}],
+                    ),
+                    timeout=REQUEST_TIMEOUT_SECONDS,
+                )
+                content = response.choices[0].message.content
+                if content and content.strip():
+                    if self._is_bad_provider_output(content):
+                        raise RuntimeError("Sortie provider invalide (HTML/landing page)")
+                    print(f"[DEBUG][AI] Provider auto OK | model={model_name}")
+                    return content
         except Exception as exc:
             print(f"[DEBUG][AI] Provider auto KO -> {exc}")
             last_error = exc
 
         raise RuntimeError(f"Aucun provider g4f n'a fonctionne. Derniere erreur: {last_error}")
+
+    def _is_bad_provider_output(self, content: str) -> bool:
+        lowered = content.strip().lower()
+        if not lowered:
+            return True
+
+        # Formats de flux renvoyant des erreurs textuelles au lieu d'une vraie reponse.
+        if "data:" in lowered and ("error" in lowered or "api key" in lowered):
+            return True
+
+        if "authentication error" in lowered or "no api key passed in" in lowered:
+            return True
+
+        if "errortext" in lowered and "type" in lowered:
+            return True
+
+        marker_hits = sum(1 for marker in BAD_OUTPUT_MARKERS if marker in lowered)
+        if marker_hits >= 2:
+            return True
+
+        # Si le texte ressemble clairement a une page HTML complete, on ignore.
+        if lowered.startswith("<!doctype html") or (
+            lowered.startswith("<html") and "</html>" in lowered
+        ):
+            return True
+
+        return False
 
     async def _send_markdown_chunks(self, ctx, markdown_content: str):
         char_limit = 1900
