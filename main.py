@@ -14,6 +14,7 @@ from work import cmdwork
 from jeu import cmdjeu
 from help_cmd import cmdhelp
 from ai_assistant import cmdai
+from diagnostics import cmddiagnostics
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
 
@@ -22,7 +23,7 @@ ADMIN_COMMANDS = {
     "timeout", "untimeout", "slowmode", "lock", "unlock", "addmoney", "removemoney", "reset_money",
     "reset_economy", "clean_leaderboard", "ecopanel", "incomepanel", "gamepanel", "config_work", "role_income_add", "role_income_remove",
     "role_income_edit", "addgame", "deletegame", "addquest", "deletequete", "config_quete", "clearinventory",
-    "gstart", "gend", "gcancel",
+    "gstart", "gend", "gcancel", "selftest",
 }
 
 
@@ -66,7 +67,18 @@ async def admin_role_gate(ctx):
 @bot.event
 async def on_ready():
     print("Le bot est en ligne")
+    print(f"[DEBUG] Commandes chargees: {len(bot.commands)}")
     await bot.change_presence(activity=discord.Game(name=",help"))
+
+
+@bot.event
+async def on_command(ctx):
+    print(f"[DEBUG] Commande recue: {ctx.command} | auteur={ctx.author} | salon={ctx.channel}")
+
+
+@bot.event
+async def on_command_completion(ctx):
+    print(f"[DEBUG] Commande terminee: {ctx.command} | auteur={ctx.author}")
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -154,6 +166,7 @@ async def main():
     await bot.add_cog(cmdjeu(bot))
     await bot.add_cog(cmdhelp(bot))
     await bot.add_cog(cmdai(bot))
+    await bot.add_cog(cmddiagnostics(bot))
     await bot.start(token)
 
 asyncio.run(main())

@@ -42,6 +42,7 @@ class cmdhelp(commands.Cog):
                     ("`avatar <membre>`", "Afficher l'avatar d'un membre"),
                     ("`serverpicture`", "Afficher l'icône du serveur"),
                     ("`devoir`", "OCR + reponse IA depuis une image"),
+                    ("`selftest`", "Diagnostic global du bot *(admin)*"),
                 ]
             },
             "economie": {

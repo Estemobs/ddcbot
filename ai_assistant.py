@@ -80,6 +80,7 @@ class cmdai(commands.Cog):
         last_error = None
         for provider_name in NO_KEY_PROVIDERS:
             try:
+                print(f"[DEBUG][AI] Tentative provider: {provider_name}")
                 ai_client = AIAsyncClient(provider=provider_name)
                 response = await ai_client.chat.completions.create(
                     model="",
@@ -95,13 +96,16 @@ class cmdai(commands.Cog):
                 )
                 content = response.choices[0].message.content
                 if content and content.strip():
+                    print(f"[DEBUG][AI] Provider OK: {provider_name}")
                     return content
             except Exception as exc:
+                print(f"[DEBUG][AI] Provider KO: {provider_name} -> {exc}")
                 last_error = exc
                 continue
 
         # Fallback final: laisser g4f choisir son provider automatiquement.
         try:
+            print("[DEBUG][AI] Tentative provider automatique g4f")
             ai_client = AIAsyncClient()
             response = await ai_client.chat.completions.create(
                 model="",
@@ -109,8 +113,10 @@ class cmdai(commands.Cog):
             )
             content = response.choices[0].message.content
             if content and content.strip():
+                print("[DEBUG][AI] Provider auto OK")
                 return content
         except Exception as exc:
+            print(f"[DEBUG][AI] Provider auto KO -> {exc}")
             last_error = exc
 
         raise RuntimeError(f"Aucun provider g4f n'a fonctionne. Derniere erreur: {last_error}")
@@ -135,6 +141,7 @@ class cmdai(commands.Cog):
 
     @commands.command()
     async def devoir(self, ctx):
+        print(f"[DEBUG][DEVOIR] Lance par {ctx.author}")
         await ctx.send("Veuillez envoyer une image ou un lien vers une image valide.")
 
         def check(message):
@@ -147,8 +154,10 @@ class cmdai(commands.Cog):
             return
 
         if message.attachments:
+            print("[DEBUG][DEVOIR] Piece jointe recue")
             image_source = await message.attachments[0].read()
         elif message.content:
+            print("[DEBUG][DEVOIR] URL/lien recu")
             image_source = message.content.strip()
         else:
             await ctx.send("Veuillez envoyer une image ou un lien vers une image valide.")
@@ -164,11 +173,13 @@ class cmdai(commands.Cog):
                 image_source,
             )
         except Exception as exc:
+            print(f"[DEBUG][DEVOIR] Erreur amelioration image: {exc}")
             await ctx.send(f"Une erreur s'est produite lors de l'amelioration de l'image: {exc}")
             return
 
         await ctx.send("Extraction du texte en cours ...")
         text = await loop.run_in_executor(None, self._extract_text_from_image, improved_image_bytes)
+        print(f"[DEBUG][DEVOIR] Longueur texte OCR: {len(text) if text else 0}")
         if not text or text.strip() == "":
             await ctx.send("Aucun texte detecte dans l'image.")
             return
@@ -177,6 +188,7 @@ class cmdai(commands.Cog):
         try:
             markdown_content = await self._generate_ai_answer(text)
         except Exception as exc:
+            print(f"[DEBUG][DEVOIR] Erreur IA: {exc}")
             await ctx.send(f"Erreur IA: {exc}")
             return
 
@@ -193,6 +205,8 @@ class cmdai(commands.Cog):
         if self.bot.user not in message.mentions:
             return
 
+        print(f"[DEBUG][MENTION] Message mention recu de {message.author}: {message.content}")
+
         content = re.sub(rf"<@!?{self.bot.user.id}>", "", message.content).strip()
         if not content:
             await message.channel.send("Oui ? Ecris ta question apres ma mention.")
@@ -205,6 +219,7 @@ class cmdai(commands.Cog):
         try:
             answer = await self._generate_ai_answer(content)
         except Exception as exc:
+            print(f"[DEBUG][MENTION] Erreur IA mention: {exc}")
             await message.channel.send(f"Je ne peux pas repondre pour le moment ({exc}).")
             return
 
