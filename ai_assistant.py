@@ -1,6 +1,8 @@
 import asyncio
+import inspect
 import io
 import re
+import time
 
 import discord
 import nest_asyncio
@@ -17,8 +19,22 @@ NO_KEY_PROVIDERS = [
     "TeachAnything",
 ]
 
+PRIORITY_PROVIDER_BASE_URLS = [
+    "https://share.wendabao.net",
+    "https://chat4.free2gpt.com/",
+    "https://free.oaibest.com/",
+    "https://share.swt-ai.com/list",
+    "https://link.fuckicoding.com/#/",
+    "https://www.gptshunter.com/alternative-to-chatgpt-claude-poe",
+    "https://app.textie.ai/app/chats/demo-chat",
+    "https://chat.tinycms.xyz:3002",
+    "https://chatnio.liujiarong.top/",
+    "https://newpc.icoding.ink/?debug=true",
+    "https://www.promptboom.com/",
+]
+
 FALLBACK_MODELS = ["gpt-4o-mini", ""]
-REQUEST_TIMEOUT_SECONDS = 18
+PROVIDER_TIMEOUT_SECONDS = 8
 
 BAD_OUTPUT_MARKERS = [
     "<!doctype html",
@@ -36,6 +52,9 @@ BAD_OUTPUT_MARKERS = [
     "403 forbidden",
     "provider not found",
     "error:",
+    "received line: data:",
+    '"conversation_id"',
+    '"input_message"',
 ]
 
 
@@ -92,69 +111,178 @@ class cmdai(commands.Cog):
         _, jpeg = cv2.imencode(".jpg", img)
         return jpeg.tobytes()
 
-    async def _generate_ai_answer(self, prompt_text: str):
+    async def _generate_ai_answer(self, prompt_text: str, on_answer_sent=None):
         try:
             import g4f.Provider as g4f_providers
             from g4f.client import AsyncClient as AIAsyncClient
         except ModuleNotFoundError as exc:
             raise RuntimeError(f"Dependance IA manquante: {exc}") from exc
 
-        last_error = None
-        for provider_name in NO_KEY_PROVIDERS:
+        prepared_messages = [
+            {
+                "role": "user",
+                "content": prompt_text,
+            }
+        ]
+
+        def build_async_client(*, provider_obj=None, base_url=None):
+            kwargs = {}
             try:
-                print(f"[DEBUG][AI] Tentative provider: {provider_name}")
-                provider_obj = getattr(g4f_providers, provider_name, None)
-                if provider_obj is None:
-                    print(f"[DEBUG][AI] Provider inconnu dans g4f: {provider_name}")
-                    continue
-                ai_client = AIAsyncClient(provider=provider_obj)
+                params = inspect.signature(AIAsyncClient.__init__).parameters
+            except (TypeError, ValueError):
+                params = {}
+
+            if provider_obj is not None and "provider" in params:
+                kwargs["provider"] = provider_obj
+
+            if base_url:
+                for arg_name in ("base_url", "api_base", "api_endpoint"):
+                    if arg_name in params:
+                        kwargs[arg_name] = base_url
+                        break
+
+            return AIAsyncClient(**kwargs)
+
+        async def request_completion(ai_client, model_name: str, timeout_seconds: float):
+            create_fn = ai_client.chat.completions.create
+            kwargs = {
+                "model": model_name,
+                "messages": prepared_messages,
+            }
+
+            # Certains providers exposent create en sync (bloquant), d'autres en async.
+            if inspect.iscoroutinefunction(create_fn):
+                return await asyncio.wait_for(
+                    create_fn(**kwargs),
+                    timeout=timeout_seconds,
+                )
+
+            return await asyncio.wait_for(
+                asyncio.to_thread(create_fn, **kwargs),
+                timeout=timeout_seconds,
+            )
+
+        last_error = None
+        total_attempts = len(PRIORITY_PROVIDER_BASE_URLS) + len(NO_KEY_PROVIDERS) + 1
+        attempt_index = 0
+
+        for base_url in PRIORITY_PROVIDER_BASE_URLS:
+            attempt_index += 1
+            try:
+                print(
+                    f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} | "
+                    f"endpoint prioritaire: {base_url}"
+                )
+                ai_client = build_async_client(base_url=base_url)
+                attempt_deadline = time.monotonic() + PROVIDER_TIMEOUT_SECONDS
                 for model_name in FALLBACK_MODELS:
-                    response = await asyncio.wait_for(
-                        ai_client.chat.completions.create(
-                            model=model_name,
-                            messages=[
-                                {
-                                    "role": "user",
-                                    "content": (
-                                        "Repondez aux exercices ou questions qui suivent : "
-                                        f"{prompt_text}"
-                                    ),
-                                }
-                            ],
-                        ),
-                        timeout=REQUEST_TIMEOUT_SECONDS,
-                    )
+                    remaining = attempt_deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise asyncio.TimeoutError("Timeout provider atteint avant reponse")
+                    response = await request_completion(ai_client, model_name, remaining)
                     content = response.choices[0].message.content
                     if content and content.strip():
                         if self._is_bad_provider_output(content):
                             raise RuntimeError("Sortie provider invalide (HTML/landing page)")
+                        if on_answer_sent is not None:
+                            remaining = attempt_deadline - time.monotonic()
+                            if remaining <= 0:
+                                raise asyncio.TimeoutError("Timeout avant envoi Discord")
+                            await asyncio.wait_for(on_answer_sent(content), timeout=remaining)
+                        print(f"[DEBUG][AI] Endpoint prioritaire OK: {base_url} | model={model_name}")
+                        return content
+            except asyncio.TimeoutError:
+                print(
+                    f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} TIMEOUT "
+                    f"apres {PROVIDER_TIMEOUT_SECONDS}s: {base_url}, passage au suivant"
+                )
+                last_error = asyncio.TimeoutError(f"Timeout sur {base_url}")
+                continue
+            except Exception as exc:
+                print(
+                    f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} KO: "
+                    f"{base_url} -> {exc}"
+                )
+                last_error = exc
+                continue
+
+        for provider_name in NO_KEY_PROVIDERS:
+            attempt_index += 1
+            try:
+                print(
+                    f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} | "
+                    f"provider: {provider_name}"
+                )
+                provider_obj = getattr(g4f_providers, provider_name, None)
+                if provider_obj is None:
+                    print(f"[DEBUG][AI] Provider inconnu dans g4f: {provider_name}")
+                    continue
+                ai_client = build_async_client(provider_obj=provider_obj)
+                attempt_deadline = time.monotonic() + PROVIDER_TIMEOUT_SECONDS
+                for model_name in FALLBACK_MODELS:
+                    remaining = attempt_deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise asyncio.TimeoutError("Timeout provider atteint avant reponse")
+                    response = await request_completion(ai_client, model_name, remaining)
+                    content = response.choices[0].message.content
+                    if content and content.strip():
+                        if self._is_bad_provider_output(content):
+                            raise RuntimeError("Sortie provider invalide (HTML/landing page)")
+                        if on_answer_sent is not None:
+                            remaining = attempt_deadline - time.monotonic()
+                            if remaining <= 0:
+                                raise asyncio.TimeoutError("Timeout avant envoi Discord")
+                            await asyncio.wait_for(on_answer_sent(content), timeout=remaining)
                         print(f"[DEBUG][AI] Provider OK: {provider_name} | model={model_name}")
                         return content
+            except asyncio.TimeoutError:
+                print(
+                    f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} TIMEOUT "
+                    f"apres {PROVIDER_TIMEOUT_SECONDS}s: {provider_name}, passage au suivant"
+                )
+                last_error = asyncio.TimeoutError(f"Timeout sur {provider_name}")
+                continue
             except Exception as exc:
-                print(f"[DEBUG][AI] Provider KO: {provider_name} -> {exc}")
+                print(
+                    f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} KO: "
+                    f"{provider_name} -> {exc}"
+                )
                 last_error = exc
                 continue
 
         # Fallback final: laisser g4f choisir son provider automatiquement.
+        attempt_index += 1
         try:
-            print("[DEBUG][AI] Tentative provider automatique g4f")
+            print(
+                f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} | "
+                "provider automatique g4f"
+            )
             ai_client = AIAsyncClient()
+            attempt_deadline = time.monotonic() + PROVIDER_TIMEOUT_SECONDS
             for model_name in FALLBACK_MODELS:
-                response = await asyncio.wait_for(
-                    ai_client.chat.completions.create(
-                        model=model_name,
-                        messages=[{"role": "user", "content": prompt_text}],
-                    ),
-                    timeout=REQUEST_TIMEOUT_SECONDS,
-                )
+                remaining = attempt_deadline - time.monotonic()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError("Timeout provider auto atteint avant reponse")
+                response = await request_completion(ai_client, model_name, remaining)
                 content = response.choices[0].message.content
                 if content and content.strip():
                     if self._is_bad_provider_output(content):
                         raise RuntimeError("Sortie provider invalide (HTML/landing page)")
+                    if on_answer_sent is not None:
+                        remaining = attempt_deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise asyncio.TimeoutError("Timeout avant envoi Discord")
+                        await asyncio.wait_for(on_answer_sent(content), timeout=remaining)
                     print(f"[DEBUG][AI] Provider auto OK | model={model_name}")
                     return content
+        except asyncio.TimeoutError:
+            print(
+                f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} TIMEOUT "
+                f"apres {PROVIDER_TIMEOUT_SECONDS}s"
+            )
+            last_error = asyncio.TimeoutError("Timeout provider auto")
         except Exception as exc:
-            print(f"[DEBUG][AI] Provider auto KO -> {exc}")
+            print(f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} KO -> {exc}")
             last_error = exc
 
         raise RuntimeError(f"Aucun provider g4f n'a fonctionne. Derniere erreur: {last_error}")
@@ -162,6 +290,16 @@ class cmdai(commands.Cog):
     def _is_bad_provider_output(self, content: str) -> bool:
         lowered = content.strip().lower()
         if not lowered:
+            return True
+
+        # Certains endpoints renvoient un flux SSE/JSON de debug au lieu de la reponse finale.
+        if "received line: data:" in lowered:
+            return True
+
+        if '"conversation_id"' in lowered and '"author"' in lowered and '"recipient"' in lowered:
+            return True
+
+        if lowered.startswith("data: {"):
             return True
 
         # Formats de flux renvoyant des erreurs textuelles au lieu d'une vraie reponse.
@@ -287,15 +425,17 @@ class cmdai(commands.Cog):
             return
 
         await message.channel.send("Je reflechis ...")
+        fake_ctx = type("Ctx", (), {"send": message.channel.send})
+
+        async def send_answer_callback(answer_text: str):
+            await self._send_markdown_chunks(fake_ctx, answer_text)
+
         try:
-            answer = await self._generate_ai_answer(content)
+            await self._generate_ai_answer(content, on_answer_sent=send_answer_callback)
         except Exception as exc:
             print(f"[DEBUG][MENTION] Erreur IA mention: {exc}")
             await message.channel.send(f"Je ne peux pas repondre pour le moment ({exc}).")
             return
-
-        fake_ctx = type("Ctx", (), {"send": message.channel.send})
-        await self._send_markdown_chunks(fake_ctx, answer)
 
 
 def setup(bot):

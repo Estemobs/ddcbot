@@ -3,7 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ai_assistant import NO_KEY_PROVIDERS, BAD_OUTPUT_MARKERS, cmdai
+from ai_assistant import (
+    BAD_OUTPUT_MARKERS,
+    NO_KEY_PROVIDERS,
+    PRIORITY_PROVIDER_BASE_URLS,
+    PROVIDER_TIMEOUT_SECONDS,
+    cmdai,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -32,6 +38,8 @@ def make_cog():
         # 403 / provider not found
         "403 Forbidden",
         "Provider not found",
+        # SSE / metadata stream (provider parasite)
+        'Received line: data: {"conversation_id":"abc","author":{"role":"user"},"recipient":"all"}',
         # Empty / whitespace
         "",
         "   ",
@@ -65,6 +73,21 @@ def test_is_bad_provider_output_accepts_valid(content):
 def test_no_key_providers_is_stable_shortlist():
     expected = {"PollinationsAI", "OperaAria", "Perplexity", "Qwen", "WeWordle", "TeachAnything"}
     assert set(NO_KEY_PROVIDERS) == expected
+
+
+def test_priority_provider_base_urls_order_is_curated():
+    expected_first = [
+        "https://share.wendabao.net",
+        "https://chat5.aiyunos.top",
+        "https://chat.swt-ai.com/",
+    ]
+    assert PRIORITY_PROVIDER_BASE_URLS[:3] == expected_first
+    assert len(PRIORITY_PROVIDER_BASE_URLS) == 11
+
+
+def test_timeout_constants_are_reasonable():
+    """Verify each provider gets 15 seconds max. If timeout, continue to next provider."""
+    assert PROVIDER_TIMEOUT_SECONDS == 15
 
 
 # ---------------------------------------------------------------------------
