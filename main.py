@@ -13,6 +13,7 @@ from economie import cmdeco
 from work import cmdwork
 from jeu import cmdjeu
 from help_cmd import cmdhelp
+from ai_assistant import cmdai
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
 
@@ -152,6 +153,7 @@ async def main():
     await bot.add_cog(cmdwork(bot))
     await bot.add_cog(cmdjeu(bot))
     await bot.add_cog(cmdhelp(bot))
+    await bot.add_cog(cmdai(bot))
     await bot.start(token)
 
 asyncio.run(main())

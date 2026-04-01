@@ -41,6 +41,7 @@ class cmdhelp(commands.Cog):
                     ("`rmd <durée> <message>`", "Créer un rappel (ex: `,rmd 30m réveil`)"),
                     ("`avatar <membre>`", "Afficher l'avatar d'un membre"),
                     ("`serverpicture`", "Afficher l'icône du serveur"),
+                    ("`devoir`", "OCR + reponse IA depuis une image"),
                 ]
             },
             "economie": {

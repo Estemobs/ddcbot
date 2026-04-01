@@ -13,6 +13,7 @@ from jeu import cmdjeu
 from moderation import cmdmoderation
 from utility import cmdutility
 from work import cmdwork
+from ai_assistant import cmdai
 
 
 EXPECTED_COMMANDS = {
@@ -25,6 +26,7 @@ EXPECTED_COMMANDS = {
     "rmd",
     "avatar",
     "serverpicture",
+    "devoir",
     "warn",
     "modpanel",
     "warnconfig",
@@ -89,6 +91,7 @@ async def test_all_cogs_register_expected_commands():
     await bot.add_cog(cmdwork(bot))
     await bot.add_cog(cmdjeu(bot))
     await bot.add_cog(cmdhelp(bot))
+    await bot.add_cog(cmdai(bot))
 
     registered = {command.name for command in bot.commands}
     missing = EXPECTED_COMMANDS - registered
@@ -110,6 +113,7 @@ async def test_all_cogs_register_expected_commands():
         "work",
         "jeu",
         "help_cmd",
+        "ai_assistant",
     ],
 )
 def test_modules_import_without_syntax_error(module_name):
