@@ -73,6 +73,7 @@ class cmdhelp(commands.Cog):
                 "emoji": "📈",
                 "title": "Revenus passifs",
                 "commands": [
+                    ("`incomepanel`", "Panneau de configuration des revenus passifs *(admin)*"),
                     ("`collect_income`", "Collecter ses revenus passifs"),
                     ("`role_income_list`", "Lister les rôles avec revenus"),
                     ("`role_income_add <id_rôle> <montant> <intervalle>`",
@@ -86,6 +87,7 @@ class cmdhelp(commands.Cog):
                 "emoji": "🎰",
                 "title": "Jeux / Lootbox",
                 "commands": [
+                    ("`gamepanel`", "Panneau de configuration des jeux / lootbox *(admin)*"),
                     ("`shop`", "Voir les jeux disponibles"),
                     ("`openlot`", "Ouvrir un lot (ticket ou pièces)"),
                     ("`inventaire`", "Voir ses tickets"),

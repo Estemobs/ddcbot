@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_comma
 ADMIN_COMMANDS = {
     "modpanel", "warnconfig", "permpanel", "warn", "warns", "clearwarns", "ban", "kick", "clear", "unban",
     "timeout", "untimeout", "slowmode", "lock", "unlock", "addmoney", "removemoney", "reset_money",
-    "reset_economy", "clean_leaderboard", "ecopanel", "config_work", "role_income_add", "role_income_remove",
+    "reset_economy", "clean_leaderboard", "ecopanel", "incomepanel", "gamepanel", "config_work", "role_income_add", "role_income_remove",
     "role_income_edit", "addgame", "deletegame", "addquest", "deletequete", "config_quete", "clearinventory",
     "gstart", "gend", "gcancel",
 }

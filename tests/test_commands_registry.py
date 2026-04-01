@@ -48,6 +48,7 @@ EXPECTED_COMMANDS = {
     "role_income_list",
     "role_income_edit",
     "collect_income",
+    "incomepanel",
     "mybalance",
     "balance",
     "addmoney",
@@ -71,6 +72,7 @@ EXPECTED_COMMANDS = {
     "deletequete",
     "quest",
     "config_quete",
+    "gamepanel",
 }
 
 

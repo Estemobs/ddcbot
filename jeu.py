@@ -7,6 +7,85 @@ from discord.ext import commands
 from discord import Embed
 
 
+DEFAULT_GAME_PANEL_CONFIG = {
+    "openlot_enabled": True,
+    "quests_enabled": True,
+    "announce_win_public": True,
+    "log_channel_id": None,
+}
+
+
+class GamePanelView(discord.ui.View):
+    def __init__(self, cog, guild_id: int, author_id: int):
+        super().__init__(timeout=300)
+        self.cog = cog
+        self.guild_id = guild_id
+        self.author_id = author_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                "Seul l'auteur de la commande peut modifier ce panneau.",
+                ephemeral=True,
+            )
+            return False
+        if not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message(
+                "Permission manquante: Manage Server.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def refresh(self, interaction: discord.Interaction):
+        cfg = self.cog.get_game_panel_config(interaction.guild.id)
+        embed = self.cog.build_game_panel_embed(interaction.guild, cfg)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Toggle openlot", style=discord.ButtonStyle.primary, row=0)
+    async def toggle_openlot(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cfg = self.cog.get_game_panel_config(self.guild_id)
+        cfg["openlot_enabled"] = not cfg["openlot_enabled"]
+        self.cog.save_game_panel_config()
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Toggle quetes", style=discord.ButtonStyle.primary, row=0)
+    async def toggle_quests(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cfg = self.cog.get_game_panel_config(self.guild_id)
+        cfg["quests_enabled"] = not cfg["quests_enabled"]
+        self.cog.save_game_panel_config()
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Toggle annonce gains", style=discord.ButtonStyle.primary, row=0)
+    async def toggle_public_announce(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cfg = self.cog.get_game_panel_config(self.guild_id)
+        cfg["announce_win_public"] = not cfg["announce_win_public"]
+        self.cog.save_game_panel_config()
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Canal logs = ici", style=discord.ButtonStyle.secondary, row=1)
+    async def set_log_here(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cfg = self.cog.get_game_panel_config(self.guild_id)
+        cfg["log_channel_id"] = interaction.channel_id
+        self.cog.save_game_panel_config()
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Reset", style=discord.ButtonStyle.danger, row=1)
+    async def reset_defaults(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.cog.game_panel_config[str(self.guild_id)] = dict(DEFAULT_GAME_PANEL_CONFIG)
+        self.cog.save_game_panel_config()
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Fermer", style=discord.ButtonStyle.danger, row=1)
+    async def close_panel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for child in self.children:
+            child.disabled = True
+        cfg = self.cog.get_game_panel_config(interaction.guild.id)
+        embed = self.cog.build_game_panel_embed(interaction.guild, cfg)
+        embed.set_footer(text="Panneau ferme")
+        await interaction.response.edit_message(embed=embed, view=self)
+
+
 class cmdjeu(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -24,6 +103,68 @@ class cmdjeu(commands.Cog):
             self.balances = json.load(f)
 
         self.inventory_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'inventaire.json')
+        self.game_panel_config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'game_panel_config.json')
+        self.game_panel_config = self.load_game_panel_config()
+
+    def load_game_panel_config(self):
+        if not os.path.exists(self.game_panel_config_path):
+            return {}
+        try:
+            with open(self.game_panel_config_path, 'r') as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    def save_game_panel_config(self):
+        with open(self.game_panel_config_path, 'w') as f:
+            json.dump(self.game_panel_config, f, indent=4)
+
+    def get_game_panel_config(self, guild_id: int):
+        key = str(guild_id)
+        if key not in self.game_panel_config or not isinstance(self.game_panel_config[key], dict):
+            self.game_panel_config[key] = dict(DEFAULT_GAME_PANEL_CONFIG)
+            self.save_game_panel_config()
+        else:
+            for cfg_key, cfg_default in DEFAULT_GAME_PANEL_CONFIG.items():
+                if cfg_key not in self.game_panel_config[key]:
+                    self.game_panel_config[key][cfg_key] = cfg_default
+            self.save_game_panel_config()
+        return self.game_panel_config[key]
+
+    def build_game_panel_embed(self, guild: discord.Guild, cfg: dict):
+        channel_id = cfg.get("log_channel_id")
+        log_channel = guild.get_channel(channel_id) if channel_id else None
+        log_label = f"#{log_channel.name}" if log_channel else "Non defini"
+
+        embed = discord.Embed(
+            title="Panneau Jeux / Lootbox",
+            description="Configuration de la categorie jeux.",
+            color=discord.Color.purple(),
+        )
+        embed.add_field(name="Ouverture des lots", value="Active" if cfg["openlot_enabled"] else "Desactivee", inline=True)
+        embed.add_field(name="Systeme de quetes", value="Actif" if cfg["quests_enabled"] else "Desactive", inline=True)
+        embed.add_field(name="Annonce publique des gains", value="Oui" if cfg["announce_win_public"] else "Non", inline=True)
+        embed.add_field(name="Canal logs", value=log_label, inline=False)
+        embed.set_footer(text=f"Serveur: {guild.name}")
+        return embed
+
+    async def send_game_log(self, guild: discord.Guild, message: str):
+        cfg = self.get_game_panel_config(guild.id)
+        channel_id = cfg.get("log_channel_id")
+        if not channel_id:
+            return
+        channel = guild.get_channel(channel_id)
+        if channel:
+            await channel.send(message)
+
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)
+    async def gamepanel(self, ctx):
+        cfg = self.get_game_panel_config(ctx.guild.id)
+        embed = self.build_game_panel_embed(ctx.guild, cfg)
+        view = GamePanelView(self, ctx.guild.id, ctx.author.id)
+        await ctx.send(embed=embed, view=view)
 
     # ─── Méthodes internes ───────────────────────────────────────────────────────
 
@@ -168,6 +309,11 @@ class cmdjeu(commands.Cog):
 
     @commands.command()
     async def openlot(self, ctx):
+        panel_cfg = self.get_game_panel_config(ctx.guild.id)
+        if not panel_cfg["openlot_enabled"]:
+            await ctx.send("L'ouverture des lots est desactivee sur ce serveur.")
+            return
+
         with open(self.config_path, 'r') as f:
             self.config = json.load(f)
 
@@ -223,7 +369,7 @@ class cmdjeu(commands.Cog):
         with open(self.quete_path, 'r') as f:
             self.quetes = json.load(f)
 
-        if lot_name in self.quetes:
+        if panel_cfg["quests_enabled"] and lot_name in self.quetes:
             quest = self.quetes[lot_name]
             quest['progress'] = quest.get('progress', 0) + 1
 
@@ -237,6 +383,14 @@ class cmdjeu(commands.Cog):
 
         # Attribuer le prix tiré au sort
         await self._award_prize(ctx, prize, inventory)
+
+        if not panel_cfg["announce_win_public"]:
+            try:
+                await ctx.message.delete()
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
+        await self.send_game_log(ctx.guild, f"[JEUX] {ctx.author.mention} a ouvert {lot_name} et a recu: {prize}")
 
         with open(self.inventory_path, 'w') as f:
             json.dump(inventory, f, indent=4, ensure_ascii=False)
