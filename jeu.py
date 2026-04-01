@@ -72,7 +72,6 @@ class cmdjeu(commands.Cog):
     # ─── Commandes ──────────────────────────────────────────────────────────────
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def addgame(self, ctx):
         await ctx.send("Combien de lots voulez-vous ?")
         num_lots_msg = await self._ask(ctx)
@@ -246,7 +245,6 @@ class cmdjeu(commands.Cog):
 
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def deletegame(self, ctx):
         await ctx.send("Quel est le nom du jeu que vous voulez supprimer ?")
         command_name = await self._ask(ctx, timeout=30.0)
@@ -315,7 +313,6 @@ class cmdjeu(commands.Cog):
 
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def clearinventory(self, ctx, user: discord.User = None):
         if user is None:
             user = ctx.author
@@ -341,7 +338,6 @@ class cmdjeu(commands.Cog):
 
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def addquest(self, ctx):
         if not self.config:
             await ctx.send("Il n'y a actuellement aucun lot enregistré.")
@@ -435,7 +431,6 @@ class cmdjeu(commands.Cog):
 
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def deletequete(self, ctx):
         await ctx.send("Quel est le nom de la quête que vous voulez supprimer ?")
         quest_name = await self._ask(ctx, timeout=30.0)
@@ -483,7 +478,6 @@ class cmdjeu(commands.Cog):
 
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def config_quete(self, ctx):
         """Affiche la configuration complète de toutes les quêtes (admin)."""
         with open(self.quete_path, 'r') as f:

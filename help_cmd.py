@@ -18,6 +18,7 @@ class cmdhelp(commands.Cog):
                     ("`warn <membre> <raison>`", "Avertir un membre"),
                     ("`modpanel`", "Ouvrir le panneau complet de configuration moderation"),
                     ("`warnconfig`", "Alias de `modpanel`"),
+                    ("`permpanel`", "Configurer les roles autorises pour chaque commande admin"),
                     ("`warns [membre]`", "Voir le nombre de warns"),
                     ("`clearwarns <membre>`", "Reinitialiser les warns d'un membre"),
                     ("`ban <membre> <raison>`", "Bannir un membre"),
@@ -55,6 +56,7 @@ class cmdhelp(commands.Cog):
                     ("`reset_money <membre>`", "Réinitialiser le solde d'un membre *(admin)*"),
                     ("`reset_economy`", "Réinitialiser toute l'économie *(admin)*"),
                     ("`clean_leaderboard`", "Nettoyer le leaderboard des membres partis"),
+                    ("`ecopanel`", "Configurer la partie economie (transferts, limites, logs)"),
                 ]
             },
             "travail": {

@@ -1,0 +1,8 @@
+{
+    "529230347733565460": {
+        "allow_transfers": true,
+        "max_transfer": 10000,
+        "allow_negative_balances": false,
+        "log_channel_id": null
+    }
+}

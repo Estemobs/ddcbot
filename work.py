@@ -25,7 +25,6 @@ class cmdwork(commands.Cog):
             self.balances = json.load(f)
 
     @commands.command()
-    @commands.has_role(591683595043602436) 
     async def config_work(self, ctx, min_amount: int, max_amount: int, reward_tiers: int, cooldown: int, *rewards: int):
         # Vérifiez si le nombre de récompenses correspond au nombre de paliers de récompenses
         if len(rewards) != reward_tiers:

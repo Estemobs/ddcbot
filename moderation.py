@@ -28,6 +28,43 @@ DEFAULT_MOD_CONFIG = {
     },
 }
 
+ADMIN_COMMANDS = [
+    "modpanel",
+    "warnconfig",
+    "permpanel",
+    "warn",
+    "warns",
+    "clearwarns",
+    "ban",
+    "kick",
+    "clear",
+    "unban",
+    "timeout",
+    "untimeout",
+    "slowmode",
+    "lock",
+    "unlock",
+    "addmoney",
+    "removemoney",
+    "reset_money",
+    "reset_economy",
+    "clean_leaderboard",
+    "ecopanel",
+    "config_work",
+    "role_income_add",
+    "role_income_remove",
+    "role_income_edit",
+    "addgame",
+    "deletegame",
+    "addquest",
+    "deletequete",
+    "config_quete",
+    "clearinventory",
+    "gstart",
+    "gend",
+    "gcancel",
+]
+
 
 class BaseModPanelView(discord.ui.View):
     page_name = "warn"
@@ -213,6 +250,148 @@ class NotificationsPanelView(BaseModPanelView):
         await self._refresh(interaction)
 
 
+class PermissionCommandSelect(discord.ui.Select):
+    def __init__(self, parent_view):
+        self.parent_view = parent_view
+        options = [
+            discord.SelectOption(label="Default admin roles", value="__default__"),
+        ]
+        for cmd_name in ADMIN_COMMANDS[:24]:
+            options.append(discord.SelectOption(label=cmd_name, value=cmd_name))
+        super().__init__(
+            placeholder="Selectionner une commande admin",
+            min_values=1,
+            max_values=1,
+            options=options,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.selected_command = self.values[0]
+        await self.parent_view.refresh(interaction)
+
+
+class PermissionRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, parent_view):
+        self.parent_view = parent_view
+        super().__init__(
+            placeholder="Selectionner un role",
+            min_values=1,
+            max_values=1,
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.values:
+            self.parent_view.selected_role_id = self.values[0].id
+        await self.parent_view.refresh(interaction)
+
+
+class PermissionPanelView(discord.ui.View):
+    def __init__(self, cog, guild_id: int, author_id: int):
+        super().__init__(timeout=300)
+        self.cog = cog
+        self.guild_id = guild_id
+        self.author_id = author_id
+        self.selected_command = "__default__"
+        self.selected_role_id = None
+        self.add_item(PermissionCommandSelect(self))
+        self.add_item(PermissionRoleSelect(self))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                "Seul l'auteur de la commande peut modifier ce panneau.",
+                ephemeral=True,
+            )
+            return False
+        if not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message(
+                "Permission manquante: Manage Server.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    def _roles_for_selection(self):
+        cfg = self.cog.get_permission_config(self.guild_id)
+        if self.selected_command == "__default__":
+            return cfg["admin_roles"]
+        return cfg["command_roles"].get(self.selected_command, [])
+
+    def build_embed(self, guild: discord.Guild):
+        selected_label = "Default admin roles" if self.selected_command == "__default__" else self.selected_command
+        role_ids = self._roles_for_selection()
+        roles_display = "Aucun role configure"
+        if role_ids:
+            roles_display = "\n".join(f"<@&{rid}>" for rid in role_ids)
+
+        chosen_role = f"<@&{self.selected_role_id}>" if self.selected_role_id else "Aucun"
+
+        embed = discord.Embed(
+            title="Panneau Permissions Admin",
+            description="Configurez quels roles accedent aux commandes d'administration.",
+            color=discord.Color.blurple(),
+        )
+        embed.add_field(name="Selection commande", value=selected_label, inline=False)
+        embed.add_field(name="Roles autorises", value=roles_display, inline=False)
+        embed.add_field(name="Role choisi", value=chosen_role, inline=False)
+        embed.set_footer(text=f"Serveur: {guild.name}")
+        return embed
+
+    async def refresh(self, interaction: discord.Interaction):
+        embed = self.build_embed(interaction.guild)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Ajouter role", style=discord.ButtonStyle.success, row=2)
+    async def add_role(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self.selected_role_id:
+            await interaction.response.send_message("Selectionnez un role d'abord.", ephemeral=True)
+            return
+        cfg = self.cog.get_permission_config(self.guild_id)
+        if self.selected_command == "__default__":
+            target = cfg["admin_roles"]
+        else:
+            target = cfg["command_roles"].setdefault(self.selected_command, [])
+        if self.selected_role_id not in target:
+            target.append(self.selected_role_id)
+            self.cog.save_permission_config()
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Retirer role", style=discord.ButtonStyle.secondary, row=2)
+    async def remove_role(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self.selected_role_id:
+            await interaction.response.send_message("Selectionnez un role d'abord.", ephemeral=True)
+            return
+        cfg = self.cog.get_permission_config(self.guild_id)
+        if self.selected_command == "__default__":
+            target = cfg["admin_roles"]
+        else:
+            target = cfg["command_roles"].setdefault(self.selected_command, [])
+        if self.selected_role_id in target:
+            target.remove(self.selected_role_id)
+            self.cog.save_permission_config()
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Reset selection", style=discord.ButtonStyle.danger, row=2)
+    async def reset_selection(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cfg = self.cog.get_permission_config(self.guild_id)
+        if self.selected_command == "__default__":
+            cfg["admin_roles"] = []
+        else:
+            cfg["command_roles"][self.selected_command] = []
+        self.cog.save_permission_config()
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Fermer", style=discord.ButtonStyle.danger, row=3)
+    async def close_panel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for child in self.children:
+            child.disabled = True
+        embed = self.build_embed(interaction.guild)
+        embed.set_footer(text="Panneau ferme")
+        await interaction.response.edit_message(embed=embed, view=self)
+
+
 class cmdmoderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -221,8 +400,10 @@ class cmdmoderation(commands.Cog):
         self.mod_config_path = os.path.join(base_dir, "moderation_config.json")
         self.legacy_warn_path = os.path.join(base_dir, "warnconfig.json")
         self.warn_history_path = os.path.join(base_dir, "warn_history.json")
+        self.permission_config_path = os.path.join(base_dir, "permission_config.json")
         self.mod_config = self._load_json(self.mod_config_path)
         self.warn_history = self._load_json(self.warn_history_path)
+        self.permission_config = self._load_json(self.permission_config_path)
         self._migrate_legacy_warn_config()
 
     def _default_config(self):
@@ -247,6 +428,22 @@ class cmdmoderation(commands.Cog):
 
     def save_warn_history(self):
         self._save_json(self.warn_history_path, self.warn_history)
+
+    def save_permission_config(self):
+        self._save_json(self.permission_config_path, self.permission_config)
+
+    def get_permission_config(self, guild_id: int):
+        key = str(guild_id)
+        if key not in self.permission_config or not isinstance(self.permission_config[key], dict):
+            self.permission_config[key] = {"admin_roles": [], "command_roles": {}}
+            self.save_permission_config()
+        cfg = self.permission_config[key]
+        if "admin_roles" not in cfg or not isinstance(cfg["admin_roles"], list):
+            cfg["admin_roles"] = []
+        if "command_roles" not in cfg or not isinstance(cfg["command_roles"], dict):
+            cfg["command_roles"] = {}
+        self.save_permission_config()
+        return cfg
 
     def _migrate_legacy_warn_config(self):
         if not os.path.exists(self.legacy_warn_path):
@@ -412,6 +609,14 @@ class cmdmoderation(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def warnconfig(self, ctx):
         await self.modpanel(ctx)
+
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)
+    async def permpanel(self, ctx):
+        self.get_permission_config(ctx.guild.id)
+        view = PermissionPanelView(self, ctx.guild.id, ctx.author.id)
+        embed = view.build_embed(ctx.guild)
+        await ctx.send(embed=embed, view=view)
 
     @commands.command()
     @commands.has_permissions(kick_members=True)

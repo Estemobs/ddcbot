@@ -1,6 +1,7 @@
 import asyncio
 import discord
 import json
+import os
 import traceback
 from discord.ext import commands
 from Notifrss import cmdrss
@@ -14,6 +15,52 @@ from jeu import cmdjeu
 from help_cmd import cmdhelp
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
+
+ADMIN_COMMANDS = {
+    "modpanel", "warnconfig", "permpanel", "warn", "warns", "clearwarns", "ban", "kick", "clear", "unban",
+    "timeout", "untimeout", "slowmode", "lock", "unlock", "addmoney", "removemoney", "reset_money",
+    "reset_economy", "clean_leaderboard", "ecopanel", "config_work", "role_income_add", "role_income_remove",
+    "role_income_edit", "addgame", "deletegame", "addquest", "deletequete", "config_quete", "clearinventory",
+    "gstart", "gend", "gcancel",
+}
+
+
+def load_permission_config():
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "permission_config.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+@bot.check
+async def admin_role_gate(ctx):
+    if not ctx.guild or not ctx.command:
+        return True
+
+    command_name = ctx.command.qualified_name
+    if command_name not in ADMIN_COMMANDS:
+        return True
+
+    member = ctx.author
+    if member.guild_permissions.administrator or member.guild_permissions.manage_guild:
+        return True
+
+    config = load_permission_config()
+    guild_cfg = config.get(str(ctx.guild.id), {}) if isinstance(config, dict) else {}
+    admin_roles = guild_cfg.get("admin_roles", []) if isinstance(guild_cfg, dict) else []
+    command_roles = guild_cfg.get("command_roles", {}) if isinstance(guild_cfg, dict) else {}
+    allowed_roles = command_roles.get(command_name, admin_roles)
+
+    if not allowed_roles:
+        return False
+
+    member_role_ids = {role.id for role in member.roles}
+    return any(role_id in member_role_ids for role_id in allowed_roles)
 
 @bot.event
 async def on_ready():

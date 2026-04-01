@@ -10,7 +10,6 @@ class cmdanim(commands.Cog):
         self.giveaways = {}
 
     @commands.command()
-    @commands.has_role(605448594010669076)
     async def gstart(self, ctx, duration: int, *, prize: str):
         if ctx.guild.id in self.giveaways:
             return await ctx.send("Il y a déjà un Giveaway en cours.")
@@ -23,7 +22,6 @@ class cmdanim(commands.Cog):
 
 
     @commands.command()
-    @commands.has_role(605448594010669076)
     async def gend(self, ctx):
         if ctx.guild.id not in self.giveaways:
             return await ctx.send("Il n'y a pas de Giveaway en cours.")
@@ -38,7 +36,6 @@ class cmdanim(commands.Cog):
         self.giveaways.pop(ctx.guild.id)
 
     @commands.command()
-    @commands.has_role(605448594010669076)
     async def gcancel(self, ctx):
         if ctx.guild.id not in self.giveaways:
             return await ctx.send("Il n'y a pas de Giveaway en cours.")

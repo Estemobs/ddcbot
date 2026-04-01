@@ -22,7 +22,6 @@ class cmdincome(commands.Cog):
             self.balances = json.load(f)
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def role_income_add(self, ctx, role_id: int, amount: float, collect_interval: str):
         role = discord.utils.get(ctx.guild.roles, id=role_id)
         if role is None:
@@ -55,7 +54,6 @@ class cmdincome(commands.Cog):
 
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def role_income_remove(self, ctx, role_id: int):
         # Vérifier si le rôle est dans la liste des rôles avec gains associés
         if str(role_id) not in self.role_income:
@@ -85,7 +83,6 @@ class cmdincome(commands.Cog):
         await ctx.send("Liste des rôles avec gains associés :\n" + "\n".join(role_list))
 
     @commands.command()
-    @commands.has_role(591683595043602436)
     async def role_income_edit(self, ctx, role_id: int, amount: float, collect_interval: str):
         # Vérifier si le rôle existe dans la liste des rôles avec gains associés
         if str(role_id) not in self.role_income:
