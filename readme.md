@@ -1,64 +1,66 @@
 # DDCBot
 
-DDCBot est un bot Discord personnalisé conçu pour gérer des fonctionnalités variées dans les serveurs Discord. Il est développé en Python et utilise l'API discord.py.
+Bot Discord multi-commandes pour gestion serveur, economie, mini-jeux et notifications RSS.
 
-## Fonctionnalités principales
+## Prerequis
 
-### Commandes générales
+- Python 3.10+
+- Un token de bot Discord
 
-- `,help` : Affiche une liste des commandes disponibles
-- `,rss` : Gère la lecture RSS
-- `,utility` : Utilitaires divers
-- `,moderation` : Gestion des permissions et modération
-- `,animations` : Crée et gère des animations
-- `,income` : Gestion des revenus
-- `,economy` : Système économique
-- `,work` : Gestion des tâches
-- `,jeu` : Jeux et divertissements
+## Installation propre (venv)
 
-### Configuration
+1. Cloner le depot:
 
-Pour utiliser ce bot, vous devez créer un fichier `secrets.json` avec votre token Discord :
+```bash
+git clone https://github.com/Estemobs/ddcbot.git
+cd ddcbot
+```
+
+2. Creer un environnement virtuel:
+
+```bash
+python3 -m venv .venv
+```
+
+3. Activer l'environnement:
+
+```bash
+source .venv/bin/activate
+```
+
+4. Mettre pip a jour (recommande):
+
+```bash
+python -m pip install --upgrade pip
+```
+
+5. Installer les dependances:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Configuration
+
+Creer un fichier `secrets.json` a la racine du projet:
 
 ```json
 {
-  "ddc_token": "votre_token_discord_ici"
+  "ddc_token": "VOTRE_TOKEN_DISCORD"
 }
 ```
 
-### Installation
+## Lancement du bot
 
-1. Clonez ce dépôt :
-   ```
-   git clone https://github.com/estemobs/ddcbot.git
-   ```
-2. Installez les dépendances :
-   ```
-   pip install -r requirements.txt
-   ```
-3. Placez le fichier `secrets.json` à la racine du projet
-4. Lancez le bot avec :
-   ```
-   python main.py
-   ```
+Depuis la racine du projet, avec le venv actif:
 
-## Développement
+```bash
+python main.py
+```
 
-Ce bot utilise plusieurs modules personnalisés :
+## Notes utiles
 
-- `cmdrss.py` : Gestion de la lecture RSS
-- `cmdutility.py` : Utilitaires divers
-- `cmdmoderation.py` : Permissions et modération
-- `cmdanim.py` : Animations
-- `cmdincome.py` : Gestion des revenus
-- `cmdeco.py` : Système économique
-- `cmdwork.py` : Tâches
-- `cmdjeu.py` : Jeux et divertissements
-
-Chaque module contient ses propres commandes et fonctionnalités spécifiques.
-
-## Contributeurs
-
-Vous pouvez contribuer au développement de ce bot en soumettant des pull requests ou en participant aux discussions sur GitHub.
+- Le prefixe de commande est configure dans le code (`main.py`).
+- Les fichiers JSON de configuration et de donnees (`balances.json`, `income.json`, etc.) doivent rester a la racine.
 
 

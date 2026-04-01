@@ -10,7 +10,6 @@ class cmdanim(commands.Cog):
         self.giveaways = {}
 
     @commands.command()
-    @commands.has_role(605448594010669076)
     async def gstart(self, ctx, duration: int, *, prize: str):
         if ctx.guild.id in self.giveaways:
             return await ctx.send("Il y a déjà un Giveaway en cours.")
@@ -23,23 +22,26 @@ class cmdanim(commands.Cog):
 
 
     @commands.command()
-    @commands.has_role(605448594010669076)
     async def gend(self, ctx):
         if ctx.guild.id not in self.giveaways:
             return await ctx.send("Il n'y a pas de Giveaway en cours.")
         self.giveaways[ctx.guild.id]["RUNNING"] = False
-        winner = random.choice(self.giveaways[ctx.guild.id]["USERS"])
+        users = self.giveaways[ctx.guild.id]["USERS"]
+        if not users:
+            await ctx.send("Giveaway termine sans participant.")
+            self.giveaways.pop(ctx.guild.id)
+            return
+        winner = random.choice(users)
         await ctx.send(f"Giveaway terminé! Le gagnant est {winner}! Le prix était {self.giveaways[ctx.guild.id]['PRIZE']}")
         self.giveaways.pop(ctx.guild.id)
 
     @commands.command()
-    @commands.has_role(605448594010669076)
     async def gcancel(self, ctx):
         if ctx.guild.id not in self.giveaways:
             return await ctx.send("Il n'y a pas de Giveaway en cours.")
         self.giveaways[ctx.guild.id]["RUNNING"] = False
         await ctx.send(f"Giveaway annulé! Le prix était {self.giveaways[ctx.guild.id]['PRIZE']}")
-        self.botgiveaways.pop(ctx.guild.id)
+        self.giveaways.pop(ctx.guild.id)
 
 
 def setup(bot):

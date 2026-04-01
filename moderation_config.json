@@ -1,0 +1,23 @@
+{
+    "529230347733565460": {
+        "warn": {
+            "dm_user": false,
+            "announce_public": false,
+            "require_reason": false,
+            "log_channel_id": 766359169120469053
+        },
+        "actions": {
+            "auto_timeout_enabled": false,
+            "auto_timeout_after_warns": 3,
+            "auto_timeout_minutes": 30
+        },
+        "defaults": {
+            "clear_amount": 5,
+            "timeout_minutes": 10
+        },
+        "notifications": {
+            "dm_on_kick": true,
+            "dm_on_ban": true
+        }
+    }
+}

@@ -24,7 +24,7 @@ class cmdrss(commands.Cog):
 
             notifications_to_send = []  # Liste pour stocker les notifications à envoyer
 
-            for notification in data:
+            for notification in list(data):
                 show_name = notification["show_name"]
                 season = notification["season"]
                 number = notification["number"]
@@ -99,6 +99,9 @@ class cmdrss(commands.Cog):
         # ask user to select an option
         await ctx.send("Sélectionnez un numéro:")
         msg = await self.bot.wait_for('message', check=lambda message: message.author == ctx.author)
+        if not msg.content.isdigit():
+            await ctx.send("Option invalide.")
+            return
         choice = int(msg.content)
         if choice <= 0 or choice > len(options):
             await ctx.send("Option invalide.")
@@ -140,18 +143,13 @@ class cmdrss(commands.Cog):
             await ctx.send("Aucun épisode à venir.")
 
     # Load the notifications from the JSON file
-        if os.path.exists(self.notifications_path) and os.path.getsize(self.notifications_path) > 0:
-        # Charger le contenu du fichier existant
+        try:
             with open(self.notifications_path, 'r') as f:
                 notifications = json.load(f)
-        else:
-        # Vérifier si le fichier est vide
-            if os.path.exists(self.notifications_path) and os.path.getsize(self.notifications_path) == 0:
-        # Remplir le fichier avec une liste vide
-                with open(self.notifications_path, 'w') as f:
-                    f.write("")
-        # Initialiser une liste vide
-                notifications = [] 
+            if not isinstance(notifications, list):
+                notifications = []
+        except (json.JSONDecodeError, FileNotFoundError):
+            notifications = []
 
     # Create a list of dictionaries for future episodes
         future_episodes = []
@@ -177,7 +175,7 @@ class cmdrss(commands.Cog):
             json.dump(notifications, f, indent=2)
 
     # Envoyer un message de confirmation
-        if len(episode) > 0:
+        if future_episodes:
             await ctx.send(f"Je vous notifierai en message privé lorsque les nouveaux épisodes de {show_name} sortiront.")
             
 
@@ -235,10 +233,10 @@ class cmdrss(commands.Cog):
         last_message = None
         if found:
             embed = discord.Embed(title="Liste des notifications")
-            for notification_num, notification in found_notifications:
+            for display_index, (_, notification) in enumerate(found_notifications, start=1):
                 airdate = datetime.fromisoformat(notification["airdate"]).strftime('%d/%m/%Y')
                 embed.colour = discord.Colour.green()
-                embed.add_field(name=f"**[{notification_num}] {notification['show_name']}**", value=f"Saison {notification['season']}, épisode {notification['number']}\nDiffusion prévue le {airdate}", inline=False)
+                embed.add_field(name=f"**[{display_index}] {notification['show_name']}**", value=f"Saison {notification['season']}, épisode {notification['number']}\nDiffusion prévue le {airdate}", inline=False)
             if last_message:
                 await last_message.delete()
             last_message = await ctx.send(embed=embed)
@@ -251,11 +249,12 @@ class cmdrss(commands.Cog):
                 await ctx.send("**Veuillez entrer le numéro de la série que vous voulez supprimer.**")
                 message = await self.bot.wait_for('message', timeout=30.0, check=check)
                 selection = int(message.content.strip())
-                if selection < 0 or selection >= len(found_notifications):
+                if selection < 1 or selection > len(found_notifications):
                     await ctx.send("Le numéro saisi est invalide.")
                     return
-                
-                notifications.pop(found_notifications[selection][0])
+
+                notification_index = found_notifications[selection - 1][0]
+                notifications.pop(notification_index)
                 
                 with open(self.notifications_path, 'w') as f:
                     json.dump(notifications, f, indent=2)

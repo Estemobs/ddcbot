@@ -49,7 +49,7 @@ class cmdutility(commands.Cog):
     @commands.command()
     async def avatar(self, ctx, member:discord.Member):
         em = discord.Embed(description=f'● Voici la photo de profil de {member}', color=0x04ff00)
-        em.set_image(url=member.avatar)
+        em.set_image(url=member.display_avatar.url)
         
         await ctx.send(embed=em)
 
