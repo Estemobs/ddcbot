@@ -28,7 +28,12 @@ class cmdanim(commands.Cog):
         if ctx.guild.id not in self.giveaways:
             return await ctx.send("Il n'y a pas de Giveaway en cours.")
         self.giveaways[ctx.guild.id]["RUNNING"] = False
-        winner = random.choice(self.giveaways[ctx.guild.id]["USERS"])
+        users = self.giveaways[ctx.guild.id]["USERS"]
+        if not users:
+            await ctx.send("Giveaway termine sans participant.")
+            self.giveaways.pop(ctx.guild.id)
+            return
+        winner = random.choice(users)
         await ctx.send(f"Giveaway terminé! Le gagnant est {winner}! Le prix était {self.giveaways[ctx.guild.id]['PRIZE']}")
         self.giveaways.pop(ctx.guild.id)
 
