@@ -1,8 +1,10 @@
 import asyncio
+import html
 import inspect
 import io
 import re
 import time
+from urllib.parse import urlparse
 
 import discord
 import nest_asyncio
@@ -34,7 +36,7 @@ PRIORITY_PROVIDER_BASE_URLS = [
 ]
 
 FALLBACK_MODELS = ["gpt-4o-mini", ""]
-PROVIDER_TIMEOUT_SECONDS = 8
+PROVIDER_TIMEOUT_SECONDS = 15
 
 BAD_OUTPUT_MARKERS = [
     "<!doctype html",
@@ -56,6 +58,22 @@ BAD_OUTPUT_MARKERS = [
     '"conversation_id"',
     '"input_message"',
 ]
+
+DOMAIN_RESPONSE_PATTERNS = {
+    "free.oaibest.com": [
+        r'"finalResponse"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+        r'"answerText"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+        r'"assistant_response"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+    ],
+    "chat4.free2gpt.com": [
+        r'"assistant"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+        r'"reply"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+    ],
+    "chatnio.liujiarong.top": [
+        r'"completion"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+        r'"generated"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+    ],
+}
 
 
 class cmdai(commands.Cog):
@@ -110,6 +128,103 @@ class cmdai(commands.Cog):
         img = cv2.bilateralFilter(img, 9, 75, 75)
         _, jpeg = cv2.imencode(".jpg", img)
         return jpeg.tobytes()
+
+    def _extract_domain_specific_content(self, content: str, domain: str):
+        patterns = []
+        for known_domain, domain_patterns in DOMAIN_RESPONSE_PATTERNS.items():
+            if known_domain in domain:
+                patterns.extend(domain_patterns)
+
+        if not patterns:
+            return None
+
+        candidates = []
+        for pattern in patterns:
+            for match in re.findall(pattern, content, flags=re.IGNORECASE):
+                candidate = html.unescape(match.replace("\\n", "\n").replace("\\t", "\t")).strip()
+                if len(candidate) >= 25:
+                    candidates.append(candidate)
+
+        if not candidates:
+            return None
+
+        return max(candidates, key=len)
+
+    def _extract_text_from_html_payload(self, content: str, source_hint: str | None = None):
+        if not content:
+            return None
+
+        lowered = content.lower()
+        domain = ""
+        if source_hint and "://" in source_hint:
+            domain = urlparse(source_hint).netloc.lower()
+
+        domain_specific = self._extract_domain_specific_content(content, domain)
+        if domain_specific:
+            return domain_specific
+
+        json_candidates = []
+        json_patterns = [
+            r'"answer"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+            r'"content"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+            r'"message"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+            r'"output"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+            r'"text"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+        ]
+        for pattern in json_patterns:
+            for match in re.findall(pattern, content, flags=re.IGNORECASE):
+                candidate = html.unescape(match.replace("\\n", "\n").replace("\\t", "\t")).strip()
+                if len(candidate) >= 25:
+                    json_candidates.append(candidate)
+
+        if json_candidates:
+            return max(json_candidates, key=len)
+
+        # Nettoyage HTML générique pour récupérer le texte visible.
+        cleaned = re.sub(r"(?is)<(script|style).*?>.*?</\\1>", " ", content)
+        cleaned = re.sub(r"(?is)<!--.*?-->", " ", cleaned)
+        cleaned = re.sub(r"(?is)<[^>]+>", " ", cleaned)
+        cleaned = html.unescape(cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+        if not cleaned:
+            return None
+
+        boilerplate_tokens = [
+            "enable javascript",
+            "privacy",
+            "terms",
+            "cookies",
+            "sign in",
+            "login",
+            "register",
+            "free.oaibest.com",
+        ]
+
+        if any(token in cleaned.lower() for token in boilerplate_tokens):
+            # Pour certains fronts (ex: free.oaibest), le texte brut est souvent du boilerplate.
+            if domain == "free.oaibest.com":
+                return None
+
+        if len(cleaned) >= 25:
+            return cleaned
+
+        return None
+
+    def _normalize_provider_content(self, content: str, source_hint: str | None = None):
+        if not content or not content.strip():
+            return None
+
+        stripped = content.strip()
+        if not self._is_bad_provider_output(stripped):
+            return stripped
+
+        if "<" in stripped or "{" in stripped:
+            extracted = self._extract_text_from_html_payload(stripped, source_hint=source_hint)
+            if extracted and not self._is_bad_provider_output(extracted):
+                return extracted.strip()
+
+        return None
 
     async def _generate_ai_answer(self, prompt_text: str, on_answer_sent=None):
         try:
@@ -181,16 +296,15 @@ class cmdai(commands.Cog):
                         raise asyncio.TimeoutError("Timeout provider atteint avant reponse")
                     response = await request_completion(ai_client, model_name, remaining)
                     content = response.choices[0].message.content
-                    if content and content.strip():
-                        if self._is_bad_provider_output(content):
-                            raise RuntimeError("Sortie provider invalide (HTML/landing page)")
+                    normalized = self._normalize_provider_content(content, source_hint=base_url)
+                    if normalized:
                         if on_answer_sent is not None:
                             remaining = attempt_deadline - time.monotonic()
                             if remaining <= 0:
                                 raise asyncio.TimeoutError("Timeout avant envoi Discord")
-                            await asyncio.wait_for(on_answer_sent(content), timeout=remaining)
+                            await asyncio.wait_for(on_answer_sent(normalized), timeout=remaining)
                         print(f"[DEBUG][AI] Endpoint prioritaire OK: {base_url} | model={model_name}")
-                        return content
+                        return normalized
             except asyncio.TimeoutError:
                 print(
                     f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} TIMEOUT "
@@ -225,16 +339,15 @@ class cmdai(commands.Cog):
                         raise asyncio.TimeoutError("Timeout provider atteint avant reponse")
                     response = await request_completion(ai_client, model_name, remaining)
                     content = response.choices[0].message.content
-                    if content and content.strip():
-                        if self._is_bad_provider_output(content):
-                            raise RuntimeError("Sortie provider invalide (HTML/landing page)")
+                    normalized = self._normalize_provider_content(content, source_hint=provider_name)
+                    if normalized:
                         if on_answer_sent is not None:
                             remaining = attempt_deadline - time.monotonic()
                             if remaining <= 0:
                                 raise asyncio.TimeoutError("Timeout avant envoi Discord")
-                            await asyncio.wait_for(on_answer_sent(content), timeout=remaining)
+                            await asyncio.wait_for(on_answer_sent(normalized), timeout=remaining)
                         print(f"[DEBUG][AI] Provider OK: {provider_name} | model={model_name}")
-                        return content
+                        return normalized
             except asyncio.TimeoutError:
                 print(
                     f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} TIMEOUT "
@@ -265,16 +378,15 @@ class cmdai(commands.Cog):
                     raise asyncio.TimeoutError("Timeout provider auto atteint avant reponse")
                 response = await request_completion(ai_client, model_name, remaining)
                 content = response.choices[0].message.content
-                if content and content.strip():
-                    if self._is_bad_provider_output(content):
-                        raise RuntimeError("Sortie provider invalide (HTML/landing page)")
+                normalized = self._normalize_provider_content(content, source_hint="auto")
+                if normalized:
                     if on_answer_sent is not None:
                         remaining = attempt_deadline - time.monotonic()
                         if remaining <= 0:
                             raise asyncio.TimeoutError("Timeout avant envoi Discord")
-                        await asyncio.wait_for(on_answer_sent(content), timeout=remaining)
+                        await asyncio.wait_for(on_answer_sent(normalized), timeout=remaining)
                     print(f"[DEBUG][AI] Provider auto OK | model={model_name}")
-                    return content
+                    return normalized
         except asyncio.TimeoutError:
             print(
                 f"[DEBUG][AI] Tentative {attempt_index}/{total_attempts} TIMEOUT "
