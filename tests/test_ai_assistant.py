@@ -86,40 +86,40 @@ def test_priority_provider_base_urls_order_is_curated():
 
 
 def test_normalize_provider_content_extracts_useful_html_text():
-        cog = make_cog()
-        html_payload = """
-        <html>
-            <head><title>Test</title></head>
-            <body>
-                <div id=\"app\">Reponse detaillee: pour installer GLPI, commence par Debian + MariaDB + PHP.</div>
-            </body>
-        </html>
-        """
-        normalized = cog._normalize_provider_content(
-                html_payload,
-                source_hint="https://example.com",
-        )
-        assert normalized is not None
-        assert "installer GLPI" in normalized
+    cog = make_cog()
+    html_payload = """
+    <html>
+        <head><title>Test</title></head>
+        <body>
+            <div id=\"app\">Reponse detaillee: pour installer GLPI, commence par Debian + MariaDB + PHP.</div>
+        </body>
+    </html>
+    """
+    normalized = cog._normalize_provider_content(
+        html_payload,
+        source_hint="https://example.com",
+    )
+    assert normalized is not None
+    assert "installer GLPI" in normalized
 
 
 def test_normalize_provider_content_uses_domain_specific_pattern():
-        cog = make_cog()
-        html_payload = """
-        <html>
-            <body>
-                <script>
-                    window.__APP_STATE__ = {"finalResponse":"Procedure GLPI: installer Apache, MariaDB, PHP puis configurer le virtualhost."};
-                </script>
-            </body>
-        </html>
-        """
-        normalized = cog._normalize_provider_content(
-                html_payload,
-                source_hint="https://free.oaibest.com/",
-        )
-        assert normalized is not None
-        assert "Procedure GLPI" in normalized
+    cog = make_cog()
+    html_payload = """
+    <html>
+        <body>
+            <script>
+                window.__APP_STATE__ = {"finalResponse":"Procedure GLPI: installer Apache, MariaDB, PHP puis configurer le virtualhost."};
+            </script>
+        </body>
+    </html>
+    """
+    normalized = cog._normalize_provider_content(
+        html_payload,
+        source_hint="https://free.oaibest.com/",
+    )
+    assert normalized is not None
+    assert "Procedure GLPI" in normalized
 
 
 def test_timeout_constants_are_reasonable():
