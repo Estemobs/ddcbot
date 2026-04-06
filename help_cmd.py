@@ -162,7 +162,7 @@ class cmdhelp(commands.Cog):
                 value=cmd_list,
                 inline=False
             )
-        embed.set_footer(text="*(admin)* = commande réservée aux administrateurs")
+        embed.set_footer(text="6 avril 2025")
         await ctx.send(embed=embed)
 
 
