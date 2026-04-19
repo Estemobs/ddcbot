@@ -135,7 +135,10 @@ class cmdmusic(commands.Cog):
             await interaction.response.send_message("Commande indisponible en message privé.", ephemeral=True)
             return
         if source.strip().startswith("-"):
-            await interaction.response.send_message("Source invalide.", ephemeral=True)
+            await interaction.response.send_message(
+                "Source invalide : les sources ne peuvent pas commencer par un tiret.",
+                ephemeral=True,
+            )
             return
         voice_client, error = await self.ensure_voice_for_member(interaction.user)
         if error:
@@ -251,7 +254,7 @@ class cmdmusic(commands.Cog):
     @commands.command()
     async def play(self, ctx, *, source: str):
         if source.strip().startswith("-"):
-            await ctx.send("❌ Source invalide.")
+            await ctx.send("❌ Source invalide : les sources ne peuvent pas commencer par un tiret.")
             return
         voice_client, error = await self.ensure_voice_for_member(ctx.author)
         if error:
