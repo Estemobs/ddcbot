@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any
+from urllib.parse import urlparse
 
 import discord
 from discord.ext import commands
@@ -130,22 +131,33 @@ class cmdmusic(commands.Cog):
         if voice_client and not voice_client.is_playing() and not voice_client.is_paused() and state["current"] is None:
             await self.play_next(guild)
 
+    @staticmethod
+    def validate_source(source: str) -> tuple[str | None, str | None]:
+        cleaned = source.strip()
+        if not cleaned:
+            return None, "Source invalide : l'URL ne peut pas être vide."
+        if any(char in cleaned for char in ("\n", "\r", "\x00")):
+            return None, "Source invalide : caractères interdits détectés."
+
+        parsed = urlparse(cleaned)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            return None, "Source invalide : fournissez une URL audio http(s) valide."
+        return cleaned, None
+
     async def enqueue_from_interaction(self, interaction: discord.Interaction, source: str):
         if interaction.guild is None:
             await interaction.response.send_message("Commande indisponible en message privé.", ephemeral=True)
             return
-        if source.strip().startswith("-"):
-            await interaction.response.send_message(
-                "Source invalide : les sources ne peuvent pas commencer par un tiret.",
-                ephemeral=True,
-            )
+        safe_source, error_msg = self.validate_source(source)
+        if error_msg:
+            await interaction.response.send_message(error_msg, ephemeral=True)
             return
         voice_client, error = await self.ensure_voice_for_member(interaction.user)
         if error:
             await interaction.response.send_message(error, ephemeral=True)
             return
 
-        await self.enqueue_track(interaction.guild, source, interaction.channel_id)
+        await self.enqueue_track(interaction.guild, safe_source, interaction.channel_id)
         if voice_client is None:
             await interaction.response.send_message("Impossible de rejoindre le salon vocal.", ephemeral=True)
             return
@@ -253,14 +265,15 @@ class cmdmusic(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *, source: str):
-        if source.strip().startswith("-"):
-            await ctx.send("❌ Source invalide : les sources ne peuvent pas commencer par un tiret.")
+        safe_source, error_msg = self.validate_source(source)
+        if error_msg:
+            await ctx.send(f"❌ {error_msg}")
             return
         voice_client, error = await self.ensure_voice_for_member(ctx.author)
         if error:
             await ctx.send(error)
             return
-        await self.enqueue_track(ctx.guild, source, ctx.channel.id)
+        await self.enqueue_track(ctx.guild, safe_source, ctx.channel.id)
         if voice_client is None:
             await ctx.send("❌ Impossible de rejoindre le salon vocal.")
             return
