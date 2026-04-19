@@ -148,11 +148,15 @@ class cmdmusic(commands.Cog):
         if interaction.guild is None:
             await interaction.response.send_message("Commande indisponible en message privé.", ephemeral=True)
             return
+        member = interaction.guild.get_member(interaction.user.id)
+        if member is None:
+            await interaction.response.send_message("Membre introuvable sur ce serveur.", ephemeral=True)
+            return
         safe_source, error_msg = self.validate_source(source)
         if error_msg:
             await interaction.response.send_message(error_msg, ephemeral=True)
             return
-        voice_client, error = await self.ensure_voice_for_member(interaction.user)
+        voice_client, error = await self.ensure_voice_for_member(member)
         if error:
             await interaction.response.send_message(error, ephemeral=True)
             return
@@ -199,11 +203,10 @@ class cmdmusic(commands.Cog):
 
         def _after_play(error):
             if error:
-                future = asyncio.run_coroutine_threadsafe(
+                asyncio.run_coroutine_threadsafe(
                     self.send_music_message(guild, f"❌ Erreur de lecture: {error}"),
                     self.bot.loop,
                 )
-                future.result()
             asyncio.run_coroutine_threadsafe(self.play_next(guild), self.bot.loop)
 
         voice_client.play(audio_source, after=_after_play)
@@ -257,6 +260,9 @@ class cmdmusic(commands.Cog):
 
     @commands.command()
     async def join(self, ctx):
+        if ctx.guild is None or not isinstance(ctx.author, discord.Member):
+            await ctx.send("❌ Cette commande doit être utilisée sur un serveur.")
+            return
         _, error = await self.ensure_voice_for_member(ctx.author)
         if error:
             await ctx.send(error)
@@ -265,6 +271,9 @@ class cmdmusic(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *, source: str):
+        if ctx.guild is None or not isinstance(ctx.author, discord.Member):
+            await ctx.send("❌ Cette commande doit être utilisée sur un serveur.")
+            return
         safe_source, error_msg = self.validate_source(source)
         if error_msg:
             await ctx.send(f"❌ {error_msg}")
