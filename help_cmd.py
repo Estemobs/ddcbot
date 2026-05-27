@@ -2,6 +2,9 @@ import discord
 from discord.ext import commands
 
 
+BOT_VERSION = "1.0.0"
+
+
 class cmdhelp(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -142,7 +145,7 @@ class cmdhelp(commands.Cog):
                     value=description,
                     inline=False
                 )
-            embed.set_footer(text=f"Préfixe : {prefix}  •  ,help <catégorie> pour plus de détails")
+            embed.set_footer(text=f"Préfixe : {prefix}  •  Bot v{BOT_VERSION}  •  ,help <catégorie> pour plus de détails")
             await ctx.send(embed=embed)
             return
 
@@ -162,7 +165,7 @@ class cmdhelp(commands.Cog):
                 value=cmd_list,
                 inline=False
             )
-        embed.set_footer(text="6 avril 2025")
+        embed.set_footer(text=f"Bot v{BOT_VERSION}  •  6 avril 2025")
         await ctx.send(embed=embed)
 
 
