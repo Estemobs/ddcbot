@@ -165,7 +165,7 @@ class cmdhelp(commands.Cog):
                 value=cmd_list,
                 inline=False
             )
-        embed.set_footer(text=f"Bot v{BOT_VERSION}  •  6 avril 2025")
+        embed.set_footer(text=f"Bot v{BOT_VERSION}")
         await ctx.send(embed=embed)
 
 
