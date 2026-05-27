@@ -15,6 +15,7 @@ class cmdrss(commands.Cog):
         self.intents = discord.Intents.all()
         self.notifications_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'notifications.json')
         self.notification_lock = asyncio.Lock()
+        self._notification_task = None
        
 
     async def check_notifications(self):
@@ -22,7 +23,8 @@ class cmdrss(commands.Cog):
             with open(self.notifications_path, "r") as f:
                 data = json.load(f)
 
-            notifications_to_send = []  # Liste pour stocker les notifications à envoyer
+            notifications_to_send = {}
+            remaining_notifications = []
 
             for notification in list(data):
                 show_name = notification["show_name"]
@@ -37,25 +39,30 @@ class cmdrss(commands.Cog):
                     user_id = notification["user_id"]
                     user = await self.bot.fetch_user(user_id)
                     message = f"Un nouvel épisode de {show_name} (S{season}E{number}) est maintenant disponible ! {user.mention}"
-                    notifications_to_send.append(message)  # Ajoutez le message à la liste
-
-                    # Remove notification from file
-                    data.remove(notification)
-                    with open(self.notifications_path, "w") as f:
-                        json.dump(data, f, indent=2)
+                    notifications_to_send.setdefault(user_id, []).append(message)
                     print("Notification sent: ", show_name, season, number, airdate)
+                else:
+                    remaining_notifications.append(notification)
 
-            # Envoie toutes les notifications en une seule fois
-            if notifications_to_send:
-                await user.send("\n".join(notifications_to_send))
+            if remaining_notifications != data:
+                with open(self.notifications_path, "w") as f:
+                    json.dump(remaining_notifications, f, indent=2)
+
+            # Envoie les notifications par utilisateur pour éviter les doublons et le mélange des messages
+            for user_id, messages in notifications_to_send.items():
+                user = await self.bot.fetch_user(user_id)
+                await user.send("\n".join(messages))
+
+    async def _notification_loop(self):
+        while True:
+            await self.check_notifications()
+            await asyncio.sleep(3600)
         
 
     @commands.Cog.listener()
     async def on_ready(self):
-         while True:
-            await self.check_notifications()
-            #await check_for_new_episodes()
-            await asyncio.sleep(3600)
+         if self._notification_task is None or self._notification_task.done():
+            self._notification_task = asyncio.create_task(self._notification_loop())
             
             
     #commande pour créer un abonnement 
