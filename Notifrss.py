@@ -17,41 +17,127 @@ class cmdrss(commands.Cog):
         self.notification_lock = asyncio.Lock()
         self._notification_task = None
        
+    def _load_notifications(self):
+        try:
+            with open(self.notifications_path, "r") as f:
+                notifications = json.load(f)
+            return notifications if isinstance(notifications, list) else []
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+
+    def _save_notifications(self, notifications):
+        with open(self.notifications_path, "w") as f:
+            json.dump(notifications, f, indent=2)
+
+    def _compact_notifications(self, notifications):
+        compacted = {}
+        for notification in notifications:
+            show_name = notification.get("show_name")
+            user_id = notification.get("user_id")
+            airdate_text = notification.get("airdate")
+            if not show_name or user_id is None or not airdate_text:
+                continue
+            try:
+                airdate = datetime.fromisoformat(airdate_text)
+            except ValueError:
+                continue
+            key = (user_id, show_name)
+            current = compacted.get(key)
+            if current is None:
+                compacted[key] = notification
+                continue
+            try:
+                current_airdate = datetime.fromisoformat(current["airdate"])
+            except ValueError:
+                compacted[key] = notification
+                continue
+            if airdate < current_airdate:
+                compacted[key] = notification
+        return list(compacted.values())
+
+    async def _get_next_episode(self, show_name, user_id, after_date=None):
+        show_url = f'http://api.tvmaze.com/singlesearch/shows?q={show_name}&embed=episodes'
+        try:
+            show_response = requests.get(show_url)
+            show_response.raise_for_status()
+            show_data = show_response.json()
+        except (requests.RequestException, ValueError):
+            return None
+
+        episodes = show_data.get('_embedded', {}).get('episodes', [])
+        if after_date is None:
+            cutoff_date = datetime.now().date()
+            is_future_episode = lambda episode_date: episode_date >= cutoff_date
+        else:
+            cutoff_date = after_date
+            is_future_episode = lambda episode_date: episode_date > cutoff_date
+
+        future_episodes = []
+        for episode in episodes:
+            airdate_text = episode.get('airdate')
+            if not airdate_text:
+                continue
+            try:
+                airdate = datetime.strptime(airdate_text, '%Y-%m-%d').date()
+            except ValueError:
+                continue
+            if is_future_episode(airdate):
+                future_episodes.append((airdate, episode))
+
+        if not future_episodes:
+            return None
+
+        airdate, episode = min(future_episodes, key=lambda item: item[0])
+        return {
+            'show_name': show_name,
+            'season': episode['season'],
+            'number': episode['number'],
+            'airdate': airdate.isoformat(),
+            'user_id': user_id
+        }
 
     async def check_notifications(self):
         async with self.notification_lock:
-            with open(self.notifications_path, "r") as f:
-                data = json.load(f)
-
+            original_notifications = self._load_notifications()
+            notifications = self._compact_notifications(original_notifications)
             notifications_to_send = {}
-            remaining_notifications = []
+            updated_notifications = []
+            changed = len(notifications) != len(original_notifications)
 
-            for notification in list(data):
+            for notification in notifications:
                 show_name = notification["show_name"]
                 season = notification["season"]
                 number = notification["number"]
-                airdate = datetime.strptime(notification["airdate"], '%Y-%m-%dT%H:%M:%S')
 
-                # Check if airdate has passed
+                try:
+                    airdate = datetime.fromisoformat(notification["airdate"])
+                except ValueError:
+                    changed = True
+                    continue
+
                 now = datetime.now()
-                print("now: ", now)
                 if airdate <= now:
                     user_id = notification["user_id"]
-                    user = await self.bot.fetch_user(user_id)
-                    message = f"Un nouvel épisode de {show_name} (S{season}E{number}) est maintenant disponible ! {user.mention}"
+                    message = f"Un nouvel épisode de {show_name} (S{season}E{number}) est maintenant disponible ! <@{user_id}>"
                     notifications_to_send.setdefault(user_id, []).append(message)
-                    print("Notification sent: ", show_name, season, number, airdate)
-                else:
-                    remaining_notifications.append(notification)
 
-            if remaining_notifications != data:
-                with open(self.notifications_path, "w") as f:
-                    json.dump(remaining_notifications, f, indent=2)
+                    next_notification = await self._get_next_episode(show_name, user_id, after_date=airdate.date())
+                    if next_notification:
+                        updated_notifications.append(next_notification)
+                    changed = True
+                else:
+                    updated_notifications.append(notification)
+
+            if changed:
+                self._save_notifications(updated_notifications)
 
             # Envoie les notifications par utilisateur pour éviter les doublons et le mélange des messages
             for user_id, messages in notifications_to_send.items():
-                user = await self.bot.fetch_user(user_id)
-                await user.send("\n".join(messages))
+                try:
+                    user = await self.bot.fetch_user(user_id)
+                    await user.send("\n".join(messages))
+                except discord.DiscordException:
+                    continue
 
     async def _notification_loop(self):
         while True:
@@ -149,41 +235,20 @@ class cmdrss(commands.Cog):
         if no_episodes:
             await ctx.send("Aucun épisode à venir.")
 
-    # Load the notifications from the JSON file
-        try:
-            with open(self.notifications_path, 'r') as f:
-                notifications = json.load(f)
-            if not isinstance(notifications, list):
-                notifications = []
-        except (json.JSONDecodeError, FileNotFoundError):
-            notifications = []
+        notifications = self._compact_notifications(self._load_notifications())
+        notifications = [
+            notification for notification in notifications
+            if not (notification["user_id"] == ctx.author.id and notification["show_name"] == show_name)
+        ]
 
-    # Create a list of dictionaries for future episodes
-        future_episodes = []
-        for episode in show_data['_embedded']['episodes']:
-            airdate = datetime.strptime(episode['airdate'], '%Y-%m-%d')
-            if airdate >= datetime.now():
-                episode_data = {
-                    'show_name': show_name,
-                    'season': episode['season'],
-                    'number': episode['number'],
-                    'airdate': airdate.isoformat(),
-                    'user_id': ctx.author.id
-                }
-                future_episodes.append(episode_data)
-
-    # Add new episodes to the existing notifications
-        for episode in future_episodes:
-            if episode not in notifications:
-                notifications.append(episode)
-
-    # Save the notifications to the JSON file
-        with open(self.notifications_path, 'w') as f:
-            json.dump(notifications, f, indent=2)
-
-    # Envoyer un message de confirmation
-        if future_episodes:
+        next_episode = await self._get_next_episode(show_name, ctx.author.id)
+        if next_episode:
+            notifications.append(next_episode)
+            self._save_notifications(notifications)
             await ctx.send(f"Je vous notifierai en message privé lorsque les nouveaux épisodes de {show_name} sortiront.")
+        else:
+            self._save_notifications(notifications)
+            await ctx.send("Aucun épisode à venir.")
             
 
     #commande pour voir la liste des notfications 
