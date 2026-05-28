@@ -36,117 +36,50 @@ def _compute_bot_version():
     project_root = os.path.abspath(os.path.dirname(__file__))
     base = "1.0.1"
     git_hash = _git_short_hash(project_root)
-    if git_hash:
-        return f"{base}+{git_hash}"
-    return _compute_file_digest_version(base=base)
+        # Génère dynamiquement les catégories à partir des cogs chargés
+        def _normalize(name: str) -> str:
+            n = name.lower()
+            return n[3:] if n.startswith('cmd') else n
 
+        # Meta par défaut pour certaines catégories connues
+        META = {
+            'moderation': {'emoji': '🔨', 'title': 'Modération'},
+            'utilite': {'emoji': '🛠️', 'title': 'Utilité'},
+            'economie': {'emoji': '💰', 'title': 'Économie'},
+            'travail': {'emoji': '💼', 'title': 'Travail'},
+            'revenus': {'emoji': '📈', 'title': 'Revenus passifs'},
+            'jeux': {'emoji': '🎰', 'title': 'Jeux / Lootbox'},
+            'giveaway': {'emoji': '🎁', 'title': 'Giveaway'},
+            'notifications': {'emoji': '📺', 'title': 'Notifications séries'},
+        }
 
-BOT_VERSION = _compute_bot_version()
+        categories = {}
+        # Regroupe les commandes par cog
+        for cog_name, cog in self.bot.cogs.items():
+            key = _normalize(cog_name)
+            if key == 'help':
+                continue
+            cmds = [cmd for cmd in self.bot.commands if (cmd.cog_name and _normalize(cmd.cog_name) == key and not cmd.hidden)]
+            if not cmds:
+                continue
+            cmds_list = []
+            for cmd in cmds:
+                sig = cmd.signature.strip()
+                usage = f"{cmd.name} {sig}".strip()
+                desc = cmd.help or ""
+                cmds_list.append((usage, desc))
+            meta = META.get(key, {})
+            categories[key] = {
+                'emoji': meta.get('emoji', ''),
+                'title': meta.get('title', key.capitalize()),
+                'commands': cmds_list,
+            }
 
-
-class cmdhelp(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.command(name="help")
-    async def help_command(self, ctx, *, categorie: str = None):
-        """Affiche la liste des commandes disponibles."""
-
-        categories = {
-            "moderation": {
-                "emoji": "🔨",
-                "title": "Modération",
-                "commands": [
-                    ("`warn <membre> <raison>`", "Avertir un membre"),
-                    ("`modpanel`", "Ouvrir le panneau complet de configuration moderation"),
-                    ("`warnconfig`", "Alias de `modpanel`"),
-                    ("`permpanel`", "Configurer les roles autorises pour chaque commande admin"),
-                    ("`warns [membre]`", "Voir le nombre de warns"),
-                    ("`clearwarns <membre>`", "Reinitialiser les warns d'un membre"),
-                    ("`ban <membre> <raison>`", "Bannir un membre"),
-                    ("`kick <membre> [raison]`", "Expulser un membre"),
-                    ("`clear [nombre]`", "Supprimer N messages (ou valeur par defaut)"),
-                    ("`unban <user_id> [raison]`", "Debannir un utilisateur"),
-                    ("`timeout <membre> [minutes] [raison]`", "Timeout un membre"),
-                    ("`untimeout <membre> [raison]`", "Retirer un timeout"),
-                    ("`slowmode <secondes>`", "Definir le slowmode du salon"),
-                    ("`lock`", "Verrouiller le salon"),
-                    ("`unlock`", "Deverrouiller le salon"),
-                ]
-            },
-            "utilite": {
-                "emoji": "🛠️",
-                "title": "Utilité",
-                "commands": [
-                    ("`role_id <nom_rôle>`", "Obtenir l'ID d'un rôle"),
-                    ("`role_name <id_rôle>`", "Obtenir le nom d'un rôle"),
-                    ("`rmd <durée> <message>`", "Créer un rappel (ex: `,rmd 30m réveil`)"),
-                    ("`avatar <membre>`", "Afficher l'avatar d'un membre"),
-                    ("`serverpicture`", "Afficher l'icône du serveur"),
-                    ("`devoir`", "OCR + reponse IA depuis une image"),
-                    ("`selftest [deep]`", "Diagnostic global du bot (mode standard ou approfondi) *(admin)*"),
-                ]
-            },
-            "economie": {
-                "emoji": "💰",
-                "title": "Économie",
-                "commands": [
-                    ("`mybalance`", "Voir son propre solde"),
-                    ("`balance <membre>`", "Voir le solde d'un membre"),
-                    ("`paye <membre> <montant>`", "Payer un autre membre"),
-                    ("`leaderboard`", "Top 10 des membres les plus riches"),
-                    ("`addmoney <membre> <montant>`", "Ajouter de l'argent *(admin)*"),
-                    ("`removemoney <membre> <montant>`", "Retirer de l'argent *(admin)*"),
-                    ("`reset_money <membre>`", "Réinitialiser le solde d'un membre *(admin)*"),
-                    ("`reset_economy`", "Réinitialiser toute l'économie *(admin)*"),
-                    ("`clean_leaderboard`", "Nettoyer le leaderboard des membres partis"),
-                    ("`ecopanel`", "Configurer la partie economie (transferts, limites, logs)"),
-                ]
-            },
-            "travail": {
-                "emoji": "💼",
-                "title": "Travail",
-                "commands": [
-                    ("`work`", "Travailler pour gagner des pièces"),
-                    ("`show_work_config`", "Voir la configuration du travail"),
-                    ("`config_work <min> <max> <paliers> <cooldown_h> <récompenses...>`",
-                     "Configurer la commande work *(admin)*"),
-                ]
-            },
-            "revenus": {
-                "emoji": "📈",
-                "title": "Revenus passifs",
-                "commands": [
-                    ("`incomepanel`", "Panneau de configuration des revenus passifs *(admin)*"),
-                    ("`collect_income`", "Collecter ses revenus passifs"),
-                    ("`role_income_list`", "Lister les rôles avec revenus"),
-                    ("`role_income_add <id_rôle> <montant> <intervalle>`",
-                     "Ajouter un revenu à un rôle *(admin)*"),
-                    ("`role_income_remove <id_rôle>`", "Supprimer un revenu de rôle *(admin)*"),
-                    ("`role_income_edit <id_rôle> <montant> <intervalle>`",
-                     "Modifier un revenu de rôle *(admin)*"),
-                ]
-            },
-            "jeux": {
-                "emoji": "🎰",
-                "title": "Jeux / Lootbox",
-                "commands": [
-                    ("`gamepanel`", "Panneau de configuration des jeux / lootbox *(admin)*"),
-                    ("`shop`", "Voir les jeux disponibles"),
-                    ("`openlot`", "Ouvrir un lot (ticket ou pièces)"),
-                    ("`inventaire`", "Voir ses tickets"),
-                    ("`quest`", "Voir les quêtes actives et leur progression"),
-                    ("`addgame`", "Créer un nouveau jeu *(admin)*"),
-                    ("`deletegame`", "Supprimer un jeu *(admin)*"),
-                    ("`addquest`", "Ajouter une quête à un jeu *(admin)*"),
-                    ("`deletequete`", "Supprimer une quête *(admin)*"),
-                    ("`config_quete`", "Voir la configuration complète des quêtes *(admin)*"),
-                    ("`clearinventory [membre]`", "Vider l'inventaire d'un membre *(admin)*"),
-                ]
-            },
-            "giveaway": {
-                "emoji": "🎁",
-                "title": "Giveaway",
+        # Commandes orphelines (sans cog) -> 'autres'
+        orphan_cmds = [cmd for cmd in self.bot.commands if not cmd.cog_name and not cmd.hidden]
+        if orphan_cmds:
+            cmds_list = [(f"{cmd.name} {cmd.signature}".strip(), cmd.help or "") for cmd in orphan_cmds]
+            categories['autres'] = {'emoji': '📦', 'title': 'Autres', 'commands': cmds_list}
                 "commands": [
                     ("`gstart <durée_s> <prix>`", "Démarrer un giveaway *(admin)*"),
                     ("`gend`", "Terminer un giveaway et tirer un gagnant *(admin)*"),

@@ -15,6 +15,7 @@ from jeu import cmdjeu
 from help_cmd import cmdhelp
 from ai_assistant import cmdai
 from diagnostics import cmddiagnostics
+from logs_cmd import cmdlogs
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
 
@@ -166,6 +167,7 @@ async def main():
     await bot.add_cog(cmdjeu(bot))
     await bot.add_cog(cmdhelp(bot))
     await bot.add_cog(cmdai(bot))
+    await bot.add_cog(cmdlogs(bot))
     await bot.add_cog(cmddiagnostics(bot))
     await bot.start(token)
 
