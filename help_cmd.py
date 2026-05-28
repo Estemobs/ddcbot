@@ -55,15 +55,27 @@ class cmdhelp(commands.Cog):
     def _build_categories(self):
         # Meta par défaut pour certaines catégories connues
         META = {
-            'moderation': {'emoji': '🔨', 'title': 'Modération'},
-            'utilite': {'emoji': '🛠️', 'title': 'Utilité'},
-            'economie': {'emoji': '💰', 'title': 'Économie'},
-            'travail': {'emoji': '💼', 'title': 'Travail'},
-            'revenus': {'emoji': '📈', 'title': 'Revenus passifs'},
-            'jeux': {'emoji': '🎰', 'title': 'Jeux / Lootbox'},
-            'giveaway': {'emoji': '🎁', 'title': 'Giveaway'},
-            'notifications': {'emoji': '📺', 'title': 'Notifications séries'},
-        }
+                'moderation': {'emoji': '🔨', 'title': 'Modération'},
+                'utility': {'emoji': '🛠️', 'title': 'Utility'},
+                'utilite': {'emoji': '🛠️', 'title': 'Utilité'},
+                'economie': {'emoji': '💰', 'title': 'Économie'},
+                'eco': {'emoji': '💶', 'title': 'Eco'},
+                'travail': {'emoji': '💼', 'title': 'Travail'},
+                'revenus': {'emoji': '📈', 'title': 'Revenus passifs'},
+                'jeux': {'emoji': '🎰', 'title': 'Jeux / Lootbox'},
+                'jeu': {'emoji': '🎮', 'title': 'Jeu'},
+                'giveaway': {'emoji': '🎁', 'title': 'Giveaway'},
+                'notifications': {'emoji': '📺', 'title': 'Notifications séries'},
+                'rss': {'emoji': '📡', 'title': 'Rss'},
+                'anim': {'emoji': '🎞️', 'title': 'Anim'},
+                'animations': {'emoji': '🎞️', 'title': 'Anim'},
+                'income': {'emoji': '📥', 'title': 'Income'},
+                'work': {'emoji': '💼', 'title': 'Work'},
+                'ai': {'emoji': '🤖', 'title': 'Ai'},
+                'logs': {'emoji': '📝', 'title': 'Logs'},
+                'diagnostics': {'emoji': '🔍', 'title': 'Diagnostics'},
+                'autres': {'emoji': '📦', 'title': 'Autres'},
+            }
 
         categories = {}
         for cog_name, cog in self.bot.cogs.items():
@@ -132,8 +144,11 @@ class cmdhelp(commands.Cog):
             ),
             color=0x7289DA
         )
-        for key, cat in categories.items():
-            cmd_list = ", ".join(f"`{prefix}{s.split()[0]}`" for s, _ in cat["commands"])
+        # Trier les catégories pour affichage stable
+        for key in sorted(categories.keys()):
+            cat = categories[key]
+            # formate chaque commande comme `,commande`
+            cmd_list = ", ".join(f"`{prefix}{s.split()[0].strip('`')}`" for s, _ in cat["commands"]) if cat["commands"] else "(aucune)"
             embed.add_field(
                 name=f"{cat['emoji']} {cat['title']} — `{prefix}help {key}`",
                 value=cmd_list,
