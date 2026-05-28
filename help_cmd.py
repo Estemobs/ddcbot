@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 
-BOT_VERSION = "1.0.0"
+BOT_VERSION = "1.0.1"
 
 
 class cmdhelp(commands.Cog):
