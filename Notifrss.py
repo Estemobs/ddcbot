@@ -29,6 +29,12 @@ class cmdrss(commands.Cog):
         with open(self.notifications_path, "w") as f:
             json.dump(notifications, f, indent=2)
 
+    def _remove_user_notifications_for_show(self, notifications, user_id, show_name):
+        return [
+            notification for notification in notifications
+            if not (notification.get("user_id") == user_id and notification.get("show_name") == show_name)
+        ]
+
     def _compact_notifications(self, notifications):
         compacted = {}
         for notification in notifications:
@@ -118,10 +124,11 @@ class cmdrss(commands.Cog):
                 now = datetime.now()
                 if airdate <= now:
                     user_id = notification["user_id"]
-                    message = f"Un nouvel épisode de {show_name} (S{season}E{number}) est maintenant disponible ! <@{user_id}>"
-                    notifications_to_send.setdefault(user_id, []).append(message)
+                    if airdate.date() >= now.date():
+                        message = f"Un nouvel épisode de {show_name} (S{season}E{number}) est maintenant disponible ! <@{user_id}>"
+                        notifications_to_send.setdefault(user_id, []).append(message)
 
-                    next_notification = await self._get_next_episode(show_name, user_id, after_date=airdate.date())
+                    next_notification = await self._get_next_episode(show_name, user_id)
                     if next_notification:
                         updated_notifications.append(next_notification)
                     changed = True
@@ -258,14 +265,16 @@ class cmdrss(commands.Cog):
         found = False  # Variable pour indiquer si l'ID a été trouvé dans le fichier JSON
 
         # Ouvre le fichier JSON
-        with open(self.notifications_path) as f:
-            notifications = json.load(f)
+        notifications = self._load_notifications()
 
         # Recherche de l'ID dans la liste des notifications
         found_notifications = []
+        seen_show_names = set()
         for notification in notifications:
-            if notification['user_id'] == user_id:
+            show_name = notification.get('show_name')
+            if notification.get('user_id') == user_id and show_name not in seen_show_names:
                 found = True
+                seen_show_names.add(show_name)
                 found_notifications.append(notification)
 
         # Envoie une réponse en fonction du résultat de la recherche
@@ -291,8 +300,7 @@ class cmdrss(commands.Cog):
         found = False  # Variable pour indiquer si l'ID a été trouvé dans le fichier JSON
 
         # Ouvre le fichier JSON
-        with open(self.notifications_path) as f:
-            notifications = json.load(f)
+        notifications = self._load_notifications()
 
         # Recherche de l'ID dans la liste des notifications
         found_notifications = []
@@ -325,13 +333,13 @@ class cmdrss(commands.Cog):
                     await ctx.send("Le numéro saisi est invalide.")
                     return
 
-                notification_index = found_notifications[selection - 1][0]
-                notifications.pop(notification_index)
+                selected_show_name = found_notifications[selection - 1]['show_name']
+                notifications = self._remove_user_notifications_for_show(notifications, user_id, selected_show_name)
                 
                 with open(self.notifications_path, 'w') as f:
                     json.dump(notifications, f, indent=2)
                 
-                await ctx.send("La série a été supprimée avec succès.")
+                await ctx.send(f"Toutes les notifications de {selected_show_name} ont été supprimées avec succès.")
             except asyncio.TimeoutError:
                 await ctx.send("Le temps imparti est écoulé. La commande a été annulée.")
         else:
