@@ -1,5 +1,37 @@
+# Secrets and environment
 secrets.json
+.env
+
+# Virtual environments
 venv/
 .venv/
+env/
+
+# Python cache
 __pycache__/
+*.py[cod]
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Pytest cache
+.pytest_cache/
+
+# VSCode
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# SQLite/db dumps
+*.db
+
+# IDE
+.idea/
 

@@ -3,6 +3,7 @@ import html
 import io
 import re
 import time
+import logging
 
 import discord
 import nest_asyncio
@@ -10,6 +11,9 @@ import requests
 from discord.ext import commands
 
 nest_asyncio.apply()
+
+# Logger
+logger = logging.getLogger("ddcbot.ai_assistant")
 
 PROVIDER_TIMEOUT = 20
 #last file edit: 2024-06-17
@@ -115,8 +119,8 @@ class cmdai(commands.Cog):
         ]
 
         for model_name, provider in models_and_providers:
-            try:
-                print(f"[AI] Tentative avec {model_name}...")
+                    try:
+                        logger.info("[AI] Tentative avec %s...", model_name)
                 client = AsyncClient(timeout=PROVIDER_TIMEOUT)
 
                 kwargs = {
@@ -129,21 +133,21 @@ class cmdai(commands.Cog):
                     timeout=PROVIDER_TIMEOUT,
                 )
 
-                if response and response.choices:
-                    content = response.choices[0].message.content
-                    extracted = self._extract_useful_content(content)
+                    if response and response.choices:
+                        content = response.choices[0].message.content
+                        extracted = self._extract_useful_content(content)
 
-                    if extracted:
-                        print(f"[AI] ✓ {model_name} OK!")
-                        if on_answer_sent:
-                            await on_answer_sent(extracted)
-                        return extracted
+                        if extracted:
+                            logger.info("[AI] ✓ %s OK!", model_name)
+                            if on_answer_sent:
+                                await on_answer_sent(extracted)
+                            return extracted
 
             except asyncio.TimeoutError:
-                print(f"[AI] ⏱️ Timeout {model_name}")
+                logger.warning("[AI] ⏱️ Timeout %s", model_name)
                 continue
             except Exception as exc:
-                print(f"[AI] ✗ {model_name}: {str(exc)[:80]}")
+                logger.debug("[AI] ✗ %s: %s", model_name, str(exc)[:80])
                 continue
 
         raise RuntimeError("Aucun provider gratuit n'a fonctionné. Réessaye plus tard.")
@@ -159,7 +163,7 @@ class cmdai(commands.Cog):
     @commands.command()
     async def devoir(self, ctx):
         """Résout un devoir à partir d'une image."""
-        print(f"[DEVOIR] Lancé par {ctx.author}")
+        logger.info("[DEVOIR] Lancé par %s", ctx.author)
         await ctx.send("Envoie une image ou un lien valide.")
 
         def check(msg):
