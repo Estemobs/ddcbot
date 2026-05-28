@@ -218,12 +218,18 @@ class cmdrss(commands.Cog):
         show_data = json.loads(show_response.text)
 
         # get future episode release dates
-        episodes = show_data['_embedded']['episodes']
+        episodes = show_data.get('_embedded', {}).get('episodes', [])
         future_episodes = []
         for episode in episodes:
-            airdate = datetime.strptime(episode['airdate'], '%Y-%m-%d')
+            airdate_text = episode.get('airdate')
+            if not airdate_text:
+                continue
+            try:
+                airdate = datetime.strptime(airdate_text, '%Y-%m-%d')
+            except ValueError:
+                continue
             if airdate >= datetime.now():
-                future_episodes.append((episode['season'], episode['number'], airdate))
+                future_episodes.append((episode.get('season'), episode.get('number'), airdate))
 
         # display future episodes
         await ctx.send(f"Prochains épisodes de {show_name}:")
