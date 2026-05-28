@@ -36,11 +36,23 @@ def _compute_bot_version():
     project_root = os.path.abspath(os.path.dirname(__file__))
     base = "1.0.1"
     git_hash = _git_short_hash(project_root)
-        # Génère dynamiquement les catégories à partir des cogs chargés
-        def _normalize(name: str) -> str:
-            n = name.lower()
-            return n[3:] if n.startswith('cmd') else n
+    if git_hash:
+        return f"{base}+{git_hash}"
+    return _compute_file_digest_version(base=base)
 
+
+BOT_VERSION = _compute_bot_version()
+
+
+class cmdhelp(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    def _normalize(self, name: str) -> str:
+        n = name.lower()
+        return n[3:] if n.startswith('cmd') else n
+
+    def _build_categories(self):
         # Meta par défaut pour certaines catégories connues
         META = {
             'moderation': {'emoji': '🔨', 'title': 'Modération'},
@@ -54,12 +66,11 @@ def _compute_bot_version():
         }
 
         categories = {}
-        # Regroupe les commandes par cog
         for cog_name, cog in self.bot.cogs.items():
-            key = _normalize(cog_name)
+            key = self._normalize(cog_name)
             if key == 'help':
                 continue
-            cmds = [cmd for cmd in self.bot.commands if (cmd.cog_name and _normalize(cmd.cog_name) == key and not cmd.hidden)]
+            cmds = [cmd for cmd in self.bot.commands if (cmd.cog_name and self._normalize(cmd.cog_name) == key and not cmd.hidden)]
             if not cmds:
                 continue
             cmds_list = []
@@ -75,29 +86,20 @@ def _compute_bot_version():
                 'commands': cmds_list,
             }
 
-        # Commandes orphelines (sans cog) -> 'autres'
+        # Commandes orphelines (sans cog)
         orphan_cmds = [cmd for cmd in self.bot.commands if not cmd.cog_name and not cmd.hidden]
         if orphan_cmds:
             cmds_list = [(f"{cmd.name} {cmd.signature}".strip(), cmd.help or "") for cmd in orphan_cmds]
             categories['autres'] = {'emoji': '📦', 'title': 'Autres', 'commands': cmds_list}
-                "commands": [
-                    ("`gstart <durée_s> <prix>`", "Démarrer un giveaway *(admin)*"),
-                    ("`gend`", "Terminer un giveaway et tirer un gagnant *(admin)*"),
-                    ("`gcancel`", "Annuler un giveaway en cours *(admin)*"),
-                ]
-            },
-            "notifications": {
-                "emoji": "📺",
-                "title": "Notifications séries",
-                "commands": [
-                    ("`subscribe`", "S'abonner aux notifications d'une série"),
-                    ("`notifications`", "Voir ses abonnements actifs"),
-                    ("`delnotif`", "Supprimer un abonnement"),
-                ]
-            },
-        }
+
+        return categories
+
+    @commands.command(name="help")
+    async def help_command(self, ctx, *, categorie: str = None):
+        """Affiche la liste des commandes disponibles."""
 
         prefix = ","
+        categories = self._build_categories()
 
         if categorie:
             key = categorie.lower()
@@ -131,7 +133,7 @@ def _compute_bot_version():
             color=0x7289DA
         )
         for key, cat in categories.items():
-            cmd_list = ", ".join(f"`{prefix}{s.split()[0].strip('`')}`" for s, _ in cat["commands"])
+            cmd_list = ", ".join(f"`{prefix}{s.split()[0]}`" for s, _ in cat["commands"])
             embed.add_field(
                 name=f"{cat['emoji']} {cat['title']} — `{prefix}help {key}`",
                 value=cmd_list,
