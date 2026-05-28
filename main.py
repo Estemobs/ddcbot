@@ -2,7 +2,6 @@ import asyncio
 import discord
 import json
 import os
-import logging
 import traceback
 from discord.ext import commands
 from Notifrss import cmdrss
@@ -19,13 +18,6 @@ from diagnostics import cmddiagnostics
 from logs_cmd import cmdlogs
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
-
-# Configure logging (compatible avec Docker stdout/stderr)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
-logger = logging.getLogger("ddcbot")
 
 ADMIN_COMMANDS = {
     "modpanel", "warnconfig", "permpanel", "warn", "warns", "clearwarns", "ban", "kick", "clear", "unban",
@@ -75,19 +67,19 @@ async def admin_role_gate(ctx):
 
 @bot.event
 async def on_ready():
-    logger.info("Le bot est en ligne")
-    logger.debug(f"Commandes chargees: {len(bot.commands)}")
+    print("Le bot est en ligne")
+    print(f"[DEBUG] Commandes chargees: {len(bot.commands)}")
     await bot.change_presence(activity=discord.Game(name=",help"))
 
 
 @bot.event
 async def on_command(ctx):
-    logger.debug(f"Commande recue: {ctx.command} | auteur={ctx.author} | salon={ctx.channel}")
+    print(f"[DEBUG] Commande recue: {ctx.command} | auteur={ctx.author} | salon={ctx.channel}")
 
 
 @bot.event
 async def on_command_completion(ctx):
-    logger.debug(f"Commande terminee: {ctx.command} | auteur={ctx.author}")
+    print(f"[DEBUG] Commande terminee: {ctx.command} | auteur={ctx.author}")
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -128,7 +120,7 @@ async def on_command_error(ctx, error):
             )
 
     if not is_expected:
-        logger.error(''.join(traceback.format_exception(type(original), original, original.__traceback__)))
+        print(''.join(traceback.format_exception(type(original), original, original.__traceback__)))
 
     usage = None
     if ctx.command:
@@ -162,16 +154,9 @@ async def on_command_error(ctx, error):
         await ctx.send("❌ Une erreur inattendue est survenue. L'incident a ete journalise.")
 
 async def main():
-    # Prefer environment variable for containerized deployments, fallback to secrets.json
-    token = os.environ.get("DDC_TOKEN") or os.environ.get("DDC_BOT_TOKEN")
-    if not token:
-        try:
-            with open('secrets.json') as f:
-                data = json.load(f)
-            token = data.get('ddc_token')
-        except Exception as exc:
-            logger.error("Impossible de charger le token depuis secrets.json: %s", exc)
-            raise
+    with open('secrets.json') as f:
+        data = json.load(f)
+    token = data['ddc_token']
     await bot.add_cog(cmdrss(bot))
     await bot.add_cog(cmdutility(bot))
     await bot.add_cog(cmdmoderation(bot))

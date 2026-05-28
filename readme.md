@@ -48,19 +48,6 @@ Creer un fichier `secrets.json` a la racine du projet:
 {
   "ddc_token": "VOTRE_TOKEN_DISCORD"
 }
-
-Alternative (recommandée pour Docker):
-
-Vous pouvez fournir le token via une variable d'environnement plutôt que `secrets.json`. Cela permet des déploiements Docker/CI plus sûrs et évite d'écrire des secrets sur le disque.
-
-Exemples d'usage:
-
-```bash
-export DDC_TOKEN="VOTRE_TOKEN_DISCORD"
-python main.py
-```
-
-Le code prend prioritairement `DDC_TOKEN` (ou `DDC_BOT_TOKEN`) depuis l'environnement et retombe sur `secrets.json` si la variable n'existe pas.
 ```
 
 ## Lancement du bot
