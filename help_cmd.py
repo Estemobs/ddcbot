@@ -1,8 +1,29 @@
 import discord
 from discord.ext import commands
+import hashlib
+import os
 
 
-BOT_VERSION = "1.0.1"
+def _compute_bot_version():
+    project_root = os.path.abspath(os.path.dirname(__file__))
+    digest = hashlib.sha1()
+
+    for root, dirs, files in os.walk(project_root):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for filename in sorted(files):
+            if not filename.endswith(".py"):
+                continue
+
+            file_path = os.path.join(root, filename)
+            relative_path = os.path.relpath(file_path, project_root)
+            digest.update(relative_path.encode("utf-8"))
+            with open(file_path, "rb") as file_handle:
+                digest.update(file_handle.read())
+
+    return f"1.0.1+{digest.hexdigest()[:7]}"
+
+
+BOT_VERSION = _compute_bot_version()
 
 
 class cmdhelp(commands.Cog):
