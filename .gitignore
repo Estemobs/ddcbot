@@ -3,3 +3,11 @@ venv/
 .venv/
 __pycache__/
 
+# Données de jeu en production (persistées via volumes Docker, ne doivent pas être versionnées)
+balances.json
+inventaire.json
+income.json
+quete.json
+warnconfig.json
+notifications.json
+
