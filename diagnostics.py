@@ -66,6 +66,12 @@ EXPECTED_COMMANDS = {
     "notifications",
     "delnotif",
     "selftest",
+    "addtag",
+    "removetag",
+    "tagedit",
+    "tagrename",
+    "tag",
+    "taglist",
 }
 
 REQUIRED_MODULES = [
@@ -89,6 +95,7 @@ JSON_FILES = [
     "quete.json",
     "gameconfig.json",
     "workconfig.json",
+    "notes.json",
 ]
 
 OPTIONAL_JSON_FILES = [

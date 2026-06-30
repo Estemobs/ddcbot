@@ -74,6 +74,7 @@ class cmdhelp(commands.Cog):
                 'ai': {'emoji': '🤖', 'title': 'Ai'},
                 'logs': {'emoji': '📝', 'title': 'Logs'},
                 'diagnostics': {'emoji': '🔍', 'title': 'Diagnostics'},
+                'notes': {'emoji': '🗒️', 'title': 'Notes'},
                 'autres': {'emoji': '📦', 'title': 'Autres'},
             }
 

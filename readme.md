@@ -61,7 +61,7 @@ python main.py
 ## Notes utiles
 
 - Le prefixe de commande est configure dans le code (`main.py`).
-- Les fichiers JSON de configuration et de donnees (`balances.json`, `income.json`, etc.) doivent rester a la racine.
+- Les fichiers JSON de configuration et de donnees (`balances.json`, `income.json`, `notes.json`, etc.) doivent rester a la racine.
 
 ## Licence
 
