@@ -12,7 +12,7 @@ Bot Discord multi-commandes pour gestion serveur, economie, mini-jeux et notific
 1. Cloner le depot:
 
 ```bash
-git clone http://192.168.1.109:3000/estemobs/ddcbot.git
+git clone https://github.com/Estemobs/ddcbot.git
 cd ddcbot
 ```
 
