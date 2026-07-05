@@ -108,14 +108,24 @@ class cmdincome(commands.Cog):
         self.income_config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'income_config.json')
 
         # Charger les données depuis le fichier 'income.json'
-        with open(self.role_income_path, 'r') as f:
-            self.role_income = json.load(f)    
+        self.role_income = self._load_json(self.role_income_path)
 
         # Charger les données depuis le fichier 'balances.json'
-        with open(self.tags_path, 'r') as f:
-            self.balances = json.load(f)
+        self.balances = self._load_json(self.tags_path)
 
         self.income_config = self.load_income_config()
+
+    def _load_json(self, path):
+        if not os.path.exists(path):
+            with open(path, 'w') as f:
+                json.dump({}, f, indent=4)
+            return {}
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except (json.JSONDecodeError, OSError):
+            return {}
 
     def load_income_config(self):
         if not os.path.exists(self.income_config_path):
