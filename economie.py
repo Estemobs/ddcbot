@@ -98,6 +98,9 @@ class cmdeco(commands.Cog):
         self.eco_config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'economy_config.json')
 
         # Charger les données depuis le fichier 'balances.json'
+        if not os.path.exists(self.tags_path):
+            with open(self.tags_path, 'w') as f:
+                json.dump({}, f, indent=4)
         with open(self.tags_path, 'r') as f:
             self.balances = json.load(f)
 

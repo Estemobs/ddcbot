@@ -18,9 +18,11 @@ class cmdwork(commands.Cog):
 
         # Autres variables globales
         self.balances_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'balances.json')
-        self.balances = {}
 
         # Charger les données depuis le fichier des balances
+        if not os.path.exists(self.balances_path):
+            with open(self.balances_path, 'w') as f:
+                json.dump({}, f, indent=4)
         with open(self.balances_path, 'r') as f:
             self.balances = json.load(f)
 

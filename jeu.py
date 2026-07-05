@@ -91,6 +91,9 @@ class cmdjeu(commands.Cog):
         self.bot = bot
         self.intents = discord.Intents.all()
         self.quete_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'quete.json')
+        if not os.path.exists(self.quete_path):
+            with open(self.quete_path, 'w') as f:
+                json.dump({}, f, indent=4)
         with open(self.quete_path, 'r') as f:
             self.quetes = json.load(f)
 
@@ -99,6 +102,9 @@ class cmdjeu(commands.Cog):
             self.config = json.load(f)
 
         self.balances_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'balances.json')
+        if not os.path.exists(self.balances_path):
+            with open(self.balances_path, 'w') as f:
+                json.dump({}, f, indent=4)
         with open(self.balances_path, 'r') as f:
             self.balances = json.load(f)
 
