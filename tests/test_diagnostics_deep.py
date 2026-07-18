@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from diagnostics import cmddiagnostics, EXPECTED_COMMANDS
+from cogs.diagnostics import cmddiagnostics, EXPECTED_COMMANDS
 
 
 def _make_cog():

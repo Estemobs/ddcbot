@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock
 
-from diagnostics import cmddiagnostics, EXPECTED_COMMANDS, REQUIRED_MODULES
+from cogs.diagnostics import cmddiagnostics, EXPECTED_COMMANDS, REQUIRED_MODULES
 
 
 def _make_cog():
