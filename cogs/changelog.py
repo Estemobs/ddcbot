@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands, tasks
 
 
-STATE_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), ".last_announced_commit")
+STATE_FILE = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "data", ".last_announced_commit")
 MAX_COMMITS = 10
 
 

@@ -117,7 +117,7 @@ OPTIONAL_JSON_FILES = [
 class cmddiagnostics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.base_dir = os.path.abspath(os.path.dirname(__file__))
+        self.base_dir = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data')
 
     def _check_json_file(self, file_name: str):
         path = os.path.join(self.base_dir, file_name)

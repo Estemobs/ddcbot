@@ -5,15 +5,25 @@ venv/
 __pycache__/
 
 # Données de jeu en production (persistées via volumes Docker, ne doivent pas être versionnées)
-balances.json
-inventaire.json
-income.json
-quete.json
-warnconfig.json
-notifications.json
-workconfig.json
-notes.json
+data/balances.json
+data/inventaire.json
+data/income.json
+data/quete.json
+data/warnconfig.json
+data/notifications.json
+data/workconfig.json
+data/notes.json
+
+# Configs par serveur générées/modifiées à l'exécution (contiennent de vrais IDs Discord)
+data/economy_config.json
+data/gameconfig.json
+data/moderation_config.json
+data/income_config.json
+data/game_panel_config.json
+data/permission_config.json
+data/warn_history.json
+data/logs_config.json
 
 # état interne de l'auto-update (docker)
-.last_announced_commit
+data/.last_announced_commit
 

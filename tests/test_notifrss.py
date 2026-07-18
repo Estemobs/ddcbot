@@ -65,7 +65,7 @@ def _install_discord_stubs():
 
 _install_discord_stubs()
 
-from Notifrss import cmdrss
+from cogs.Notifrss import cmdrss
 
 
 def _make_cog():

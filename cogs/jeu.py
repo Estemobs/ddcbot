@@ -90,26 +90,26 @@ class cmdjeu(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.intents = discord.Intents.all()
-        self.quete_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'quete.json')
+        self.quete_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'quete.json')
         if not os.path.exists(self.quete_path):
             with open(self.quete_path, 'w') as f:
                 json.dump({}, f, indent=4)
         with open(self.quete_path, 'r') as f:
             self.quetes = json.load(f)
 
-        self.config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'gameconfig.json')
+        self.config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'gameconfig.json')
         with open(self.config_path, 'r') as f:
             self.config = json.load(f)
 
-        self.balances_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'balances.json')
+        self.balances_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'balances.json')
         if not os.path.exists(self.balances_path):
             with open(self.balances_path, 'w') as f:
                 json.dump({}, f, indent=4)
         with open(self.balances_path, 'r') as f:
             self.balances = json.load(f)
 
-        self.inventory_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'inventaire.json')
-        self.game_panel_config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'game_panel_config.json')
+        self.inventory_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'inventaire.json')
+        self.game_panel_config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'game_panel_config.json')
         self.game_panel_config = self.load_game_panel_config()
 
     def load_game_panel_config(self):

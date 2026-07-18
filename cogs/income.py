@@ -102,10 +102,10 @@ class cmdincome(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.intents = discord.Intents.all()
-        self.role_income_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'income.json')
+        self.role_income_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'income.json')
         self.role_income = {}
-        self.tags_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'balances.json')
-        self.income_config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'income_config.json')
+        self.tags_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'balances.json')
+        self.income_config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'income_config.json')
 
         # Charger les données depuis le fichier 'income.json'
         self.role_income = self._load_json(self.role_income_path)

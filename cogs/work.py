@@ -21,7 +21,7 @@ class cmdwork(commands.Cog):
         self.bot = bot
         self.intents = discord.Intents.all()
         # Charger les données depuis le fichier de configuration
-        self.config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'workconfig.json')
+        self.config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'workconfig.json')
         if not os.path.exists(self.config_path):
             with open(self.config_path, 'w') as f:
                 json.dump(DEFAULT_WORK_CONFIG, f, indent=4)
@@ -29,7 +29,7 @@ class cmdwork(commands.Cog):
             self.config = json.load(f)
 
         # Autres variables globales
-        self.balances_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'balances.json')
+        self.balances_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'balances.json')
 
         # Charger les données depuis le fichier des balances
         if not os.path.exists(self.balances_path):

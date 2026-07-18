@@ -1,0 +1,17 @@
+{
+    "BoxDemo": {
+        "num_lots": "3",
+        "lots": [
+            {
+                "grade": "123456789012345678"
+            },
+            {
+                "ticket": "AutreBox"
+            },
+            {
+                "argent": "600"
+            }
+        ],
+        "game_price": "0"
+    }
+}

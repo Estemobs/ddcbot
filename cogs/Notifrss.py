@@ -13,7 +13,7 @@ class cmdrss(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.intents = discord.Intents.all()
-        self.notifications_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'notifications.json')
+        self.notifications_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'notifications.json')
         self.notification_lock = asyncio.Lock()
         self._notification_task = None
        

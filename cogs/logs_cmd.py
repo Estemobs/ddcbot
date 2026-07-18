@@ -25,7 +25,7 @@ class cmdlogs(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'logs_config.json')
+        self.config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'logs_config.json')
         self.lock = asyncio.Lock()
 
     def _load_config(self):

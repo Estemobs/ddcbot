@@ -6,7 +6,7 @@ import subprocess
 
 
 def _compute_file_digest_version(base="1.0.1"):
-    project_root = os.path.abspath(os.path.dirname(__file__))
+    project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
     digest = hashlib.sha1()
 
     for root, dirs, files in os.walk(project_root):
@@ -33,7 +33,7 @@ def _git_short_hash(project_root):
 
 
 def _compute_bot_version():
-    project_root = os.path.abspath(os.path.dirname(__file__))
+    project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
     base = "1.0.1"
     git_hash = _git_short_hash(project_root)
     if git_hash:

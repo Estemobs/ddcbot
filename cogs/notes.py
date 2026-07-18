@@ -19,7 +19,7 @@ class cmdnotes(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.tags_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'notes.json')
+        self.tags_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'notes.json')
         self.lock = asyncio.Lock()
 
     def _load_tags(self):

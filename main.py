@@ -4,20 +4,20 @@ import json
 import os
 import traceback
 from discord.ext import commands
-from Notifrss import cmdrss
-from utility import cmdutility
-from moderation import cmdmoderation
-from animations import cmdanim
-from income import cmdincome
-from economie import cmdeco
-from work import cmdwork
-from jeu import cmdjeu
-from help_cmd import cmdhelp
-from ai_assistant import cmdai
-from diagnostics import cmddiagnostics
-from logs_cmd import cmdlogs
-from notes import cmdnotes
-from changelog import cmdchangelog
+from cogs.Notifrss import cmdrss
+from cogs.utility import cmdutility
+from cogs.moderation import cmdmoderation
+from cogs.animations import cmdanim
+from cogs.income import cmdincome
+from cogs.economie import cmdeco
+from cogs.work import cmdwork
+from cogs.jeu import cmdjeu
+from cogs.help_cmd import cmdhelp
+from cogs.ai_assistant import cmdai
+from cogs.diagnostics import cmddiagnostics
+from cogs.logs_cmd import cmdlogs
+from cogs.notes import cmdnotes
+from cogs.changelog import cmdchangelog
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
 
@@ -31,7 +31,7 @@ ADMIN_COMMANDS = {
 
 
 def load_permission_config():
-    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "permission_config.json")
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data", "permission_config.json")
     if not os.path.exists(path):
         return {}
     try:

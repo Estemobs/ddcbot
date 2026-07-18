@@ -396,7 +396,7 @@ class cmdmoderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.intents = discord.Intents.all()
-        base_dir = os.path.abspath(os.path.dirname(__file__))
+        base_dir = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data')
         self.mod_config_path = os.path.join(base_dir, "moderation_config.json")
         self.legacy_warn_path = os.path.join(base_dir, "warnconfig.json")
         self.warn_history_path = os.path.join(base_dir, "warn_history.json")
