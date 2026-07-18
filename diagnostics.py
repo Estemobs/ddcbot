@@ -72,6 +72,7 @@ EXPECTED_COMMANDS = {
     "tagrename",
     "tag",
     "taglist",
+    "changelog",
 }
 
 REQUIRED_MODULES = [

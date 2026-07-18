@@ -17,6 +17,7 @@ from ai_assistant import cmdai
 from diagnostics import cmddiagnostics
 from logs_cmd import cmdlogs
 from notes import cmdnotes
+from changelog import cmdchangelog
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
 
@@ -154,10 +155,17 @@ async def on_command_error(ctx, error):
     else:
         await ctx.send("❌ Une erreur inattendue est survenue. L'incident a ete journalise.")
 
-async def main():
+def load_token():
+    env_token = os.environ.get("DDC_TOKEN")
+    if env_token:
+        return env_token
     with open('secrets.json') as f:
         data = json.load(f)
-    token = data['ddc_token']
+    return data['ddc_token']
+
+
+async def main():
+    token = load_token()
     await bot.add_cog(cmdrss(bot))
     await bot.add_cog(cmdutility(bot))
     await bot.add_cog(cmdmoderation(bot))
@@ -170,6 +178,7 @@ async def main():
     await bot.add_cog(cmdai(bot))
     await bot.add_cog(cmdlogs(bot))
     await bot.add_cog(cmdnotes(bot))
+    await bot.add_cog(cmdchangelog(bot))
     await bot.add_cog(cmddiagnostics(bot))
     await bot.start(token)
 

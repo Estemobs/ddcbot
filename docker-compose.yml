@@ -1,0 +1,21 @@
+services:
+  ddcbot:
+    build: .
+    container_name: ddcbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ${PROJECT_DIR}:/app
+
+  updater:
+    build: ./docker/updater
+    container_name: ddcbot-updater
+    restart: unless-stopped
+    environment:
+      - GIT_BRANCH=${GIT_BRANCH:-master}
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-60}
+    volumes:
+      - ${PROJECT_DIR}:/repo
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /repo

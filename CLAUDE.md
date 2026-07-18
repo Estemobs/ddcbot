@@ -14,9 +14,15 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Run the bot (requires a `secrets.json` at repo root with `{"ddc_token": "..."}`, not committed):
+Run the bot (`main.py:load_token()` reads the `DDC_TOKEN` env var first, falling back to a `secrets.json` at repo root with `{"ddc_token": "..."}`; neither is committed):
 ```bash
 python main.py
+```
+
+Run via Docker (bot + self-updating watcher, see [docker-compose.yml](docker-compose.yml)):
+```bash
+cp .env.example .env   # set DDC_TOKEN and PROJECT_DIR (absolute host path)
+docker compose up -d
 ```
 
 Lint (matches CI):
@@ -48,7 +54,9 @@ CI (`.github/workflows/tests.yml`) runs on Python 3.10/3.11/3.12: flake8 critica
 
 **Centralized error handling**: `main.py`'s `on_command_error` distinguishes "expected" user errors (bad args, missing perms, cooldowns, etc.) from unexpected exceptions. Unexpected errors get a full traceback posted to a hardcoded Discord channel ID and printed to stdout; expected ones get a short notice to the same channel. Individual cogs can opt out by defining their own local `on_error` handler on a command.
 
-**Per-guild JSON persistence, no database**: State is stored in flat JSON files at the repo root (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `gameconfig.json`, `workconfig.json`, `notes.json`, plus optional `*_config.json` files like `moderation_config.json`, `economy_config.json`, `income_config.json`, `game_panel_config.json`, `permission_config.json`). Each cog resolves its own JSON path via `os.path.dirname(__file__)` and implements its own `_load_*`/`_save_*` pair (naming isn't fully consistent across cogs: some use `_load_config`/`_save_config`, others `_load_json`/`_save_json`, or feature-specific names like `_load_tags`/`_load_notifications`). Configs are commonly keyed by guild ID with a `DEFAULT_*_CONFIG` dict merged in for missing keys (see `economie.py`, `income.py`, `jeu.py`, `moderation.py`). Runtime/production data files are gitignored (see `.gitignore`); they must still exist on disk for the bot and `diagnostics.py`'s selftest to pass.
+**Per-guild JSON persistence, no database**: State is stored in flat JSON files at the repo root (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `gameconfig.json`, `workconfig.json`, `notes.json`, plus optional `*_config.json` files like `moderation_config.json`, `economy_config.json`, `income_config.json`, `game_panel_config.json`, `permission_config.json`). Each cog resolves its own JSON path via `os.path.dirname(__file__)` and implements its own `_load_*`/`_save_*` pair (naming isn't fully consistent across cogs: some use `_load_config`/`_save_config`, others `_load_json`/`_save_json`, or feature-specific names like `_load_tags`/`_load_notifications`). Configs are commonly keyed by guild ID with a `DEFAULT_*_CONFIG` dict merged in for missing keys (see `economie.py`, `income.py`, `jeu.py`, `moderation.py`). Runtime/production data files (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `workconfig.json`, `notes.json`) are gitignored and untracked — each owning cog creates the file with sane defaults on first run if it's absent (see `cmdwork.__init__` in `work.py` for the pattern); never re-add these to git, since a `git reset`/`git pull` would otherwise clobber live production data.
+
+**Docker deployment**: [Dockerfile](Dockerfile) builds the bot image; [docker-compose.yml](docker-compose.yml) runs it alongside an `updater` service ([docker/updater](docker/updater)) that polls the git remote and rebuilds/restarts the `ddcbot` service on new commits via the mounted `docker.sock`. Requires `.env` (see `.env.example`) with `DDC_TOKEN` and `PROJECT_DIR` (absolute host path to the repo, needed because the updater bind-mounts volumes via the host daemon). [changelog.py](changelog.py) posts a `git log` summary to `CHANGELOG_CHANNEL_ID` on the first ready event after a new commit is detected, and exposes `,changelog` on demand.
 
 **Admin panels via persistent Views**: Economy, income, work-config, and game features expose `*panel` commands (`ecopanel`, `incomepanel`, `gamepanel`, etc.) backed by `discord.ui.View` subclasses (e.g. `EconomyPanelView`, `IncomePanelView`, `GamePanelView`) with an `interaction_check` restricting interaction to the command author and a 300s timeout. Follow this pattern for new configurable panels.
 

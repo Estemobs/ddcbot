@@ -7,12 +7,24 @@ import asyncio
 from discord.ext import commands
 
 
+DEFAULT_WORK_CONFIG = {
+    "min_amount": 100,
+    "max_amount": 500,
+    "reward_tiers": 3,
+    "cooldown": 3600,
+    "rewards": [10, 20, 30],
+}
+
+
 class cmdwork(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.intents = discord.Intents.all()
         # Charger les données depuis le fichier de configuration
         self.config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'workconfig.json')
+        if not os.path.exists(self.config_path):
+            with open(self.config_path, 'w') as f:
+                json.dump(DEFAULT_WORK_CONFIG, f, indent=4)
         with open(self.config_path, 'r') as f:
             self.config = json.load(f)
 

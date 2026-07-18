@@ -1,4 +1,5 @@
 secrets.json
+.env
 venv/
 .venv/
 __pycache__/
@@ -10,4 +11,9 @@ income.json
 quete.json
 warnconfig.json
 notifications.json
+workconfig.json
+notes.json
+
+# état interne de l'auto-update (docker)
+.last_announced_commit
 
