@@ -124,7 +124,7 @@ python main.py
 | `PROJECT_DIR`, `GIT_BRANCH`, `CHECK_INTERVAL` (env) | Utilisés uniquement par `docker-compose.yml` / le service `updater` |
 | `permission_config.json`, `moderation_config.json`, `economy_config.json`, `logs_config.json`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
 
-Les fichiers de **données de jeu en production** (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `workconfig.json`, `notes.json`) sont volontairement exclus du dépôt (`.gitignore`) : ils sont créés automatiquement au premier lancement et ne doivent jamais être commités, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur.
+Les fichiers de **données de jeu en production** (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `workconfig.json`, `warnconfig.json`, `notes.json`) sont volontairement exclus du dépôt (`.gitignore`) : ils sont créés automatiquement au premier lancement et ne doivent jamais être commités, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur. Chacun a un `*.example.json` versionné (ex. `balances.example.json`) montrant la structure attendue.
 
 ## Commandes
 

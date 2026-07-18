@@ -1,0 +1,9 @@
+{
+    "min_amount": 100,
+    "max_amount": 500,
+    "reward_tiers": 3,
+    "cooldown": 3600,
+    "rewards": [10, 20, 30],
+    "work_count": {},
+    "last_worked": {}
+}

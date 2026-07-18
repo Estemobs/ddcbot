@@ -1,0 +1,8 @@
+{
+    "123456789012345678": {
+        "name": "💼 • Exemple de rôle",
+        "amount": 100.0,
+        "collect_interval": 3600,
+        "last_collect": 0.0
+    }
+}
