@@ -1,11 +1,14 @@
 # Captures d'écran
 
-Ce dossier est référencé par le [readme.md](../../readme.md) principal mais ne contient pas encore
-de vraies captures (je n'ai pas accès à votre serveur Discord pour en générer).
+Ce dossier est référencé par le [readme.md](../../readme.md) principal.
 
-Ajoutez-y, avec ces noms exacts pour que les liens du README fonctionnent :
-
-- `panel-preview.png` — un des panneaux d'administration (`,ecopanel`, `,modpanel`, `,gamepanel`, ...)
+- `panel-preview.png` — un des panneaux d'administration (`,ecopanel`, `,modpanel`, `,gamepanel`, `,logspanel`, ...)
 - `selftest-preview.png` — la sortie embed de `,selftest`
 
-Format recommandé : PNG, largeur ~1200px, thème Discord sombre pour cohérence visuelle.
+D'autres captures sont les bienvenues pour illustrer les autres modules (économie, mini-jeux,
+notifications RSS, assistant IA, logs). Format recommandé : PNG, largeur ~1200px, thème Discord
+sombre pour cohérence visuelle, avec ces noms suggérés :
+
+- `ecopanel-preview.png`, `gamepanel-preview.png`, `logspanel-preview.png` — autres panneaux d'admin
+- `ai-assistant-preview.png` — une réponse de l'assistant IA (`,ai` ou équivalent)
+- `notifications-preview.png` — un exemple de notification RSS reçue

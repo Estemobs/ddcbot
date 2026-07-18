@@ -7,7 +7,9 @@
 
 Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, notifications RSS, logs, notes/tags, assistant IA et auto-diagnostic — le tout piloté par des panneaux d'administration en un clic.
 
-> 📸 Aucune capture d'écran pour l'instant — voir [docs/images](docs/images) si vous souhaitez en ajouter.
+<p align="center">
+  <img src="docs/images/panel-preview.png" alt="Aperçu du panneau de modération DDCBot" width="720">
+</p>
 
 ## Sommaire
 
@@ -34,6 +36,10 @@ Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, 
 | 📋 **Logs** | salons et catégories de logs configurables par serveur, panneau `,logspanel` |
 | 🩺 **Auto-diagnostic** | `,selftest` vérifie commandes, cogs, modules et fichiers JSON |
 | 🔄 **Changelog auto** | annonce les mises à jour du bot dans un salon Discord |
+
+<p align="center">
+  <img src="docs/images/selftest-preview.png" alt="Exemple de sortie de ,selftest" width="600">
+</p>
 
 ## Démarrage rapide avec Docker (recommandé)
 
