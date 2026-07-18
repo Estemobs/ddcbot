@@ -21,6 +21,8 @@ from changelog import cmdchangelog
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
 
+ERROR_LOG_CHANNEL_ID = os.environ.get("ERROR_LOG_CHANNEL_ID")
+
 ADMIN_COMMANDS = {
     "modpanel", "warnconfig", "permpanel", "warn", "warns", "clearwarns", "ban", "kick", "clear", "unban",
     "timeout", "untimeout", "slowmode", "lock", "unlock", "addmoney", "removemoney", "reset_money",
@@ -107,7 +109,7 @@ async def on_command_error(ctx, error):
     )
     is_expected = isinstance(original, expected_user_errors)
 
-    channel = bot.get_channel(827566899004440666)
+    channel = bot.get_channel(int(ERROR_LOG_CHANNEL_ID)) if ERROR_LOG_CHANNEL_ID else None
     if channel:
         command_name = ctx.command.qualified_name if ctx.command else "inconnue"
         if is_expected:
