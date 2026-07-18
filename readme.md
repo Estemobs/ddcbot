@@ -122,9 +122,9 @@ python main.py
 | `DDC_TOKEN` (env) ou `secrets.json` | Token du bot Discord |
 | `CHANGELOG_CHANNEL_ID` (env) | Salon où poster le changelog automatique (optionnel) |
 | `PROJECT_DIR`, `GIT_BRANCH`, `CHECK_INTERVAL` (env) | Utilisés uniquement par `docker-compose.yml` / le service `updater` |
-| `permission_config.json`, `moderation_config.json`, `economy_config.json`, `logs_config.json`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
+| `data/permission_config.json`, `data/moderation_config.json`, `data/economy_config.json`, `data/logs_config.json`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
 
-Les fichiers de **données de jeu en production** (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `workconfig.json`, `warnconfig.json`, `notes.json`) sont volontairement exclus du dépôt (`.gitignore`) : ils sont créés automatiquement au premier lancement et ne doivent jamais être commités, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur. Chacun a un `*.example.json` versionné (ex. `balances.example.json`) montrant la structure attendue.
+Toutes les données du bot vivent dans `data/`. Les fichiers de **données de jeu et de configuration en production** (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `workconfig.json`, `warnconfig.json`, `notes.json`, `economy_config.json`, `gameconfig.json`, `moderation_config.json`, `income_config.json`, `game_panel_config.json`, `permission_config.json`, `warn_history.json`, `logs_config.json`) sont volontairement exclus du dépôt (`.gitignore`) : ils contiennent de vrais identifiants de serveur/salon Discord, sont créés/modifiés automatiquement à l'exécution, et ne doivent jamais être commités, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur. Chacun a un `*.example.json` versionné dans `data/` (ex. `data/balances.example.json`) montrant la structure attendue.
 
 ## Commandes
 
@@ -138,7 +138,7 @@ python -m compileall -q .                                            # vérifica
 pytest -q                                                             # suite de tests
 ```
 
-Voir [CLAUDE.md](CLAUDE.md) pour le détail de l'architecture (cogs, persistance JSON, gate admin, diagnostics).
+Les cogs vivent dans [cogs/](cogs/) et les données JSON dans [data/](data/) ; `main.py` reste à la racine. Voir [CLAUDE.md](CLAUDE.md) pour le détail de l'architecture (cogs, persistance JSON, gate admin, diagnostics).
 
 ## Licence
 
