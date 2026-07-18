@@ -5,13 +5,9 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
 [![discord.py](https://img.shields.io/badge/discord.py-2.4-5865F2.svg)](https://github.com/Rapptz/discord.py)
 
-Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, notifications RSS, notes/tags, assistant IA et auto-diagnostic — le tout piloté par des panneaux d'administration en un clic.
+Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, notifications RSS, logs, notes/tags, assistant IA et auto-diagnostic — le tout piloté par des panneaux d'administration en un clic.
 
-<p align="center">
-  <img src="docs/images/panel-preview.png" alt="Aperçu d'un panneau d'administration DDCBot" width="720">
-</p>
-
-> 📸 Les captures ci-dessous sont des emplacements à remplacer par de vraies captures de votre serveur (voir [docs/images](docs/images)).
+> 📸 Aucune capture d'écran pour l'instant — voir [docs/images](docs/images) si vous souhaitez en ajouter.
 
 ## Sommaire
 
@@ -35,12 +31,9 @@ Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, 
 | 📰 **Notifications RSS** | suivi de sorties d'épisodes/animes via `,subscribe` |
 | 📝 **Notes & tags** | mémos textuels par serveur (`,addtag`, `,tag`, ...) |
 | 🧠 **Assistant IA** | réponses et OCR via `g4f` / `easyocr` |
+| 📋 **Logs** | salons et catégories de logs configurables par serveur, panneau `,logspanel` |
 | 🩺 **Auto-diagnostic** | `,selftest` vérifie commandes, cogs, modules et fichiers JSON |
 | 🔄 **Changelog auto** | annonce les mises à jour du bot dans un salon Discord |
-
-<p align="center">
-  <img src="docs/images/selftest-preview.png" alt="Exemple de sortie de ,selftest" width="600">
-</p>
 
 ## Démarrage rapide avec Docker (recommandé)
 
@@ -123,7 +116,7 @@ python main.py
 | `DDC_TOKEN` (env) ou `secrets.json` | Token du bot Discord |
 | `CHANGELOG_CHANNEL_ID` (env) | Salon où poster le changelog automatique (optionnel) |
 | `PROJECT_DIR`, `GIT_BRANCH`, `CHECK_INTERVAL` (env) | Utilisés uniquement par `docker-compose.yml` / le service `updater` |
-| `permission_config.json`, `moderation_config.json`, `economy_config.json`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
+| `permission_config.json`, `moderation_config.json`, `economy_config.json`, `logs_config.json`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
 
 Les fichiers de **données de jeu en production** (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `workconfig.json`, `notes.json`) sont volontairement exclus du dépôt (`.gitignore`) : ils sont créés automatiquement au premier lancement et ne doivent jamais être commités, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur.
 
