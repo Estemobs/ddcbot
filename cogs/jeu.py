@@ -98,6 +98,9 @@ class cmdjeu(commands.Cog):
             self.quetes = json.load(f)
 
         self.config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'gameconfig.json')
+        if not os.path.exists(self.config_path):
+            with open(self.config_path, 'w') as f:
+                json.dump({}, f, indent=4)
         with open(self.config_path, 'r') as f:
             self.config = json.load(f)
 
