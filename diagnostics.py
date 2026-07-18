@@ -73,6 +73,10 @@ EXPECTED_COMMANDS = {
     "tag",
     "taglist",
     "changelog",
+    "setlog",
+    "unsetlog",
+    "listlogs",
+    "logspanel",
 }
 
 REQUIRED_MODULES = [
@@ -106,6 +110,7 @@ OPTIONAL_JSON_FILES = [
     "game_panel_config.json",
     "permission_config.json",
     "warn_history.json",
+    "logs_config.json",
 ]
 
 

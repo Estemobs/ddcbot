@@ -21,14 +21,12 @@ from changelog import cmdchangelog
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
 
-ERROR_LOG_CHANNEL_ID = os.environ.get("ERROR_LOG_CHANNEL_ID")
-
 ADMIN_COMMANDS = {
     "modpanel", "warnconfig", "permpanel", "warn", "warns", "clearwarns", "ban", "kick", "clear", "unban",
     "timeout", "untimeout", "slowmode", "lock", "unlock", "addmoney", "removemoney", "reset_money",
     "reset_economy", "clean_leaderboard", "ecopanel", "incomepanel", "gamepanel", "config_work", "role_income_add", "role_income_remove",
     "role_income_edit", "addgame", "deletegame", "addquest", "deletequete", "config_quete", "clearinventory",
-    "gstart", "gend", "gcancel", "selftest",
+    "gstart", "gend", "gcancel", "selftest", "logspanel",
 }
 
 
@@ -109,9 +107,10 @@ async def on_command_error(ctx, error):
     )
     is_expected = isinstance(original, expected_user_errors)
 
-    channel = bot.get_channel(int(ERROR_LOG_CHANNEL_ID)) if ERROR_LOG_CHANNEL_ID else None
-    if channel:
-        command_name = ctx.command.qualified_name if ctx.command else "inconnue"
+    logs_cog = bot.get_cog("cmdlogs")
+    channels = logs_cog.get_channels(ctx.guild, "user_errors" if is_expected else "unexpected_errors") if logs_cog else []
+    command_name = ctx.command.qualified_name if ctx.command else "inconnue"
+    for channel in channels:
         if is_expected:
             await channel.send(
                 f"Erreur utilisateur sur `{command_name}` par {ctx.author}: {original}"
