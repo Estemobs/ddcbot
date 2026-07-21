@@ -6,7 +6,16 @@ from discord.ext import commands, tasks
 
 
 STATE_FILE = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "data", ".last_announced_commit")
+VERSION_FILE = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "VERSION")
 MAX_COMMITS = 10
+
+
+def _read_version():
+    try:
+        with open(VERSION_FILE, "r") as f:
+            return f.read().strip()
+    except OSError:
+        return "inconnue"
 
 
 def _git_log(count):
@@ -99,7 +108,15 @@ class cmdchangelog(commands.Cog):
             return
         description = "\n".join(f"`{line}`" for line in commits)
         embed = discord.Embed(title="Derniers changements", description=description, color=discord.Color.blurple())
+        embed.set_footer(text=f"Version {_read_version()}")
         await ctx.send(embed=embed)
+
+    @commands.command()
+    async def version(self, ctx):
+        """Affiche la version actuelle du bot."""
+        current = _current_commit()
+        commit_label = current[:7] if current else "inconnu"
+        await ctx.send(f"DDCBot **v{_read_version()}** (commit `{commit_label}`)")
 
 
 def setup(bot):

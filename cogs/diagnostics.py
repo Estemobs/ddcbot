@@ -71,6 +71,7 @@ EXPECTED_COMMANDS = {
     "tag",
     "taglist",
     "changelog",
+    "version",
     "setlog",
     "unsetlog",
     "listlogs",
