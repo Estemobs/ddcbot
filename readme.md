@@ -135,7 +135,16 @@ Liste complète et à jour dans Discord via `,help`. Pour vérifier que toutes l
 
 ## Versioning
 
-Le numéro de version vit dans le fichier [VERSION](VERSION) (semver, ex. `1.0.0`) et est exposé dans Discord via `,version`. Comme le service `updater` déploie automatiquement chaque nouveau commit sur `master` (voir [Auto-mise à jour](#auto-mise-à-jour)), la version n'est pas un gate de déploiement — c'est un repère pour communiquer les changements notables. Convention : bump `VERSION` (et posez un tag `git tag vX.Y.Z && git push origin vX.Y.Z` si vous voulez marquer un point de repère dans l'historique) lors d'un changement d'API/comportement significatif, pas à chaque commit.
+Le numéro de version vit dans le fichier [VERSION](VERSION) (semver, ex. `1.0.0`) et est exposé dans Discord via `,version`. Comme le service `updater` déploie automatiquement chaque nouveau commit sur `master` (voir [Auto-mise à jour](#auto-mise-à-jour)), la version n'est pas un gate de déploiement — c'est un repère pour communiquer les changements notables. Convention : bump `VERSION` lors d'un changement d'API/comportement significatif, pas à chaque commit.
+
+Pour publier une release GitHub : mettez à jour `VERSION`, committez, puis pour un tag `vX.Y.Z` (le `X.Y.Z` doit correspondre exactement au contenu de `VERSION`) :
+
+```bash
+git tag vX.Y.Z
+git push github vX.Y.Z   # pousser vers le remote GitHub (Estemobs/ddcbot), pas Gitea
+```
+
+Le workflow [.github/workflows/release.yml](.github/workflows/release.yml) vérifie que le tag correspond à `VERSION` puis crée automatiquement la release GitHub avec les notes générées à partir des commits. Il ne se déclenche que sur le dépôt GitHub (pas sur ce Gitea auto-hébergé) — pensez à configurer ce remote (`git remote add github https://github.com/Estemobs/ddcbot.git`) si ce n'est pas déjà fait.
 
 ## Développement
 
