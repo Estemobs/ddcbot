@@ -34,7 +34,7 @@ Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, 
 | 📝 **Notes & tags** | mémos textuels par serveur (`,addtag`, `,tag`, ...) |
 | 🧠 **Assistant IA** | réponses et OCR via `g4f` / `easyocr` |
 | 📋 **Logs** | salons et catégories de logs configurables par serveur, panneau `,logspanel` |
-| 🩺 **Auto-diagnostic** | `,selftest` vérifie commandes, cogs, modules et fichiers JSON |
+| 🩺 **Auto-diagnostic** | `,selftest` vérifie commandes, cogs, modules et tables SQLite |
 | 🔄 **Changelog auto** | annonce les mises à jour du bot dans un salon Discord |
 
 <p align="center">
@@ -122,9 +122,11 @@ python main.py
 | `DDC_TOKEN` (env) ou `secrets.json` | Token du bot Discord |
 | `CHANGELOG_CHANNEL_ID` (env) | Salon où poster le changelog automatique (optionnel) |
 | `PROJECT_DIR`, `GIT_BRANCH`, `CHECK_INTERVAL` (env) | Utilisés uniquement par `docker-compose.yml` / le service `updater` |
-| `data/permission_config.json`, `data/moderation_config.json`, `data/economy_config.json`, `data/logs_config.json`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
+| Tables `permission_config`, `moderation_config`, `economy_config`, `logs_config`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
 
-Toutes les données du bot vivent dans `data/`. Les fichiers de **données de jeu et de configuration en production** (`balances.json`, `income.json`, `inventaire.json`, `quete.json`, `notifications.json`, `workconfig.json`, `warnconfig.json`, `notes.json`, `economy_config.json`, `gameconfig.json`, `moderation_config.json`, `income_config.json`, `game_panel_config.json`, `permission_config.json`, `warn_history.json`, `logs_config.json`) sont volontairement exclus du dépôt (`.gitignore`) : ils contiennent de vrais identifiants de serveur/salon Discord, sont créés/modifiés automatiquement à l'exécution, et ne doivent jamais être commités, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur. Chacun a un `*.example.json` versionné dans `data/` (ex. `data/balances.example.json`) montrant la structure attendue.
+Toutes les données du bot vivent dans une base **SQLite** unique, `data/ddcbot.sqlite3`, créée automatiquement au premier lancement (schéma défini dans [data/migrations/0001_initial.sql](data/migrations/0001_initial.sql)). Ce fichier est volontairement exclu du dépôt (`.gitignore`) : il contient de vrais identifiants de serveur/salon Discord et des soldes réels, et ne doit jamais être commité, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur.
+
+> Si vous mettez à jour un checkout antérieur à la migration SQLite (qui avait encore des fichiers `data/*.json`), lancez une seule fois `python scripts/migrate_json_to_sqlite.py` pour importer vos anciennes données avant de redémarrer le bot.
 
 ## Commandes
 
@@ -138,7 +140,7 @@ python -m compileall -q .                                            # vérifica
 pytest -q                                                             # suite de tests
 ```
 
-Les cogs vivent dans [cogs/](cogs/) et les données JSON dans [data/](data/) ; `main.py` reste à la racine. Voir [CLAUDE.md](CLAUDE.md) pour le détail de l'architecture (cogs, persistance JSON, gate admin, diagnostics).
+Les cogs vivent dans [cogs/](cogs/) et la base SQLite / ses migrations dans [data/](data/) ; `main.py` reste à la racine. Voir [CLAUDE.md](CLAUDE.md) pour le détail de l'architecture (cogs, persistance SQLite, gate admin, diagnostics).
 
 ## Licence
 

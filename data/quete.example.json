@@ -1,9 +1,0 @@
-{
-    "ExempleQuete": {
-        "name": "ExempleQuete",
-        "lot_count": 1,
-        "lot": {
-            "grade": "123456789012345678"
-        }
-    }
-}
