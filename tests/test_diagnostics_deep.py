@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 
+from data.db import Database
 from cogs.diagnostics import cmddiagnostics, EXPECTED_COMMANDS
 
 
@@ -8,7 +9,8 @@ def _make_cog():
     bot = MagicMock()
     bot.commands = []
     bot.cogs = {}
-    return cmddiagnostics(bot)
+    db = Database(path=":memory:")
+    return cmddiagnostics(bot, db)
 
 
 class TestRunSelftestDeep(unittest.TestCase):

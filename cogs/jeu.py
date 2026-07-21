@@ -1,6 +1,5 @@
 import discord
 import json
-import os
 import random
 import asyncio
 from discord.ext import commands
@@ -45,35 +44,29 @@ class GamePanelView(discord.ui.View):
     @discord.ui.button(label="Toggle openlot", style=discord.ButtonStyle.primary, row=0)
     async def toggle_openlot(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_game_panel_config(self.guild_id)
-        cfg["openlot_enabled"] = not cfg["openlot_enabled"]
-        self.cog.save_game_panel_config()
+        self.cog.update_game_panel_config(self.guild_id, openlot_enabled=not cfg["openlot_enabled"])
         await self.refresh(interaction)
 
     @discord.ui.button(label="Toggle quetes", style=discord.ButtonStyle.primary, row=0)
     async def toggle_quests(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_game_panel_config(self.guild_id)
-        cfg["quests_enabled"] = not cfg["quests_enabled"]
-        self.cog.save_game_panel_config()
+        self.cog.update_game_panel_config(self.guild_id, quests_enabled=not cfg["quests_enabled"])
         await self.refresh(interaction)
 
     @discord.ui.button(label="Toggle annonce gains", style=discord.ButtonStyle.primary, row=0)
     async def toggle_public_announce(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_game_panel_config(self.guild_id)
-        cfg["announce_win_public"] = not cfg["announce_win_public"]
-        self.cog.save_game_panel_config()
+        self.cog.update_game_panel_config(self.guild_id, announce_win_public=not cfg["announce_win_public"])
         await self.refresh(interaction)
 
     @discord.ui.button(label="Canal logs = ici", style=discord.ButtonStyle.secondary, row=1)
     async def set_log_here(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cfg = self.cog.get_game_panel_config(self.guild_id)
-        cfg["log_channel_id"] = interaction.channel_id
-        self.cog.save_game_panel_config()
+        self.cog.update_game_panel_config(self.guild_id, log_channel_id=interaction.channel_id)
         await self.refresh(interaction)
 
     @discord.ui.button(label="Reset", style=discord.ButtonStyle.danger, row=1)
     async def reset_defaults(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.cog.game_panel_config[str(self.guild_id)] = dict(DEFAULT_GAME_PANEL_CONFIG)
-        self.cog.save_game_panel_config()
+        self.cog.reset_game_panel_config(self.guild_id)
         await self.refresh(interaction)
 
     @discord.ui.button(label="Fermer", style=discord.ButtonStyle.danger, row=1)
@@ -87,59 +80,177 @@ class GamePanelView(discord.ui.View):
 
 
 class cmdjeu(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, db):
         self.bot = bot
+        self.db = db
         self.intents = discord.Intents.all()
-        self.quete_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'quete.json')
-        if not os.path.exists(self.quete_path):
-            with open(self.quete_path, 'w') as f:
-                json.dump({}, f, indent=4)
-        with open(self.quete_path, 'r') as f:
-            self.quetes = json.load(f)
 
-        self.config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'gameconfig.json')
-        if not os.path.exists(self.config_path):
-            with open(self.config_path, 'w') as f:
-                json.dump({}, f, indent=4)
-        with open(self.config_path, 'r') as f:
-            self.config = json.load(f)
+    # --- balances (table partagee avec economie.py/income.py/work.py) ---
 
-        self.balances_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'balances.json')
-        if not os.path.exists(self.balances_path):
-            with open(self.balances_path, 'w') as f:
-                json.dump({}, f, indent=4)
-        with open(self.balances_path, 'r') as f:
-            self.balances = json.load(f)
+    def get_balance(self, user_id: int) -> float:
+        row = self.db.fetchone("SELECT amount FROM balances WHERE user_id = ?", (user_id,))
+        return row["amount"] if row else 0.0
 
-        self.inventory_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'inventaire.json')
-        self.game_panel_config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'game_panel_config.json')
-        self.game_panel_config = self.load_game_panel_config()
+    def add_balance(self, user_id: int, delta: float):
+        self.db.execute(
+            "INSERT INTO balances (user_id, amount) VALUES (?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET amount = amount + excluded.amount",
+            (user_id, delta),
+        )
 
-    def load_game_panel_config(self):
-        if not os.path.exists(self.game_panel_config_path):
-            return {}
-        try:
-            with open(self.game_panel_config_path, 'r') as f:
-                data = json.load(f)
-            return data if isinstance(data, dict) else {}
-        except (json.JSONDecodeError, OSError):
-            return {}
+    # --- jeux / lootbox ---
 
-    def save_game_panel_config(self):
-        with open(self.game_panel_config_path, 'w') as f:
-            json.dump(self.game_panel_config, f, indent=4)
+    def list_games(self) -> dict:
+        rows = self.db.fetchall("SELECT name, num_lots, lots_json, game_price FROM games")
+        return {
+            row["name"]: {
+                "num_lots": row["num_lots"],
+                "lots": json.loads(row["lots_json"]),
+                "game_price": row["game_price"],
+            }
+            for row in rows
+        }
 
-    def get_game_panel_config(self, guild_id: int):
-        key = str(guild_id)
-        if key not in self.game_panel_config or not isinstance(self.game_panel_config[key], dict):
-            self.game_panel_config[key] = dict(DEFAULT_GAME_PANEL_CONFIG)
-            self.save_game_panel_config()
-        else:
-            for cfg_key, cfg_default in DEFAULT_GAME_PANEL_CONFIG.items():
-                if cfg_key not in self.game_panel_config[key]:
-                    self.game_panel_config[key][cfg_key] = cfg_default
-            self.save_game_panel_config()
-        return self.game_panel_config[key]
+    def get_game(self, name: str):
+        row = self.db.fetchone("SELECT num_lots, lots_json, game_price FROM games WHERE name = ?", (name,))
+        if row is None:
+            return None
+        return {"num_lots": row["num_lots"], "lots": json.loads(row["lots_json"]), "game_price": row["game_price"]}
+
+    def add_game(self, name: str, num_lots: int, lots: list, game_price: int):
+        self.db.execute(
+            "INSERT INTO games (name, num_lots, lots_json, game_price) VALUES (?, ?, ?, ?)",
+            (name, num_lots, json.dumps(lots), game_price),
+        )
+
+    def remove_game(self, name: str):
+        self.db.execute("DELETE FROM games WHERE name = ?", (name,))
+
+    # --- quetes ---
+
+    def list_quests(self) -> dict:
+        rows = self.db.fetchall("SELECT name, lot_count, lot_json, progress FROM quests")
+        return {
+            row["name"]: {
+                "name": row["name"],
+                "lot_count": row["lot_count"],
+                "lot": json.loads(row["lot_json"]),
+                "progress": row["progress"],
+            }
+            for row in rows
+        }
+
+    def get_quest(self, name: str):
+        row = self.db.fetchone("SELECT lot_count, lot_json, progress FROM quests WHERE name = ?", (name,))
+        if row is None:
+            return None
+        return {"lot_count": row["lot_count"], "lot": json.loads(row["lot_json"]), "progress": row["progress"]}
+
+    def add_quest(self, name: str, lot_count: int, lot: dict):
+        self.db.execute(
+            "INSERT INTO quests (name, lot_count, lot_json, progress) VALUES (?, ?, ?, 0) "
+            "ON CONFLICT(name) DO UPDATE SET lot_count=excluded.lot_count, lot_json=excluded.lot_json, progress=0",
+            (name, lot_count, json.dumps(lot)),
+        )
+
+    def remove_quest(self, name: str):
+        self.db.execute("DELETE FROM quests WHERE name = ?", (name,))
+
+    def increment_quest_progress(self, name: str) -> int:
+        self.db.execute("UPDATE quests SET progress = progress + 1 WHERE name = ?", (name,))
+        row = self.db.fetchone("SELECT progress FROM quests WHERE name = ?", (name,))
+        return row["progress"]
+
+    def reset_quest_progress(self, name: str):
+        self.db.execute("UPDATE quests SET progress = 0 WHERE name = ?", (name,))
+
+    # --- inventaire (tickets) ---
+
+    def add_ticket(self, user_id: int, item_name: str):
+        self.db.execute("INSERT INTO inventory_tickets (user_id, item_name) VALUES (?, ?)", (user_id, item_name))
+
+    def pop_ticket(self, user_id: int, item_name: str) -> bool:
+        row = self.db.fetchone(
+            "SELECT id FROM inventory_tickets WHERE user_id = ? AND item_name = ? LIMIT 1",
+            (user_id, item_name),
+        )
+        if row is None:
+            return False
+        self.db.execute("DELETE FROM inventory_tickets WHERE id = ?", (row["id"],))
+        return True
+
+    def has_ticket(self, user_id: int, item_name: str) -> bool:
+        return self.db.fetchone(
+            "SELECT 1 FROM inventory_tickets WHERE user_id = ? AND item_name = ? LIMIT 1",
+            (user_id, item_name),
+        ) is not None
+
+    def user_ticket_counts(self, user_id: int) -> dict:
+        rows = self.db.fetchall(
+            "SELECT item_name, COUNT(*) as cnt FROM inventory_tickets WHERE user_id = ? GROUP BY item_name",
+            (user_id,),
+        )
+        return {row["item_name"]: row["cnt"] for row in rows}
+
+    def clear_user_tickets(self, user_id: int) -> bool:
+        row = self.db.fetchone("SELECT 1 FROM inventory_tickets WHERE user_id = ? LIMIT 1", (user_id,))
+        if row is None:
+            return False
+        self.db.execute("DELETE FROM inventory_tickets WHERE user_id = ?", (user_id,))
+        return True
+
+    # --- config panneau jeux par serveur ---
+
+    def get_game_panel_config(self, guild_id: int) -> dict:
+        self.db.execute(
+            "INSERT OR IGNORE INTO game_panel_config "
+            "(guild_id, openlot_enabled, quests_enabled, announce_win_public, log_channel_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                guild_id,
+                int(DEFAULT_GAME_PANEL_CONFIG["openlot_enabled"]),
+                int(DEFAULT_GAME_PANEL_CONFIG["quests_enabled"]),
+                int(DEFAULT_GAME_PANEL_CONFIG["announce_win_public"]),
+                DEFAULT_GAME_PANEL_CONFIG["log_channel_id"],
+            ),
+        )
+        row = self.db.fetchone(
+            "SELECT openlot_enabled, quests_enabled, announce_win_public, log_channel_id "
+            "FROM game_panel_config WHERE guild_id = ?",
+            (guild_id,),
+        )
+        return {
+            "openlot_enabled": bool(row["openlot_enabled"]),
+            "quests_enabled": bool(row["quests_enabled"]),
+            "announce_win_public": bool(row["announce_win_public"]),
+            "log_channel_id": row["log_channel_id"],
+        }
+
+    def update_game_panel_config(self, guild_id: int, **fields):
+        self.get_game_panel_config(guild_id)
+        assignments = []
+        values = []
+        for key, value in fields.items():
+            assignments.append(f"{key} = ?")
+            values.append(int(value) if isinstance(value, bool) else value)
+        values.append(guild_id)
+        self.db.execute(f"UPDATE game_panel_config SET {', '.join(assignments)} WHERE guild_id = ?", values)
+
+    def reset_game_panel_config(self, guild_id: int):
+        self.db.execute(
+            "INSERT INTO game_panel_config (guild_id, openlot_enabled, quests_enabled, announce_win_public, log_channel_id) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(guild_id) DO UPDATE SET openlot_enabled=excluded.openlot_enabled, "
+            "quests_enabled=excluded.quests_enabled, announce_win_public=excluded.announce_win_public, "
+            "log_channel_id=excluded.log_channel_id",
+            (
+                guild_id,
+                int(DEFAULT_GAME_PANEL_CONFIG["openlot_enabled"]),
+                int(DEFAULT_GAME_PANEL_CONFIG["quests_enabled"]),
+                int(DEFAULT_GAME_PANEL_CONFIG["announce_win_public"]),
+                DEFAULT_GAME_PANEL_CONFIG["log_channel_id"],
+            ),
+        )
 
     def build_game_panel_embed(self, guild: discord.Guild, cfg: dict):
         channel_id = cfg.get("log_channel_id")
@@ -188,9 +299,9 @@ class cmdjeu(commands.Cog):
             await ctx.send("⏱️ Temps écoulé. La commande a été annulée.")
             return None
 
-    async def _award_prize(self, ctx, prize: dict, inventory: dict):
+    async def _award_prize(self, ctx, prize: dict):
         """Attribue un prix à l'utilisateur selon le type (grade / ticket / argent)."""
-        user_id = str(ctx.author.id)
+        user_id = ctx.author.id
         for prize_type, prize_value in prize.items():
             if prize_type == 'grade':
                 role_id = int(prize_value)
@@ -201,22 +312,10 @@ class cmdjeu(commands.Cog):
                 else:
                     await ctx.send("⚠️ Désolé, je n'ai pas pu trouver le rôle correspondant à cet ID.")
             elif prize_type == 'ticket':
-                if 'tickets' not in inventory:
-                    inventory['tickets'] = []
-                user_tickets = [
-                    ticket for ticket in inventory['tickets']
-                    if list(ticket.keys())[0] == user_id and list(ticket.values())[0] == prize_value
-                ]
-                if user_tickets:
-                    for ticket in user_tickets:
-                        ticket[user_id] = str(int(ticket[user_id]) + 1)
-                else:
-                    inventory['tickets'].append({user_id: prize_value})
+                self.add_ticket(user_id, prize_value)
                 await ctx.send(f"🎟️ Vous avez gagné un ticket pour : **{prize_value}** !")
             elif prize_type == 'argent':
-                if user_id not in self.balances:
-                    self.balances[user_id] = 0
-                self.balances[user_id] += int(prize_value)
+                self.add_balance(user_id, int(prize_value))
                 await ctx.send(f"💰 Vous avez gagné **{prize_value}** pièces !")
 
     # ─── Commandes ──────────────────────────────────────────────────────────────
@@ -255,14 +354,15 @@ class cmdjeu(commands.Cog):
                             return
                     valid_lot = True
                 elif lot_type.content == 'ticket':
-                    if not self.config:
+                    games = self.list_games()
+                    if not games:
                         await ctx.send("Impossible de créer un ticket car il n'y a aucun jeu. Veuillez choisir un autre type de lot.")
                     else:
-                        await ctx.send("Veuillez choisir parmi les jeux suivants : " + ', '.join(self.config.keys()))
+                        await ctx.send("Veuillez choisir parmi les jeux suivants : " + ', '.join(games.keys()))
                         lot_value = await self._ask(ctx)
                         if lot_value is None:
                             return
-                        while lot_value.content not in self.config:
+                        while lot_value.content not in self.list_games():
                             await ctx.send("Nom de jeu invalide. Veuillez entrer un nom de jeu existant.")
                             lot_value = await self._ask(ctx)
                             if lot_value is None:
@@ -304,17 +404,9 @@ class cmdjeu(commands.Cog):
             if command_name is None:
                 return
 
-        self.config[command_name.content] = {
-            "num_lots": str(num_lots),
-            "lots": lots,
-            "game_price": game_price.content
-        }
-
-        with open(self.config_path, 'w') as f:
-            json.dump(self.config, f, indent=4)
+        self.add_game(command_name.content, num_lots, lots, int(game_price.content))
 
         await ctx.send(f"✅ Le jeu **{command_name.content}** a été enregistré avec succès.")
-
 
     @commands.command()
     async def openlot(self, ctx):
@@ -323,75 +415,46 @@ class cmdjeu(commands.Cog):
             await ctx.send("L'ouverture des lots est desactivee sur ce serveur.")
             return
 
-        with open(self.config_path, 'r') as f:
-            self.config = json.load(f)
-
-        if not self.config:
+        games = self.list_games()
+        if not games:
             await ctx.send("Il n'y a actuellement aucun jeu enregistré. Consultez la boutique avec `,shop`.")
             return
 
-        await ctx.send("Quel jeu voulez-vous ouvrir ? Jeux disponibles : " + ', '.join(self.config.keys()))
+        await ctx.send("Quel jeu voulez-vous ouvrir ? Jeux disponibles : " + ', '.join(games.keys()))
         lot_name_msg = await self._ask(ctx, timeout=30.0)
         if lot_name_msg is None:
             return
 
         lot_name = lot_name_msg.content
-        if lot_name not in self.config:
+        game = self.get_game(lot_name)
+        if game is None:
             await ctx.send("❌ Ce jeu n'existe pas.")
             return
 
-        with open(self.inventory_path, 'r') as f:
-            inventory = json.load(f)
-        with open(self.balances_path, 'r') as f:
-            self.balances = json.load(f)
+        user_id = ctx.author.id
+        game_price = int(game['game_price'])
 
-        user_id = str(ctx.author.id)
-        game_price = int(self.config[lot_name]['game_price'])
-
-        # Vérifier si l'utilisateur a un ticket pour ce jeu
-        user_has_ticket = (
-            'tickets' in inventory and
-            any(
-                ticket for ticket in inventory['tickets']
-                if list(ticket.keys())[0] == user_id and list(ticket.values())[0] == lot_name
-            )
-        )
-
-        if user_has_ticket:
-            ticket_to_remove = next(
-                ticket for ticket in inventory['tickets']
-                if list(ticket.keys())[0] == user_id and list(ticket.values())[0] == lot_name
-            )
-            inventory['tickets'].remove(ticket_to_remove)
+        if self.has_ticket(user_id, lot_name):
+            self.pop_ticket(user_id, lot_name)
             await ctx.send("🎟️ Ouverture avec un ticket !")
         elif game_price > 0:
-            if user_id not in self.balances or self.balances[user_id] < game_price:
+            if self.get_balance(user_id) < game_price:
                 await ctx.send(f"❌ Vous n'avez pas assez d'argent pour ouvrir ce lot. Prix : **{game_price}** pièces.")
                 return
-            self.balances[user_id] -= game_price
+            self.add_balance(user_id, -game_price)
         # Si game_price == 0, ouverture gratuite sans ticket
 
-        # Tirage au sort parmi tous les lots
-        prize = random.choice(self.config[lot_name]['lots'])
+        prize = random.choice(game['lots'])
 
-        # Progression des quêtes
-        with open(self.quete_path, 'r') as f:
-            self.quetes = json.load(f)
-
-        if panel_cfg["quests_enabled"] and lot_name in self.quetes:
-            quest = self.quetes[lot_name]
-            quest['progress'] = quest.get('progress', 0) + 1
-
-            if quest['progress'] >= quest['lot_count']:
-                await self._award_prize(ctx, quest['lot'], inventory)
-                quest['progress'] = 0
+        quest = self.get_quest(lot_name)
+        if panel_cfg["quests_enabled"] and quest is not None:
+            progress = self.increment_quest_progress(lot_name)
+            if progress >= quest['lot_count']:
+                await self._award_prize(ctx, quest['lot'])
+                self.reset_quest_progress(lot_name)
                 await ctx.send(f"🏆 Quête **{lot_name}** complétée ! Vous avez reçu votre récompense de quête.")
 
-            with open(self.quete_path, 'w') as f:
-                json.dump(self.quetes, f, indent=4)
-
-        # Attribuer le prix tiré au sort
-        await self._award_prize(ctx, prize, inventory)
+        await self._award_prize(ctx, prize)
 
         if not panel_cfg["announce_win_public"]:
             try:
@@ -401,12 +464,6 @@ class cmdjeu(commands.Cog):
 
         await self.send_game_log(ctx.guild, f"[JEUX] {ctx.author.mention} a ouvert {lot_name} et a recu: {prize}")
 
-        with open(self.inventory_path, 'w') as f:
-            json.dump(inventory, f, indent=4, ensure_ascii=False)
-        with open(self.balances_path, 'w') as f:
-            json.dump(self.balances, f, indent=4)
-
-
     @commands.command()
     async def deletegame(self, ctx):
         await ctx.send("Quel est le nom du jeu que vous voulez supprimer ?")
@@ -414,103 +471,70 @@ class cmdjeu(commands.Cog):
         if command_name is None:
             return
 
-        if command_name.content not in self.config:
+        if self.get_game(command_name.content) is None:
             await ctx.send("❌ Ce jeu n'existe pas.")
             return
 
-        del self.config[command_name.content]
-
-        with open(self.config_path, 'w') as f:
-            json.dump(self.config, f, indent=4)
+        self.remove_game(command_name.content)
 
         await ctx.send(f"✅ Le jeu **{command_name.content}** a été supprimé avec succès.")
 
-
     @commands.command()
     async def shop(self, ctx):
-        if not self.config:
+        games = self.list_games()
+        if not games:
             await ctx.send("Il n'y a actuellement aucun jeu enregistré.")
             return
 
         embed = Embed(title="🎰 Boutique des jeux", description="Voici la liste des jeux actuellement disponibles :", color=0x00ff00)
 
-        for command_name, game_info in self.config.items():
+        for command_name, game_info in games.items():
             game_details = f"Nombre de lots : {game_info['num_lots']}\n"
             for i, lot in enumerate(game_info['lots'], start=1):
                 for lot_type, lot_value in lot.items():
                     game_details += f"Lot {i} : {lot_type} — {lot_value}\n"
             price = game_info['game_price']
-            game_details += f"Prix : {'Gratuit' if price == '0' else f'{price} pièces'}"
+            game_details += f"Prix : {'Gratuit' if price == 0 else f'{price} pièces'}"
             embed.add_field(name=command_name, value=game_details, inline=False)
 
         await ctx.send(embed=embed)
 
-
     @commands.command()
     async def inventaire(self, ctx):
-        with open(self.inventory_path, 'r') as f:
-            inventory = json.load(f)
-
-        user_id = str(ctx.author.id)
-
-        if 'tickets' not in inventory:
-            await ctx.send("Votre inventaire est vide.")
-            return
-
-        user_tickets = [ticket for ticket in inventory['tickets'] if list(ticket.keys())[0] == user_id]
-
-        if not user_tickets:
+        ticket_counts = self.user_ticket_counts(ctx.author.id)
+        if not ticket_counts:
             await ctx.send("Votre inventaire est vide.")
             return
 
         embed = discord.Embed(title="🎒 Votre inventaire", color=0x00ff00)
-        ticket_counts = {}
-        for ticket in user_tickets:
-            game_name = list(ticket.values())[0]
-            ticket_counts[game_name] = ticket_counts.get(game_name, 0) + 1
-
         for game_name, count in ticket_counts.items():
             embed.add_field(name=f"🎟️ {game_name}", value=f"Quantité : {count}", inline=False)
 
         await ctx.send(embed=embed)
-
 
     @commands.command()
     async def clearinventory(self, ctx, user: discord.User = None):
         if user is None:
             user = ctx.author
 
-        with open(self.inventory_path, 'r') as f:
-            inventory = json.load(f)
-
-        if 'tickets' not in inventory:
-            await ctx.send("L'inventaire est déjà vide.")
-            return
-
-        user_tickets = [ticket for ticket in inventory['tickets'] if list(ticket.keys())[0] == str(user.id)]
-        if not user_tickets:
+        if not self.clear_user_tickets(user.id):
             await ctx.send("L'inventaire de cet utilisateur est déjà vide.")
             return
 
-        inventory['tickets'] = [ticket for ticket in inventory['tickets'] if list(ticket.keys())[0] != str(user.id)]
-
-        with open(self.inventory_path, 'w') as f:
-            json.dump(inventory, f, indent=4, ensure_ascii=False)
-
         await ctx.send(f"✅ L'inventaire de **{user.name}** a été effacé.")
-
 
     @commands.command()
     async def addquest(self, ctx):
-        if not self.config:
+        games = self.list_games()
+        if not games:
             await ctx.send("Il n'y a actuellement aucun lot enregistré.")
             return
 
-        await ctx.send("La quête est associée à quel jeu ? Jeux disponibles : " + ', '.join(self.config.keys()))
+        await ctx.send("La quête est associée à quel jeu ? Jeux disponibles : " + ', '.join(games.keys()))
         lot_name = await self._ask(ctx)
         if lot_name is None:
             return
-        while lot_name.content not in self.config:
+        while lot_name.content not in self.list_games():
             await ctx.send("Nom de jeu invalide. Veuillez entrer un nom de jeu existant.")
             lot_name = await self._ask(ctx)
             if lot_name is None:
@@ -545,14 +569,15 @@ class cmdjeu(commands.Cog):
                         return
                 valid_lot = True
             elif lot_type.content == 'ticket':
-                if not self.config:
+                games = self.list_games()
+                if not games:
                     await ctx.send("Impossible de créer un ticket car il n'y a aucun jeu. Veuillez choisir un autre type.")
                 else:
-                    await ctx.send("Veuillez choisir parmi les jeux suivants : " + ', '.join(self.config.keys()))
+                    await ctx.send("Veuillez choisir parmi les jeux suivants : " + ', '.join(games.keys()))
                     lot_value = await self._ask(ctx)
                     if lot_value is None:
                         return
-                    while lot_value.content not in self.config:
+                    while lot_value.content not in self.list_games():
                         await ctx.send("Nom de jeu invalide. Veuillez entrer un nom de jeu existant.")
                         lot_value = await self._ask(ctx)
                         if lot_value is None:
@@ -574,24 +599,8 @@ class cmdjeu(commands.Cog):
 
         lot = {lot_type.content: lot_value.content}
 
-        new_quest = {
-            "name": lot_name.content,
-            "lot_count": int(lot_count.content),
-            "lot": lot,
-            "progress": 0
-        }
-
-        with open(self.quete_path, 'r') as f:
-            data = json.load(f)
-
-        data[lot_name.content] = new_quest
-
-        with open(self.quete_path, 'w') as f:
-            json.dump(data, f, indent=4)
-
-        self.quetes = data
+        self.add_quest(lot_name.content, int(lot_count.content), lot)
         await ctx.send(f"✅ La quête pour le jeu **{lot_name.content}** a été ajoutée avec succès !")
-
 
     @commands.command()
     async def deletequete(self, ctx):
@@ -600,34 +609,23 @@ class cmdjeu(commands.Cog):
         if quest_name is None:
             return
 
-        with open(self.quete_path, 'r') as f:
-            quests = json.load(f)
-
-        if quest_name.content not in quests:
+        if self.get_quest(quest_name.content) is None:
             await ctx.send("❌ Cette quête n'existe pas.")
             return
 
-        del quests[quest_name.content]
-
-        with open(self.quete_path, 'w') as f:
-            json.dump(quests, f, indent=4)
-
-        self.quetes = quests
+        self.remove_quest(quest_name.content)
         await ctx.send(f"✅ La quête **{quest_name.content}** a été supprimée avec succès.")
-
 
     @commands.command()
     async def quest(self, ctx):
-        with open(self.quete_path, 'r') as f:
-            quests = json.load(f)
-
+        quests = self.list_quests()
         if not quests:
             await ctx.send("Aucune quête n'est actuellement disponible.")
             return
 
         embed = discord.Embed(title="📋 Quêtes actives", color=0x00ff00)
         for quest_name, quest in quests.items():
-            progress = quest.get('progress', 0)
+            progress = quest['progress']
             lot_count = quest['lot_count']
             reward = ', '.join([f"{lot_type} — {lot_value}" for lot_type, lot_value in quest['lot'].items()])
             quest_details = (
@@ -639,13 +637,10 @@ class cmdjeu(commands.Cog):
 
         await ctx.send(embed=embed)
 
-
     @commands.command()
     async def config_quete(self, ctx):
         """Affiche la configuration complète de toutes les quêtes (admin)."""
-        with open(self.quete_path, 'r') as f:
-            quests = json.load(f)
-
+        quests = self.list_quests()
         if not quests:
             await ctx.send("Aucune quête n'est configurée. Utilisez `,addquest` pour en créer une.")
             return
@@ -656,7 +651,7 @@ class cmdjeu(commands.Cog):
             color=0xffa500
         )
         for quest_name, quest in quests.items():
-            progress = quest.get('progress', 0)
+            progress = quest['progress']
             lot_count = quest['lot_count']
             reward = ', '.join([f"{lot_type} — {lot_value}" for lot_type, lot_value in quest['lot'].items()])
             details = (
@@ -669,5 +664,5 @@ class cmdjeu(commands.Cog):
         await ctx.send(embed=embed)
 
 
-def setup(bot):
-    bot.add_cog(cmdjeu(bot))
+def setup(bot, db):
+    bot.add_cog(cmdjeu(bot, db))

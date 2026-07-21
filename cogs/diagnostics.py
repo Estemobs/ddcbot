@@ -1,6 +1,4 @@
 import importlib
-import json
-import os
 
 import discord
 from discord.ext import commands
@@ -92,43 +90,36 @@ REQUIRED_MODULES = [
     "curl_cffi",
 ]
 
-JSON_FILES = [
-    "balances.json",
-    "income.json",
-    "inventaire.json",
-    "notifications.json",
-    "quete.json",
-    "gameconfig.json",
-    "workconfig.json",
-    "notes.json",
-]
-
-OPTIONAL_JSON_FILES = [
-    "moderation_config.json",
-    "economy_config.json",
-    "income_config.json",
-    "game_panel_config.json",
-    "permission_config.json",
-    "warn_history.json",
-    "logs_config.json",
+EXPECTED_TABLES = [
+    "balances",
+    "economy_config",
+    "role_income",
+    "income_config",
+    "work_settings",
+    "work_state",
+    "games",
+    "quests",
+    "inventory_tickets",
+    "game_panel_config",
+    "moderation_config",
+    "warn_counts",
+    "permission_config",
+    "logs_config",
+    "notes",
+    "notifications",
 ]
 
 
 class cmddiagnostics(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, db):
         self.bot = bot
-        self.base_dir = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data')
+        self.db = db
 
-    def _check_json_file(self, file_name: str):
-        path = os.path.join(self.base_dir, file_name)
-        if not os.path.exists(path):
-            return False, "absent"
-        try:
-            with open(path, "r") as f:
-                json.load(f)
-            return True, "ok"
-        except Exception as exc:
-            return False, f"json invalide: {exc}"
+    def _table_exists(self, table_name: str) -> bool:
+        row = self.db.fetchone(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?", (table_name,)
+        )
+        return row is not None
 
     def run_selftest(self, mode: str = "basic"):
         checks_ok = 0
@@ -166,33 +157,17 @@ class cmddiagnostics(commands.Cog):
         else:
             details.append("[KO] Modules manquants/invalides: " + " | ".join(module_issues))
 
-        json_issues = []
-        for file_name in JSON_FILES:
+        table_issues = []
+        for table_name in EXPECTED_TABLES:
             checks_total += 1
-            ok, msg = self._check_json_file(file_name)
-            if ok:
+            if self._table_exists(table_name):
                 checks_ok += 1
             else:
-                json_issues.append(f"{file_name} ({msg})")
-        if not json_issues:
-            details.append("[OK] JSON obligatoires")
+                table_issues.append(table_name)
+        if not table_issues:
+            details.append("[OK] Tables SQLite")
         else:
-            details.append("[KO] JSON obligatoires: " + " | ".join(json_issues))
-
-        optional_issues = []
-        for file_name in OPTIONAL_JSON_FILES:
-            path = os.path.join(self.base_dir, file_name)
-            if os.path.exists(path):
-                checks_total += 1
-                ok, msg = self._check_json_file(file_name)
-                if ok:
-                    checks_ok += 1
-                else:
-                    optional_issues.append(f"{file_name} ({msg})")
-        if optional_issues:
-            details.append("[KO] JSON optionnels invalides: " + " | ".join(optional_issues))
-        else:
-            details.append("[OK] JSON optionnels")
+            details.append("[KO] Tables manquantes: " + ", ".join(table_issues))
 
         if mode == "deep":
             callback_issues = []
@@ -224,20 +199,14 @@ class cmddiagnostics(commands.Cog):
             else:
                 details.append("[OK] Structure checks commandes")
 
-            readability_issues = []
-            for file_name in JSON_FILES + OPTIONAL_JSON_FILES:
-                path = os.path.join(self.base_dir, file_name)
-                if os.path.exists(path):
-                    checks_total += 1
-                    if os.access(path, os.R_OK):
-                        checks_ok += 1
-                    else:
-                        readability_issues.append(f"{file_name}: non lisible")
-
-            if readability_issues:
-                details.append("[KO] Permissions fichiers: " + " | ".join(readability_issues))
+            checks_total += 1
+            integrity_row = self.db.fetchone("PRAGMA integrity_check")
+            integrity_status = integrity_row[0] if integrity_row else "inconnue"
+            if integrity_status == "ok":
+                checks_ok += 1
+                details.append("[OK] Integrite base SQLite")
             else:
-                details.append("[OK] Permissions fichiers")
+                details.append(f"[KO] Integrite base SQLite: {integrity_status}")
 
         return {
             "checks_ok": checks_ok,
@@ -285,5 +254,5 @@ class cmddiagnostics(commands.Cog):
             await ctx.send(line)
 
 
-def setup(bot):
-    bot.add_cog(cmddiagnostics(bot))
+def setup(bot, db):
+    bot.add_cog(cmddiagnostics(bot, db))

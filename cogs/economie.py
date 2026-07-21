@@ -1,6 +1,4 @@
 import discord
-import json
-import os
 from discord.ext import commands
 
 
@@ -42,42 +40,35 @@ class EconomyPanelView(discord.ui.View):
     @discord.ui.button(label="Toggle transferts", style=discord.ButtonStyle.primary, row=0)
     async def toggle_transfers(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_eco_config(self.guild_id)
-        cfg["allow_transfers"] = not cfg["allow_transfers"]
-        self.cog.save_eco_config()
+        self.cog.update_eco_config(self.guild_id, allow_transfers=not cfg["allow_transfers"])
         await self.refresh(interaction)
 
     @discord.ui.button(label="Max transfert +500", style=discord.ButtonStyle.secondary, row=0)
     async def max_plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_eco_config(self.guild_id)
-        cfg["max_transfer"] += 500
-        self.cog.save_eco_config()
+        self.cog.update_eco_config(self.guild_id, max_transfer=cfg["max_transfer"] + 500)
         await self.refresh(interaction)
 
     @discord.ui.button(label="Max transfert -500", style=discord.ButtonStyle.secondary, row=0)
     async def max_minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_eco_config(self.guild_id)
-        cfg["max_transfer"] = max(1, cfg["max_transfer"] - 500)
-        self.cog.save_eco_config()
+        self.cog.update_eco_config(self.guild_id, max_transfer=max(1, cfg["max_transfer"] - 500))
         await self.refresh(interaction)
 
     @discord.ui.button(label="Toggle solde negatif", style=discord.ButtonStyle.primary, row=1)
     async def toggle_negative(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_eco_config(self.guild_id)
-        cfg["allow_negative_balances"] = not cfg["allow_negative_balances"]
-        self.cog.save_eco_config()
+        self.cog.update_eco_config(self.guild_id, allow_negative_balances=not cfg["allow_negative_balances"])
         await self.refresh(interaction)
 
     @discord.ui.button(label="Canal logs = ici", style=discord.ButtonStyle.secondary, row=1)
     async def set_log_here(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cfg = self.cog.get_eco_config(self.guild_id)
-        cfg["log_channel_id"] = interaction.channel_id
-        self.cog.save_eco_config()
+        self.cog.update_eco_config(self.guild_id, log_channel_id=interaction.channel_id)
         await self.refresh(interaction)
 
     @discord.ui.button(label="Reset", style=discord.ButtonStyle.danger, row=1)
     async def reset_defaults(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.cog.eco_config[str(self.guild_id)] = dict(DEFAULT_ECO_CONFIG)
-        self.cog.save_eco_config()
+        self.cog.reset_eco_config(self.guild_id)
         await self.refresh(interaction)
 
     @discord.ui.button(label="Fermer", style=discord.ButtonStyle.danger, row=2)
@@ -89,48 +80,95 @@ class EconomyPanelView(discord.ui.View):
         embed.set_footer(text="Panneau ferme")
         await interaction.response.edit_message(embed=embed, view=self)
 
+
 class cmdeco(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, db):
         self.bot = bot
+        self.db = db
         self.intents = discord.Intents.all()
 
-        self.tags_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'balances.json')
-        self.eco_config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'economy_config.json')
+    # --- balances ---
 
-        # Charger les données depuis le fichier 'balances.json'
-        if not os.path.exists(self.tags_path):
-            with open(self.tags_path, 'w') as f:
-                json.dump({}, f, indent=4)
-        with open(self.tags_path, 'r') as f:
-            self.balances = json.load(f)
+    def has_account(self, user_id: int) -> bool:
+        return self.db.fetchone("SELECT 1 FROM balances WHERE user_id = ?", (user_id,)) is not None
 
-        self.eco_config = self.load_eco_config()
+    def get_balance(self, user_id: int) -> float:
+        row = self.db.fetchone("SELECT amount FROM balances WHERE user_id = ?", (user_id,))
+        return row["amount"] if row else 0.0
 
-    def load_eco_config(self):
-        if not os.path.exists(self.eco_config_path):
-            return {}
-        try:
-            with open(self.eco_config_path, 'r') as f:
-                data = json.load(f)
-            return data if isinstance(data, dict) else {}
-        except (json.JSONDecodeError, OSError):
-            return {}
+    def create_account(self, user_id: int, amount: float = 0.0):
+        self.db.execute("INSERT OR IGNORE INTO balances (user_id, amount) VALUES (?, ?)", (user_id, amount))
 
-    def save_eco_config(self):
-        with open(self.eco_config_path, 'w') as f:
-            json.dump(self.eco_config, f, indent=4)
+    def add_balance(self, user_id: int, delta: float):
+        self.db.execute(
+            "INSERT INTO balances (user_id, amount) VALUES (?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET amount = amount + excluded.amount",
+            (user_id, delta),
+        )
 
-    def get_eco_config(self, guild_id: int):
-        key = str(guild_id)
-        if key not in self.eco_config or not isinstance(self.eco_config[key], dict):
-            self.eco_config[key] = dict(DEFAULT_ECO_CONFIG)
-            self.save_eco_config()
-        else:
-            for cfg_key, cfg_default in DEFAULT_ECO_CONFIG.items():
-                if cfg_key not in self.eco_config[key]:
-                    self.eco_config[key][cfg_key] = cfg_default
-            self.save_eco_config()
-        return self.eco_config[key]
+    def set_balance(self, user_id: int, amount: float):
+        self.db.execute(
+            "INSERT INTO balances (user_id, amount) VALUES (?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET amount = excluded.amount",
+            (user_id, amount),
+        )
+
+    # --- config economie par serveur ---
+
+    def get_eco_config(self, guild_id: int) -> dict:
+        self.db.execute(
+            "INSERT OR IGNORE INTO economy_config "
+            "(guild_id, allow_transfers, max_transfer, allow_negative_balances, log_channel_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                guild_id,
+                int(DEFAULT_ECO_CONFIG["allow_transfers"]),
+                DEFAULT_ECO_CONFIG["max_transfer"],
+                int(DEFAULT_ECO_CONFIG["allow_negative_balances"]),
+                DEFAULT_ECO_CONFIG["log_channel_id"],
+            ),
+        )
+        row = self.db.fetchone(
+            "SELECT allow_transfers, max_transfer, allow_negative_balances, log_channel_id "
+            "FROM economy_config WHERE guild_id = ?",
+            (guild_id,),
+        )
+        return {
+            "allow_transfers": bool(row["allow_transfers"]),
+            "max_transfer": row["max_transfer"],
+            "allow_negative_balances": bool(row["allow_negative_balances"]),
+            "log_channel_id": row["log_channel_id"],
+        }
+
+    def update_eco_config(self, guild_id: int, **fields):
+        self.get_eco_config(guild_id)
+        assignments = []
+        values = []
+        for key, value in fields.items():
+            assignments.append(f"{key} = ?")
+            values.append(int(value) if isinstance(value, bool) else value)
+        values.append(guild_id)
+        self.db.execute(
+            f"UPDATE economy_config SET {', '.join(assignments)} WHERE guild_id = ?",
+            values,
+        )
+
+    def reset_eco_config(self, guild_id: int):
+        self.db.execute(
+            "INSERT INTO economy_config "
+            "(guild_id, allow_transfers, max_transfer, allow_negative_balances, log_channel_id) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(guild_id) DO UPDATE SET allow_transfers=excluded.allow_transfers, "
+            "max_transfer=excluded.max_transfer, allow_negative_balances=excluded.allow_negative_balances, "
+            "log_channel_id=excluded.log_channel_id",
+            (
+                guild_id,
+                int(DEFAULT_ECO_CONFIG["allow_transfers"]),
+                DEFAULT_ECO_CONFIG["max_transfer"],
+                int(DEFAULT_ECO_CONFIG["allow_negative_balances"]),
+                DEFAULT_ECO_CONFIG["log_channel_id"],
+            ),
+        )
 
     async def send_eco_log(self, guild: discord.Guild, message: str):
         cfg = self.get_eco_config(guild.id)
@@ -166,74 +204,52 @@ class cmdeco(commands.Cog):
         view = EconomyPanelView(self, ctx.guild.id, ctx.author.id)
         await ctx.send(embed=embed, view=view)
 
-
-
     @commands.command()
     async def mybalance(self, ctx):
         member = ctx.author
-        if str(member.id) not in self.balances:
-            self.balances[str(member.id)] = 0
-            with open(self.tags_path, 'w') as f:
-                json.dump(self.balances, f, indent=4)
-            await ctx.send(f'Votre solde est de **0.00** pièces.')
+        if not self.has_account(member.id):
+            self.create_account(member.id, 0)
+            await ctx.send('Votre solde est de **0.00** pièces.')
         else:
-            await ctx.send(f'Votre solde est de **{self.balances[str(member.id)]:.2f}** pièces.')
+            await ctx.send(f'Votre solde est de **{self.get_balance(member.id):.2f}** pièces.')
 
     @commands.command()
     async def balance(self, ctx, member: discord.Member):
-            # Vérifier si l'utilisateur a déjà un compte
-            if str(member.id) not in self.balances:
-                # Créer un compte pour l'utilisateur avec un solde de 0
-                self.balances[str(member.id)] = 0
-                with open(self.tags_path, 'w') as f:
-                    json.dump(self.balances, f, indent=4)
-                await ctx.send(f'Un compte a été créé pour {member.mention} avec un solde de {self.balances[str(member.id)]:.2f}.')
-            else:
-                # Afficher le solde de l'utilisateur
-                await ctx.send(f'{member.mention} a un solde de {self.balances[str(member.id)]:.2f}.')
-
+        if not self.has_account(member.id):
+            self.create_account(member.id, 0)
+            await ctx.send(f'Un compte a été créé pour {member.mention} avec un solde de {self.get_balance(member.id):.2f}.')
+        else:
+            await ctx.send(f'{member.mention} a un solde de {self.get_balance(member.id):.2f}.')
 
     @commands.command()
     async def addmoney(self, ctx, member: discord.Member, amount: float):
         if amount <= 0:
             await ctx.send("Le montant doit etre superieur a 0.")
             return
-        # Récupérer le solde actuel de l'utilisateur
-        if str(member.id) not in self.balances:
-            # Si l'utilisateur n'a pas de compte, créer un compte avec le montant spécifié
-            self.balances[str(member.id)] = amount
-            with open(self.tags_path, 'w') as f:
-                json.dump(self.balances, f, indent=4)
+        if not self.has_account(member.id):
+            self.create_account(member.id, amount)
             await ctx.send(f'Un compte a été créé pour {member.mention} avec un solde de {amount:.2f}.')
         else:
-            # Ajouter le montant spécifié au solde actuel de l'utilisateur
-            self.balances[str(member.id)] += amount
-            with open(self.tags_path, 'w') as f:
-                json.dump(self.balances, f, indent=4)
-            await ctx.send(f'{amount:.2f} a été ajouté au compte de {member.mention}. Nouveau solde : {self.balances[str(member.id)]:.2f}.')
+            self.add_balance(member.id, amount)
+            await ctx.send(f'{amount:.2f} a été ajouté au compte de {member.mention}. Nouveau solde : {self.get_balance(member.id):.2f}.')
         await self.send_eco_log(ctx.guild, f"[ECO] +{amount:.2f} pour {member.mention} par {ctx.author.mention}")
-
 
     @commands.command()
     async def removemoney(self, ctx, member: discord.Member, amount: float):
         if amount <= 0:
             await ctx.send("Le montant doit etre superieur a 0.")
             return
-        # Vérifier si l'utilisateur a un compte
-        if str(member.id) not in self.balances:
+        if not self.has_account(member.id):
             await ctx.send(f"{member.mention} n'a pas de compte.")
+            return
+        cfg = self.get_eco_config(ctx.guild.id)
+        current = self.get_balance(member.id)
+        if cfg["allow_negative_balances"] or current >= amount:
+            self.add_balance(member.id, -amount)
+            await ctx.send(f'{amount:.2f} a été retiré du compte de {member.mention}. Nouveau solde : {self.get_balance(member.id):.2f}.')
+            await self.send_eco_log(ctx.guild, f"[ECO] -{amount:.2f} pour {member.mention} par {ctx.author.mention}")
         else:
-            cfg = self.get_eco_config(ctx.guild.id)
-            # Vérifier si l'utilisateur a suffisamment de fonds pour retirer le montant spécifié
-            if cfg["allow_negative_balances"] or self.balances[str(member.id)] >= amount:
-                # Retirer le montant spécifié du solde actuel de l'utilisateur
-                self.balances[str(member.id)] -= amount
-                with open(self.tags_path, 'w') as f:
-                    json.dump(self.balances, f, indent=4)
-                await ctx.send(f'{amount:.2f} a été retiré du compte de {member.mention}. Nouveau solde : {self.balances[str(member.id)]:.2f}.')
-                await self.send_eco_log(ctx.guild, f"[ECO] -{amount:.2f} pour {member.mention} par {ctx.author.mention}")
-            else:
-                await ctx.send(f"{member.mention} n'a pas suffisamment de fonds pour retirer {amount:.2f}. Solde actuel : {self.balances[str(member.id)]:.2f}.")
+            await ctx.send(f"{member.mention} n'a pas suffisamment de fonds pour retirer {amount:.2f}. Solde actuel : {current:.2f}.")
 
     @commands.command()
     async def paye(self, ctx, member: discord.Member, amount: float):
@@ -247,82 +263,49 @@ class cmdeco(commands.Cog):
         if amount > cfg["max_transfer"]:
             await ctx.send(f"Montant trop eleve. Maximum autorise: {cfg['max_transfer']}.")
             return
-        # Vérifier si l'utilisateur a un compte
-        if str(ctx.author.id) not in self.balances:
-            await ctx.send(f"Vous n'avez pas de compte.")
-        else:
-            # Vérifier si l'utilisateur a suffisamment d'argent pour donner le montant spécifié
-            if self.balances[str(ctx.author.id)] < amount:
-                await ctx.send(f"Vous n'avez pas suffisamment d'argent sur votre compte.")
-            else:
-                # Ajouter le montant spécifié au compte de l'utilisateur cible
-                if str(member.id) not in self.balances:
-                    self.balances[str(member.id)] = amount
-                else:
-                    self.balances[str(member.id)] += amount
-                # Retirer le montant spécifié du compte de l'utilisateur source
-                self.balances[str(ctx.author.id)] -= amount
-                with open(self.tags_path, 'w') as f:
-                    json.dump(self.balances, f, indent=4)
-                await ctx.send(f"{amount:.2f} a été donné à {member.mention}. Votre nouveau solde est : {self.balances[str(ctx.author.id)]:.2f}.")
-                await self.send_eco_log(ctx.guild, f"[ECO] transfert {amount:.2f} de {ctx.author.mention} vers {member.mention}")
-
+        if not self.has_account(ctx.author.id):
+            await ctx.send("Vous n'avez pas de compte.")
+            return
+        if self.get_balance(ctx.author.id) < amount:
+            await ctx.send("Vous n'avez pas suffisamment d'argent sur votre compte.")
+            return
+        self.add_balance(member.id, amount)
+        self.add_balance(ctx.author.id, -amount)
+        await ctx.send(f"{amount:.2f} a été donné à {member.mention}. Votre nouveau solde est : {self.get_balance(ctx.author.id):.2f}.")
+        await self.send_eco_log(ctx.guild, f"[ECO] transfert {amount:.2f} de {ctx.author.mention} vers {member.mention}")
 
     @commands.command()
     async def leaderboard(self, ctx):
-        # Récupérer les soldes de tous les utilisateurs ayant un compte
-        filtered_balances = {k: v for k, v in self.balances.items() if k.isdigit() and v > 0}
-        sorted_balances = sorted(filtered_balances.items(), key=lambda x: x[1], reverse=True)[:10] # Prendre les 10 premiers résultats
-        # Créer l'embed
+        rows = self.db.fetchall("SELECT user_id, amount FROM balances WHERE amount > 0 ORDER BY amount DESC LIMIT 10")
         embed = discord.Embed(title="Top 10 des utilisateurs les plus riches :", color=0xffd700)
-        for i, (user_id, balance) in enumerate(sorted_balances):
-            member = ctx.guild.get_member(int(user_id))
+        for i, row in enumerate(rows):
+            member = ctx.guild.get_member(row["user_id"])
             if member:
-                embed.add_field(name=f"{i+1}. {member.display_name}", value=f"{balance:.2f}", inline=False)
+                embed.add_field(name=f"{i+1}. {member.display_name}", value=f"{row['amount']:.2f}", inline=False)
         await ctx.send(embed=embed)
-
 
     @commands.command()
     async def clean_leaderboard(self, ctx):
-        # Récupérer la liste des utilisateurs actuels du serveur
-        server_users = [member.id for member in ctx.guild.members]
-        
-        # Récupérer le leaderboard actuel
-        with open(self.tags_path, 'r') as f:
-            self.balances = json.load(f)
-            
-        # Créer une copie du leaderboard pour itérer sans danger de modification
-        for user_id in list(self.balances.keys()):
-            # Vérifier si l'utilisateur n'est plus sur le serveur
-            if int(user_id) not in server_users:
-                # Retirer l'utilisateur du leaderboard
-                del self.balances[user_id]
-                
-        # Enregistrer les modifications au fichier
-        with open(self.tags_path, 'w') as f:
-            json.dump(self.balances, f, indent=4)
-            
+        server_user_ids = {member.id for member in ctx.guild.members}
+        rows = self.db.fetchall("SELECT user_id FROM balances")
+        for row in rows:
+            if row["user_id"] not in server_user_ids:
+                self.db.execute("DELETE FROM balances WHERE user_id = ?", (row["user_id"],))
         await ctx.send("Le leaderboard a été nettoyé.")
 
     @commands.command()
     async def reset_money(self, ctx, member: discord.Member):
-        # Vérifier si l'utilisateur a un compte
-        if str(member.id) not in self.balances:
+        if not self.has_account(member.id):
             await ctx.send(f"{member.mention} n'a pas de compte.")
         else:
-            # Réinitialiser le solde de l'utilisateur
-            self.balances[str(member.id)] = 0.0
-            with open(self.tags_path, 'w') as f:
-                json.dump(self.balances, f, indent=4)
+            self.set_balance(member.id, 0.0)
             await ctx.send(f"Le solde de {member.mention} a été réinitialisé.")
 
     @commands.command()
     async def reset_economy(self, ctx):
-        for user_id in self.balances:
-            self.balances[user_id] = 0.0
-        with open(self.tags_path, 'w') as f:
-            json.dump(self.balances, f, indent=4)
+        self.db.execute("UPDATE balances SET amount = 0.0")
         await ctx.send("Les comptes de tous les utilisateurs ont été remis à zéro.")
 
-def setup(bot):
-    bot.add_cog(cmdeco(bot))
+
+def setup(bot, db):
+    bot.add_cog(cmdeco(bot, db))

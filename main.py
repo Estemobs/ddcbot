@@ -4,6 +4,7 @@ import json
 import os
 import traceback
 from discord.ext import commands
+from data.db import Database
 from cogs.Notifrss import cmdrss
 from cogs.utility import cmdutility
 from cogs.moderation import cmdmoderation
@@ -20,6 +21,7 @@ from cogs.notes import cmdnotes
 from cogs.changelog import cmdchangelog
 
 bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
+db = Database()
 
 ADMIN_COMMANDS = {
     "modpanel", "warnconfig", "permpanel", "warn", "warns", "clearwarns", "ban", "kick", "clear", "unban",
@@ -30,15 +32,14 @@ ADMIN_COMMANDS = {
 }
 
 
-def load_permission_config():
-    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data", "permission_config.json")
-    if not os.path.exists(path):
+def load_permission_config(guild_id: int):
+    row = db.fetchone("SELECT config_json FROM permission_config WHERE guild_id = ?", (guild_id,))
+    if row is None:
         return {}
     try:
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = json.loads(row["config_json"])
         return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError:
         return {}
 
 
@@ -55,8 +56,7 @@ async def admin_role_gate(ctx):
     if member.guild_permissions.administrator or member.guild_permissions.manage_guild:
         return True
 
-    config = load_permission_config()
-    guild_cfg = config.get(str(ctx.guild.id), {}) if isinstance(config, dict) else {}
+    guild_cfg = load_permission_config(ctx.guild.id)
     admin_roles = guild_cfg.get("admin_roles", []) if isinstance(guild_cfg, dict) else []
     command_roles = guild_cfg.get("command_roles", {}) if isinstance(guild_cfg, dict) else {}
     allowed_roles = command_roles.get(command_name, admin_roles)
@@ -167,20 +167,20 @@ def load_token():
 
 async def main():
     token = load_token()
-    await bot.add_cog(cmdrss(bot))
+    await bot.add_cog(cmdrss(bot, db))
     await bot.add_cog(cmdutility(bot))
-    await bot.add_cog(cmdmoderation(bot))
+    await bot.add_cog(cmdmoderation(bot, db))
     await bot.add_cog(cmdanim(bot))
-    await bot.add_cog(cmdincome(bot))
-    await bot.add_cog(cmdeco(bot))
-    await bot.add_cog(cmdwork(bot))
-    await bot.add_cog(cmdjeu(bot))
+    await bot.add_cog(cmdincome(bot, db))
+    await bot.add_cog(cmdeco(bot, db))
+    await bot.add_cog(cmdwork(bot, db))
+    await bot.add_cog(cmdjeu(bot, db))
     await bot.add_cog(cmdhelp(bot))
     await bot.add_cog(cmdai(bot))
-    await bot.add_cog(cmdlogs(bot))
-    await bot.add_cog(cmdnotes(bot))
+    await bot.add_cog(cmdlogs(bot, db))
+    await bot.add_cog(cmdnotes(bot, db))
     await bot.add_cog(cmdchangelog(bot))
-    await bot.add_cog(cmddiagnostics(bot))
+    await bot.add_cog(cmddiagnostics(bot, db))
     await bot.start(token)
 
 asyncio.run(main())

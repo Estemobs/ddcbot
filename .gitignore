@@ -4,7 +4,12 @@ venv/
 .venv/
 __pycache__/
 
-# Données de jeu en production (persistées via volumes Docker, ne doivent pas être versionnées)
+# Base SQLite en production (persistée via volumes Docker, ne doit pas être versionnée)
+data/ddcbot.sqlite3
+data/ddcbot.sqlite3-wal
+data/ddcbot.sqlite3-shm
+
+# Anciens fichiers JSON plats (remplacés par la base SQLite, conserves comme sauvegarde locale)
 data/balances.json
 data/inventaire.json
 data/income.json
@@ -13,8 +18,6 @@ data/warnconfig.json
 data/notifications.json
 data/workconfig.json
 data/notes.json
-
-# Configs par serveur générées/modifiées à l'exécution (contiennent de vrais IDs Discord)
 data/economy_config.json
 data/gameconfig.json
 data/moderation_config.json

@@ -2,38 +2,52 @@ import asyncio
 import discord
 import json
 import requests
-import traceback
-import os
-import aiohttp
 from datetime import datetime
 from io import BytesIO
 from discord.ext import commands
 
+
 class cmdrss(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, db):
         self.bot = bot
+        self.db = db
         self.intents = discord.Intents.all()
-        self.notifications_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'notifications.json')
         self.notification_lock = asyncio.Lock()
         self._notification_task = None
-       
-    def _load_notifications(self):
-        try:
-            with open(self.notifications_path, "r") as f:
-                notifications = json.load(f)
-            return notifications if isinstance(notifications, list) else []
-        except (json.JSONDecodeError, FileNotFoundError):
-            return []
 
-    def _save_notifications(self, notifications):
-        with open(self.notifications_path, "w") as f:
-            json.dump(notifications, f, indent=2)
-
-    def _remove_user_notifications_for_show(self, notifications, user_id, show_name):
+    def list_notifications(self) -> list:
+        rows = self.db.fetchall("SELECT id, show_name, season, number, airdate, user_id FROM notifications")
         return [
-            notification for notification in notifications
-            if not (notification.get("user_id") == user_id and notification.get("show_name") == show_name)
+            {
+                "id": row["id"],
+                "show_name": row["show_name"],
+                "season": row["season"],
+                "number": row["number"],
+                "airdate": row["airdate"],
+                "user_id": row["user_id"],
+            }
+            for row in rows
         ]
+
+    def add_notification(self, show_name, season, number, airdate, user_id):
+        self.db.execute(
+            "INSERT INTO notifications (show_name, season, number, airdate, user_id) VALUES (?, ?, ?, ?, ?)",
+            (show_name, season, number, airdate, user_id),
+        )
+
+    def delete_notification(self, notification_id: int):
+        self.db.execute("DELETE FROM notifications WHERE id = ?", (notification_id,))
+
+    def update_notification(self, notification_id: int, season, number, airdate):
+        self.db.execute(
+            "UPDATE notifications SET season = ?, number = ?, airdate = ? WHERE id = ?",
+            (season, number, airdate, notification_id),
+        )
+
+    def delete_user_notifications_for_show(self, user_id: int, show_name: str):
+        self.db.execute(
+            "DELETE FROM notifications WHERE user_id = ? AND show_name = ?", (user_id, show_name)
+        )
 
     def _compact_notifications(self, notifications):
         compacted = {}
@@ -104,13 +118,16 @@ class cmdrss(commands.Cog):
 
     async def check_notifications(self):
         async with self.notification_lock:
-            original_notifications = self._load_notifications()
-            notifications = self._compact_notifications(original_notifications)
-            notifications_to_send = {}
-            updated_notifications = []
-            changed = len(notifications) != len(original_notifications)
+            all_notifications = self.list_notifications()
+            compacted = self._compact_notifications(all_notifications)
+            keep_ids = {n["id"] for n in compacted}
+            for n in all_notifications:
+                if n["id"] not in keep_ids:
+                    self.delete_notification(n["id"])
 
-            for notification in notifications:
+            notifications_to_send = {}
+
+            for notification in compacted:
                 show_name = notification["show_name"]
                 season = notification["season"]
                 number = notification["number"]
@@ -118,7 +135,7 @@ class cmdrss(commands.Cog):
                 try:
                     airdate = datetime.fromisoformat(notification["airdate"])
                 except ValueError:
-                    changed = True
+                    self.delete_notification(notification["id"])
                     continue
 
                 now = datetime.now()
@@ -130,13 +147,14 @@ class cmdrss(commands.Cog):
 
                     next_notification = await self._get_next_episode(show_name, user_id)
                     if next_notification:
-                        updated_notifications.append(next_notification)
-                    changed = True
-                else:
-                    updated_notifications.append(notification)
-
-            if changed:
-                self._save_notifications(updated_notifications)
+                        self.update_notification(
+                            notification["id"],
+                            next_notification["season"],
+                            next_notification["number"],
+                            next_notification["airdate"],
+                        )
+                    else:
+                        self.delete_notification(notification["id"])
 
             # Envoie les notifications par utilisateur pour éviter les doublons et le mélange des messages
             for user_id, messages in notifications_to_send.items():
@@ -150,22 +168,20 @@ class cmdrss(commands.Cog):
         while True:
             await self.check_notifications()
             await asyncio.sleep(3600)
-        
 
     @commands.Cog.listener()
     async def on_ready(self):
-         if self._notification_task is None or self._notification_task.done():
+        if self._notification_task is None or self._notification_task.done():
             self._notification_task = asyncio.create_task(self._notification_loop())
-            
-            
-    #commande pour créer un abonnement 
+
+    # commande pour créer un abonnement
     @commands.command()
     async def subscribe(self, ctx):
         # ask user for show name
         await ctx.send("Entrez le nom d'une série / film / anime:")
         msg = await self.bot.wait_for('message', check=lambda message: message.author == ctx.author)
         show_name = msg.content
-        
+
         # search for show
         search_url = f'http://api.tvmaze.com/search/shows?q={show_name}'
         search_response = requests.get(search_url)
@@ -176,7 +192,7 @@ class cmdrss(commands.Cog):
             await ctx.send("Aucune série / film / anime trouvée.")
             return
 
-    # display search results
+        # display search results
         options = []
         for i, result in enumerate(search_results):
             name = result['show']['name']
@@ -195,7 +211,7 @@ class cmdrss(commands.Cog):
                 options.append(option)
             else:
                 await ctx.send(f"Option {i+1} est un doublon et a été ignoré.")
-                
+
         # ask user to select an option
         await ctx.send("Sélectionnez un numéro:")
         msg = await self.bot.wait_for('message', check=lambda message: message.author == ctx.author)
@@ -209,9 +225,7 @@ class cmdrss(commands.Cog):
         options = list(options)
         selected_option = options[choice-1]
         show_name = selected_option[0]
-        network = selected_option[1]
 
-        
         # find show by name
         show_url = f'http://api.tvmaze.com/singlesearch/shows?q={show_name}&embed=episodes'
         show_response = requests.get(show_url)
@@ -248,111 +262,87 @@ class cmdrss(commands.Cog):
         if no_episodes:
             await ctx.send("Aucun épisode à venir.")
 
-        notifications = self._compact_notifications(self._load_notifications())
-        notifications = [
-            notification for notification in notifications
-            if not (notification["user_id"] == ctx.author.id and notification["show_name"] == show_name)
-        ]
-
         next_episode = await self._get_next_episode(show_name, ctx.author.id)
+        async with self.notification_lock:
+            self.delete_user_notifications_for_show(ctx.author.id, show_name)
+            if next_episode:
+                self.add_notification(
+                    next_episode["show_name"], next_episode["season"], next_episode["number"],
+                    next_episode["airdate"], next_episode["user_id"],
+                )
+
         if next_episode:
-            notifications.append(next_episode)
-            self._save_notifications(notifications)
             await ctx.send(f"Je vous notifierai en message privé lorsque les nouveaux épisodes de {show_name} sortiront.")
         else:
-            self._save_notifications(notifications)
             await ctx.send("Aucun épisode à venir.")
-            
 
-    #commande pour voir la liste des notfications 
+    # commande pour voir la liste des notfications
     @commands.command()
     async def notifications(self, ctx):
-        user_id = ctx.author.id  # Récupère l'ID de l'utilisateur
-        found = False  # Variable pour indiquer si l'ID a été trouvé dans le fichier JSON
+        user_id = ctx.author.id
+        all_notifications = self.list_notifications()
 
-        # Ouvre le fichier JSON
-        notifications = self._load_notifications()
-
-        # Recherche de l'ID dans la liste des notifications
         found_notifications = []
         seen_show_names = set()
-        for notification in notifications:
+        for notification in all_notifications:
             show_name = notification.get('show_name')
             if notification.get('user_id') == user_id and show_name not in seen_show_names:
-                found = True
                 seen_show_names.add(show_name)
                 found_notifications.append(notification)
 
-        # Envoie une réponse en fonction du résultat de la recherche
-        last_message = None
-        if found:
+        if found_notifications:
             embed = discord.Embed(title="Liste des notifications")
             for notification in found_notifications:
                 airdate = datetime.fromisoformat(notification["airdate"]).strftime('%d/%m/%Y')
                 embed.colour = discord.Colour.green()
                 embed.add_field(name=f"**{notification['show_name']}**", value=f"Saison {notification['season']}, épisode {notification['number']}\nDiffusion prévue le {airdate}", inline=False)
-            if last_message:
-                await last_message.delete()
-            last_message = await ctx.send(embed=embed)    
+            await ctx.send(embed=embed)
         else:
-            embed = discord.Embed(title="Liste des notifications", description=f"Vous n'avez pas de notifications enregistrées.")
+            embed = discord.Embed(title="Liste des notifications", description="Vous n'avez pas de notifications enregistrées.")
             embed.colour = discord.Colour.red()
             await ctx.send(embed=embed)
 
-    #commande pour suprimmer une notifications
+    # commande pour suprimmer une notifications
     @commands.command()
     async def delnotif(self, ctx):
-        user_id = ctx.author.id  # Récupère l'ID de l'utilisateur
-        found = False  # Variable pour indiquer si l'ID a été trouvé dans le fichier JSON
+        user_id = ctx.author.id
+        all_notifications = self.list_notifications()
 
-        # Ouvre le fichier JSON
-        notifications = self._load_notifications()
+        found_notifications = [n for n in all_notifications if n['user_id'] == user_id]
 
-        # Recherche de l'ID dans la liste des notifications
-        found_notifications = []
-        for notification_num, notification in enumerate(notifications):
-            if notification['user_id'] == user_id:
-                found = True
-                found_notifications.append((notification_num, notification))
-
-        # Envoie une réponse en fonction du résultat de la recherche
-        last_message = None
-        if found:
-            embed = discord.Embed(title="Liste des notifications")
-            for display_index, (_, notification) in enumerate(found_notifications, start=1):
-                airdate = datetime.fromisoformat(notification["airdate"]).strftime('%d/%m/%Y')
-                embed.colour = discord.Colour.green()
-                embed.add_field(name=f"**[{display_index}] {notification['show_name']}**", value=f"Saison {notification['season']}, épisode {notification['number']}\nDiffusion prévue le {airdate}", inline=False)
-            if last_message:
-                await last_message.delete()
-            last_message = await ctx.send(embed=embed)
-            
-            # Suppression de la série en fonction du numéro saisi par l'utilisateur
-            def check(message):
-                return message.author == ctx.author and message.channel == ctx.channel
-            
-            try:
-                await ctx.send("**Veuillez entrer le numéro de la série que vous voulez supprimer.**")
-                message = await self.bot.wait_for('message', timeout=30.0, check=check)
-                selection = int(message.content.strip())
-                if selection < 1 or selection > len(found_notifications):
-                    await ctx.send("Le numéro saisi est invalide.")
-                    return
-
-                selected_show_name = found_notifications[selection - 1]['show_name']
-                notifications = self._remove_user_notifications_for_show(notifications, user_id, selected_show_name)
-                
-                with open(self.notifications_path, 'w') as f:
-                    json.dump(notifications, f, indent=2)
-                
-                await ctx.send(f"Toutes les notifications de {selected_show_name} ont été supprimées avec succès.")
-            except asyncio.TimeoutError:
-                await ctx.send("Le temps imparti est écoulé. La commande a été annulée.")
-        else:
-            embed = discord.Embed(title="Liste des notifications", description=f"Vous n'avez pas de notifications enregistrées.")
+        if not found_notifications:
+            embed = discord.Embed(title="Liste des notifications", description="Vous n'avez pas de notifications enregistrées.")
             embed.colour = discord.Colour.red()
             await ctx.send(embed=embed)
+            return
+
+        embed = discord.Embed(title="Liste des notifications")
+        for display_index, notification in enumerate(found_notifications, start=1):
+            airdate = datetime.fromisoformat(notification["airdate"]).strftime('%d/%m/%Y')
+            embed.colour = discord.Colour.green()
+            embed.add_field(name=f"**[{display_index}] {notification['show_name']}**", value=f"Saison {notification['season']}, épisode {notification['number']}\nDiffusion prévue le {airdate}", inline=False)
+        await ctx.send(embed=embed)
+
+        # Suppression de la série en fonction du numéro saisi par l'utilisateur
+        def check(message):
+            return message.author == ctx.author and message.channel == ctx.channel
+
+        try:
+            await ctx.send("**Veuillez entrer le numéro de la série que vous voulez supprimer.**")
+            message = await self.bot.wait_for('message', timeout=30.0, check=check)
+            selection = int(message.content.strip())
+            if selection < 1 or selection > len(found_notifications):
+                await ctx.send("Le numéro saisi est invalide.")
+                return
+
+            selected_show_name = found_notifications[selection - 1]['show_name']
+            async with self.notification_lock:
+                self.delete_user_notifications_for_show(user_id, selected_show_name)
+
+            await ctx.send(f"Toutes les notifications de {selected_show_name} ont été supprimées avec succès.")
+        except asyncio.TimeoutError:
+            await ctx.send("Le temps imparti est écoulé. La commande a été annulée.")
 
 
-def setup(bot):
-    bot.add_cog(cmdrss(bot))
+def setup(bot, db):
+    bot.add_cog(cmdrss(bot, db))

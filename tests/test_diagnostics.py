@@ -1,53 +1,31 @@
-import json
-import os
-import tempfile
 import unittest
 from unittest.mock import MagicMock
 
-from cogs.diagnostics import cmddiagnostics, EXPECTED_COMMANDS, REQUIRED_MODULES
+from data.db import Database
+from cogs.diagnostics import cmddiagnostics, EXPECTED_COMMANDS, REQUIRED_MODULES, EXPECTED_TABLES
 
 
 def _make_cog():
     bot = MagicMock()
     bot.commands = []
     bot.cogs = {}
-    return cmddiagnostics(bot)
+    db = Database(path=":memory:")
+    return cmddiagnostics(bot, db)
 
 
-class TestCheckJsonFile(unittest.TestCase):
+class TestTableExists(unittest.TestCase):
     def setUp(self):
         self.cog = _make_cog()
 
-    def test_missing_file_returns_absent(self):
-        ok, msg = self.cog._check_json_file("__nonexistent_test__.json")
-        self.assertFalse(ok)
-        self.assertEqual(msg, "absent")
+    def test_missing_table_returns_false(self):
+        self.assertFalse(self.cog._table_exists("__nonexistent_table__"))
 
-    def test_valid_json_returns_ok(self):
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", dir=self.cog.base_dir, delete=False
-        ) as f:
-            json.dump({"key": "value"}, f)
-            tmp_name = os.path.basename(f.name)
-        try:
-            ok, msg = self.cog._check_json_file(tmp_name)
-            self.assertTrue(ok)
-            self.assertEqual(msg, "ok")
-        finally:
-            os.unlink(os.path.join(self.cog.base_dir, tmp_name))
-
-    def test_invalid_json_returns_error(self):
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", dir=self.cog.base_dir, delete=False
-        ) as f:
-            f.write("{not valid json}")
-            tmp_name = os.path.basename(f.name)
-        try:
-            ok, msg = self.cog._check_json_file(tmp_name)
-            self.assertFalse(ok)
-            self.assertIn("json invalide", msg)
-        finally:
-            os.unlink(os.path.join(self.cog.base_dir, tmp_name))
+    def test_expected_tables_exist_after_migrations(self):
+        for table_name in EXPECTED_TABLES:
+            self.assertTrue(
+                self.cog._table_exists(table_name),
+                f"{table_name} devrait exister apres application des migrations",
+            )
 
 
 class TestRunSelftest(unittest.TestCase):
@@ -71,6 +49,10 @@ class TestRunSelftest(unittest.TestCase):
         self.assertIsInstance(result["details"], list)
         self.assertGreater(len(result["details"]), 0)
 
+    def test_tables_check_passes_on_fresh_database(self):
+        result = self.cog.run_selftest(mode="basic")
+        self.assertIn("[OK] Tables SQLite", result["details"])
+
 
 class TestConstants(unittest.TestCase):
     def test_expected_commands_is_set(self):
@@ -86,6 +68,10 @@ class TestConstants(unittest.TestCase):
 
     def test_discord_in_required_modules(self):
         self.assertIn("discord", REQUIRED_MODULES)
+
+    def test_expected_tables_is_non_empty_list(self):
+        self.assertIsInstance(EXPECTED_TABLES, list)
+        self.assertGreater(len(EXPECTED_TABLES), 0)
 
 
 if __name__ == "__main__":

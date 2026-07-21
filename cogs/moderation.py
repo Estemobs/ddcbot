@@ -1,5 +1,4 @@
 import json
-import os
 from datetime import timedelta
 
 import discord
@@ -127,35 +126,33 @@ class WarnPanelView(BaseModPanelView):
     async def toggle_reason(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["warn"]["require_reason"] = not cfg["warn"]["require_reason"]
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Toggle DM warn", style=discord.ButtonStyle.primary, row=1)
     async def toggle_dm_warn(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["warn"]["dm_user"] = not cfg["warn"]["dm_user"]
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Toggle annonce publique", style=discord.ButtonStyle.primary, row=1)
     async def toggle_warn_public(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["warn"]["announce_public"] = not cfg["warn"]["announce_public"]
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Canal logs = ici", style=discord.ButtonStyle.secondary, row=2)
     async def set_log_here(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["warn"]["log_channel_id"] = interaction.channel_id
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Reset warns membre", style=discord.ButtonStyle.secondary, row=2)
     async def reset_warns_here(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_history = self.cog.warn_history.setdefault(str(self.guild_id), {})
-        guild_history[str(interaction.user.id)] = 0
-        self.cog.save_warn_history()
+        self.cog.clear_warns(self.guild_id, interaction.user.id)
         await interaction.response.send_message("Vos warns ont ete reinitialises.", ephemeral=True)
 
 
@@ -166,63 +163,63 @@ class ActionsPanelView(BaseModPanelView):
     async def toggle_auto_timeout(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["actions"]["auto_timeout_enabled"] = not cfg["actions"]["auto_timeout_enabled"]
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Seuil warns +1", style=discord.ButtonStyle.secondary, row=1)
     async def threshold_plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["actions"]["auto_timeout_after_warns"] += 1
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Seuil warns -1", style=discord.ButtonStyle.secondary, row=1)
     async def threshold_minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["actions"]["auto_timeout_after_warns"] = max(1, cfg["actions"]["auto_timeout_after_warns"] - 1)
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Duree auto-timeout +5m", style=discord.ButtonStyle.secondary, row=2)
     async def timeout_plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["actions"]["auto_timeout_minutes"] += 5
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Duree auto-timeout -5m", style=discord.ButtonStyle.secondary, row=2)
     async def timeout_minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["actions"]["auto_timeout_minutes"] = max(5, cfg["actions"]["auto_timeout_minutes"] - 5)
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Clear par defaut +1", style=discord.ButtonStyle.secondary, row=3)
     async def clear_plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["defaults"]["clear_amount"] += 1
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Clear par defaut -1", style=discord.ButtonStyle.secondary, row=3)
     async def clear_minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["defaults"]["clear_amount"] = max(1, cfg["defaults"]["clear_amount"] - 1)
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Timeout defaut +5m", style=discord.ButtonStyle.secondary, row=4)
     async def default_timeout_plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["defaults"]["timeout_minutes"] += 5
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Timeout defaut -5m", style=discord.ButtonStyle.secondary, row=4)
     async def default_timeout_minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["defaults"]["timeout_minutes"] = max(1, cfg["defaults"]["timeout_minutes"] - 5)
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
 
@@ -233,20 +230,19 @@ class NotificationsPanelView(BaseModPanelView):
     async def toggle_dm_kick(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["notifications"]["dm_on_kick"] = not cfg["notifications"]["dm_on_kick"]
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Toggle DM ban", style=discord.ButtonStyle.primary, row=1)
     async def toggle_dm_ban(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["notifications"]["dm_on_ban"] = not cfg["notifications"]["dm_on_ban"]
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
     @discord.ui.button(label="Reset config moderation", style=discord.ButtonStyle.danger, row=2)
     async def reset_all(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.cog.mod_config[str(self.guild_id)] = self.cog._default_config()
-        self.cog.save_mod_config()
+        self.cog.save_guild_config(self.guild_id, self.cog._default_config())
         await self._refresh(interaction)
 
 
@@ -355,7 +351,7 @@ class PermissionPanelView(discord.ui.View):
             target = cfg["command_roles"].setdefault(self.selected_command, [])
         if self.selected_role_id not in target:
             target.append(self.selected_role_id)
-            self.cog.save_permission_config()
+            self.cog.save_permission_config(self.guild_id, cfg)
         await self.refresh(interaction)
 
     @discord.ui.button(label="Retirer role", style=discord.ButtonStyle.secondary, row=2)
@@ -370,7 +366,7 @@ class PermissionPanelView(discord.ui.View):
             target = cfg["command_roles"].setdefault(self.selected_command, [])
         if self.selected_role_id in target:
             target.remove(self.selected_role_id)
-            self.cog.save_permission_config()
+            self.cog.save_permission_config(self.guild_id, cfg)
         await self.refresh(interaction)
 
     @discord.ui.button(label="Reset selection", style=discord.ButtonStyle.danger, row=2)
@@ -380,7 +376,7 @@ class PermissionPanelView(discord.ui.View):
             cfg["admin_roles"] = []
         else:
             cfg["command_roles"][self.selected_command] = []
-        self.cog.save_permission_config()
+        self.cog.save_permission_config(self.guild_id, cfg)
         await self.refresh(interaction)
 
     @discord.ui.button(label="Fermer", style=discord.ButtonStyle.danger, row=3)
@@ -393,106 +389,102 @@ class PermissionPanelView(discord.ui.View):
 
 
 class cmdmoderation(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, db):
         self.bot = bot
+        self.db = db
         self.intents = discord.Intents.all()
-        base_dir = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data')
-        self.mod_config_path = os.path.join(base_dir, "moderation_config.json")
-        self.legacy_warn_path = os.path.join(base_dir, "warnconfig.json")
-        self.warn_history_path = os.path.join(base_dir, "warn_history.json")
-        self.permission_config_path = os.path.join(base_dir, "permission_config.json")
-        self.mod_config = self._load_json(self.mod_config_path)
-        self.warn_history = self._load_json(self.warn_history_path)
-        self.permission_config = self._load_json(self.permission_config_path)
-        self._migrate_legacy_warn_config()
 
     def _default_config(self):
         return json.loads(json.dumps(DEFAULT_MOD_CONFIG))
 
-    def _load_json(self, path: str):
-        if not os.path.exists(path):
-            return {}
-        try:
-            with open(path, "r") as f:
-                data = json.load(f)
-            return data if isinstance(data, dict) else {}
-        except (json.JSONDecodeError, OSError):
-            return {}
+    # --- config moderation par serveur ---
 
-    def _save_json(self, path: str, data: dict):
-        with open(path, "w") as f:
-            json.dump(data, f, indent=4)
+    def get_guild_config(self, guild_id: int) -> dict:
+        row = self.db.fetchone("SELECT config_json FROM moderation_config WHERE guild_id = ?", (guild_id,))
+        if row is None:
+            cfg = self._default_config()
+            self.db.execute(
+                "INSERT INTO moderation_config (guild_id, config_json) VALUES (?, ?)",
+                (guild_id, json.dumps(cfg)),
+            )
+            return cfg
 
-    def save_mod_config(self):
-        self._save_json(self.mod_config_path, self.mod_config)
-
-    def save_warn_history(self):
-        self._save_json(self.warn_history_path, self.warn_history)
-
-    def save_permission_config(self):
-        self._save_json(self.permission_config_path, self.permission_config)
-
-    def get_permission_config(self, guild_id: int):
-        key = str(guild_id)
-        if key not in self.permission_config or not isinstance(self.permission_config[key], dict):
-            self.permission_config[key] = {"admin_roles": [], "command_roles": {}}
-            self.save_permission_config()
-        cfg = self.permission_config[key]
-        if "admin_roles" not in cfg or not isinstance(cfg["admin_roles"], list):
-            cfg["admin_roles"] = []
-        if "command_roles" not in cfg or not isinstance(cfg["command_roles"], dict):
-            cfg["command_roles"] = {}
-        self.save_permission_config()
-        return cfg
-
-    def _migrate_legacy_warn_config(self):
-        if not os.path.exists(self.legacy_warn_path):
-            return
-        legacy = self._load_json(self.legacy_warn_path)
-        changed = False
-        for guild_id, warn_cfg in legacy.items():
-            if not isinstance(warn_cfg, dict):
-                continue
-            cfg = self.get_guild_config(int(guild_id))
-            for key in ("dm_user", "announce_public", "require_reason", "log_channel_id"):
-                if key in warn_cfg:
-                    cfg["warn"][key] = warn_cfg[key]
-            changed = True
-        if changed:
-            self.save_mod_config()
-
-    def get_guild_config(self, guild_id: int):
-        key = str(guild_id)
-        if key not in self.mod_config or not isinstance(self.mod_config[key], dict):
-            self.mod_config[key] = self._default_config()
-            self.save_mod_config()
-            return self.mod_config[key]
-
-        cfg = self.mod_config[key]
+        cfg = json.loads(row["config_json"])
         default_cfg = self._default_config()
+        changed = False
         for section_name, section_defaults in default_cfg.items():
             if section_name not in cfg or not isinstance(cfg[section_name], dict):
                 cfg[section_name] = section_defaults
+                changed = True
             else:
                 for setting_key, setting_default in section_defaults.items():
                     if setting_key not in cfg[section_name]:
                         cfg[section_name][setting_key] = setting_default
-        self.save_mod_config()
+                        changed = True
+        if changed:
+            self.save_guild_config(guild_id, cfg)
         return cfg
 
-    def get_warn_count(self, guild_id: int, user_id: int):
-        return int(self.warn_history.get(str(guild_id), {}).get(str(user_id), 0))
+    def save_guild_config(self, guild_id: int, cfg: dict):
+        self.db.execute(
+            "INSERT INTO moderation_config (guild_id, config_json) VALUES (?, ?) "
+            "ON CONFLICT(guild_id) DO UPDATE SET config_json = excluded.config_json",
+            (guild_id, json.dumps(cfg)),
+        )
 
-    def increment_warn(self, guild_id: int, user_id: int):
-        guild_history = self.warn_history.setdefault(str(guild_id), {})
-        guild_history[str(user_id)] = int(guild_history.get(str(user_id), 0)) + 1
-        self.save_warn_history()
-        return guild_history[str(user_id)]
+    # --- permissions admin par serveur ---
+
+    def get_permission_config(self, guild_id: int) -> dict:
+        row = self.db.fetchone("SELECT config_json FROM permission_config WHERE guild_id = ?", (guild_id,))
+        if row is None:
+            cfg = {"admin_roles": [], "command_roles": {}}
+            self.db.execute(
+                "INSERT INTO permission_config (guild_id, config_json) VALUES (?, ?)",
+                (guild_id, json.dumps(cfg)),
+            )
+            return cfg
+
+        cfg = json.loads(row["config_json"])
+        changed = False
+        if "admin_roles" not in cfg or not isinstance(cfg["admin_roles"], list):
+            cfg["admin_roles"] = []
+            changed = True
+        if "command_roles" not in cfg or not isinstance(cfg["command_roles"], dict):
+            cfg["command_roles"] = {}
+            changed = True
+        if changed:
+            self.save_permission_config(guild_id, cfg)
+        return cfg
+
+    def save_permission_config(self, guild_id: int, cfg: dict):
+        self.db.execute(
+            "INSERT INTO permission_config (guild_id, config_json) VALUES (?, ?) "
+            "ON CONFLICT(guild_id) DO UPDATE SET config_json = excluded.config_json",
+            (guild_id, json.dumps(cfg)),
+        )
+
+    # --- compteur de warns ---
+
+    def get_warn_count(self, guild_id: int, user_id: int) -> int:
+        row = self.db.fetchone(
+            "SELECT count FROM warn_counts WHERE guild_id = ? AND user_id = ?", (guild_id, user_id)
+        )
+        return row["count"] if row else 0
+
+    def increment_warn(self, guild_id: int, user_id: int) -> int:
+        self.db.execute(
+            "INSERT INTO warn_counts (guild_id, user_id, count) VALUES (?, ?, 1) "
+            "ON CONFLICT(guild_id, user_id) DO UPDATE SET count = count + 1",
+            (guild_id, user_id),
+        )
+        return self.get_warn_count(guild_id, user_id)
 
     def clear_warns(self, guild_id: int, user_id: int):
-        guild_history = self.warn_history.setdefault(str(guild_id), {})
-        guild_history[str(user_id)] = 0
-        self.save_warn_history()
+        self.db.execute(
+            "INSERT INTO warn_counts (guild_id, user_id, count) VALUES (?, ?, 0) "
+            "ON CONFLICT(guild_id, user_id) DO UPDATE SET count = 0",
+            (guild_id, user_id),
+        )
 
     def build_mod_panel_embed(self, guild: discord.Guild, page: str):
         cfg = self.get_guild_config(guild.id)
@@ -721,5 +713,5 @@ class cmdmoderation(commands.Cog):
         await ctx.send("Salon deverrouille.")
 
 
-def setup(bot):
-    bot.add_cog(cmdmoderation(bot))
+def setup(bot, db):
+    bot.add_cog(cmdmoderation(bot, db))

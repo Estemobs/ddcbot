@@ -1,149 +1,130 @@
 import discord
 import json
-import os
 import time
 import random
-import asyncio
 from discord.ext import commands
 
 
-DEFAULT_WORK_CONFIG = {
-    "min_amount": 100,
-    "max_amount": 500,
-    "reward_tiers": 3,
-    "cooldown": 3600,
-    "rewards": [10, 20, 30],
-}
-
-
 class cmdwork(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, db):
         self.bot = bot
+        self.db = db
         self.intents = discord.Intents.all()
-        # Charger les données depuis le fichier de configuration
-        self.config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'workconfig.json')
-        if not os.path.exists(self.config_path):
-            with open(self.config_path, 'w') as f:
-                json.dump(DEFAULT_WORK_CONFIG, f, indent=4)
-        with open(self.config_path, 'r') as f:
-            self.config = json.load(f)
 
-        # Autres variables globales
-        self.balances_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'balances.json')
+    # --- balances (table partagée avec economie.py/income.py/jeu.py) ---
 
-        # Charger les données depuis le fichier des balances
-        if not os.path.exists(self.balances_path):
-            with open(self.balances_path, 'w') as f:
-                json.dump({}, f, indent=4)
-        with open(self.balances_path, 'r') as f:
-            self.balances = json.load(f)
+    def get_balance(self, user_id: int) -> float:
+        row = self.db.fetchone("SELECT amount FROM balances WHERE user_id = ?", (user_id,))
+        return row["amount"] if row else 0.0
+
+    def add_balance(self, user_id: int, delta: float):
+        self.db.execute(
+            "INSERT INTO balances (user_id, amount) VALUES (?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET amount = amount + excluded.amount",
+            (user_id, delta),
+        )
+
+    # --- configuration globale de ,work (singleton, non liee a un serveur) ---
+
+    def get_work_settings(self):
+        row = self.db.fetchone(
+            "SELECT min_amount, max_amount, reward_tiers, cooldown, rewards_json FROM work_settings WHERE id = 1"
+        )
+        if row is None:
+            return None
+        return {
+            "min_amount": row["min_amount"],
+            "max_amount": row["max_amount"],
+            "reward_tiers": row["reward_tiers"],
+            "cooldown": row["cooldown"],
+            "rewards": json.loads(row["rewards_json"]),
+        }
+
+    def set_work_settings(self, min_amount, max_amount, reward_tiers, cooldown, rewards):
+        self.db.execute(
+            "INSERT INTO work_settings (id, min_amount, max_amount, reward_tiers, cooldown, rewards_json) "
+            "VALUES (1, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET min_amount=excluded.min_amount, max_amount=excluded.max_amount, "
+            "reward_tiers=excluded.reward_tiers, cooldown=excluded.cooldown, rewards_json=excluded.rewards_json",
+            (min_amount, max_amount, reward_tiers, cooldown, json.dumps(list(rewards))),
+        )
+
+    # --- etat par utilisateur ---
+
+    def get_work_state(self, user_id: int):
+        row = self.db.fetchone("SELECT work_count, last_worked FROM work_state WHERE user_id = ?", (user_id,))
+        if row is None:
+            return None
+        return {"work_count": row["work_count"], "last_worked": row["last_worked"]}
+
+    def record_work(self, user_id: int, timestamp: float):
+        self.db.execute(
+            "INSERT INTO work_state (user_id, work_count, last_worked) VALUES (?, 1, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET work_count = work_count + 1, last_worked = excluded.last_worked",
+            (user_id, timestamp),
+        )
 
     @commands.command()
     async def config_work(self, ctx, min_amount: int, max_amount: int, reward_tiers: int, cooldown: int, *rewards: int):
-        # Vérifiez si le nombre de récompenses correspond au nombre de paliers de récompenses
         if len(rewards) != reward_tiers:
             await ctx.send(f"Le nombre de récompenses doit être égal au nombre de paliers de récompenses ({reward_tiers})")
             return
 
-        # Vérifiez si le montant minimum est inférieur au montant maximum
         if min_amount >= max_amount:
             await ctx.send("Le montant minimum doit être inférieur au montant maximum")
             return
 
-        # Mettre à jour les données dans le fichier de configuration
-        self.config['min_amount'] = min_amount
-        self.config['max_amount'] = max_amount
-        self.config['reward_tiers'] = reward_tiers
-        self.config['cooldown'] = cooldown * 3600 # Multipliez la valeur du cooldown par 3600 pour la convertir en secondes
-        self.config['rewards'] = rewards
-
-        with open(self.config_path, 'w') as f:
-            json.dump(self.config, f, indent=4)
+        cooldown_sec = cooldown * 3600
+        self.set_work_settings(min_amount, max_amount, reward_tiers, cooldown_sec, rewards)
 
         await ctx.send(f"Commande configurée avec succès : montant minimum = {min_amount}, montant maximum = {max_amount}, nombre de paliers de récompenses = {reward_tiers}, cooldown = {cooldown} heures, récompenses = {rewards}")
 
-
     @commands.command()
     async def show_work_config(self, ctx):
-        # Vérifiez si la commande configure_work a été exécutée auparavant
-        if 'min_amount' not in self.config:
+        settings = self.get_work_settings()
+        if settings is None:
             await ctx.send("La commande configure_work doit être exécutée avant d'utiliser la commande show_work_config")
             return
 
-        # Créez un embed pour afficher les données de configuration
         embed = discord.Embed(title="Configuration de la commande work", color=0x00ff00)
-        embed.add_field(name="Montant minimum", value=self.config['min_amount'], inline=False)
-        embed.add_field(name="Montant maximum", value=self.config['max_amount'], inline=False)
-        embed.add_field(name="Nombre de paliers de récompenses", value=self.config['reward_tiers'], inline=False)
-        embed.add_field(name="Cooldown (en heures)", value=self.config['cooldown'] // 3600, inline=False)
-        embed.add_field(name="Récompenses bonus", value=', '.join(map(str, self.config['rewards'])), inline=False)
+        embed.add_field(name="Montant minimum", value=settings['min_amount'], inline=False)
+        embed.add_field(name="Montant maximum", value=settings['max_amount'], inline=False)
+        embed.add_field(name="Nombre de paliers de récompenses", value=settings['reward_tiers'], inline=False)
+        embed.add_field(name="Cooldown (en heures)", value=settings['cooldown'] // 3600, inline=False)
+        embed.add_field(name="Récompenses bonus", value=', '.join(map(str, settings['rewards'])), inline=False)
 
         await ctx.send(embed=embed)
 
-
     @commands.command()
     async def work(self, ctx):
-        # Vérifiez si la commande configure_work a été exécutée auparavant
-        if 'min_amount' not in self.config:
+        settings = self.get_work_settings()
+        if settings is None:
             await ctx.send("La commande configure_work doit être exécutée avant d'utiliser la commande work")
             return
 
-        # Vérifiez si la commande est en cooldown pour l'utilisateur
-        user_id = str(ctx.author.id)
-        if 'last_worked' in self.config and user_id in self.config['last_worked']:
-            time_since_last_worked = time.time() - self.config['last_worked'][user_id]
-            if time_since_last_worked < self.config['cooldown']:
-                remaining_cooldown = round((self.config['cooldown'] - time_since_last_worked) / 3600)
+        user_id = ctx.author.id
+        state = self.get_work_state(user_id)
+        if state is not None:
+            time_since_last_worked = time.time() - state["last_worked"]
+            if time_since_last_worked < settings["cooldown"]:
+                remaining_cooldown = round((settings["cooldown"] - time_since_last_worked) / 3600)
                 await ctx.send(f"Vous devez attendre encore {remaining_cooldown} heures avant de pouvoir travailler à nouveau.")
                 return
 
-        # Générez un montant aléatoire entre le montant minimum et maximum
-        amount = random.randint(self.config['min_amount'], self.config['max_amount'])
+        amount = random.randint(settings["min_amount"], settings["max_amount"])
 
-        # Déterminez la récompense bonus en fonction du nombre de fois que l'utilisateur a utilisé la commande work
         bonus_reward = 0
-        if 'work_count' in self.config and user_id in self.config['work_count']:
-            tier_size = self.config['reward_tiers']
-            tier = min(self.config['work_count'][user_id] // tier_size, len(self.config['rewards']) - 1)
-            bonus_reward = self.config['rewards'][tier]
+        if state is not None:
+            tier_size = settings["reward_tiers"]
+            tier = min(state["work_count"] // tier_size, len(settings["rewards"]) - 1)
+            bonus_reward = settings["rewards"][tier]
 
-        # Mettre à jour les données dans le fichier des balances
-        if user_id not in self.balances:
-            self.balances[user_id] = 0
+        self.add_balance(user_id, amount + bonus_reward)
+        self.record_work(user_id, time.time())
+        new_balance = self.get_balance(user_id)
 
-        self.balances[user_id] += amount + bonus_reward
-
-        with open(self.balances_path, 'w') as f:
-            json.dump(self.balances, f, indent=4)
-
-        # Mettre à jour les données dans le fichier de configuration
-        if 'work_count' not in self.config:
-            self.config['work_count'] = {}
-
-        if user_id not in self.config['work_count']:
-            self.config['work_count'][user_id] = 0
-
-        if 'last_worked' not in self.config:
-            self.config['last_worked'] = {}
-
-        self.config['work_count'][user_id] += 1
-        self.config['last_worked'][user_id] = time.time()
-
-        with open(self.config_path, 'w') as f:
-            json.dump(self.config, f, indent=4)
-
-        await ctx.send(f"Vous avez travaillé et gagné {amount}$! Vous avez également reçu une récompense bonus de {bonus_reward}. Votre solde actuel est de {self.balances[user_id]}.")
+        await ctx.send(f"Vous avez travaillé et gagné {amount}$! Vous avez également reçu une récompense bonus de {bonus_reward}. Votre solde actuel est de {new_balance}.")
 
 
-
-def setup(bot):
-    bot.add_cog(cmdwork(bot))
-
-
-
-
-
-
-
-
-
+def setup(bot, db):
+    bot.add_cog(cmdwork(bot, db))

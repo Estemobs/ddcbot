@@ -1,6 +1,4 @@
-import asyncio
 import json
-import os
 import discord
 from discord.ext import commands
 
@@ -23,48 +21,47 @@ class cmdlogs(commands.Cog):
     - logspanel : panneau interactif pour choisir les catégories envoyées dans les logs
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot, db):
         self.bot = bot
-        self.config_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'data', 'logs_config.json')
-        self.lock = asyncio.Lock()
+        self.db = db
 
-    def _load_config(self):
-        try:
-            with open(self.config_path, 'r') as f:
-                data = json.load(f)
-            data = data if isinstance(data, dict) else {}
-        except (FileNotFoundError, json.JSONDecodeError):
-            data = {}
+    def get_guild_config(self, guild_id: int) -> dict:
+        row = self.db.fetchone("SELECT config_json FROM logs_config WHERE guild_id = ?", (guild_id,))
+        if row is None:
+            cfg = {"channels": [], "categories": dict(DEFAULT_CATEGORIES)}
+            self.db.execute(
+                "INSERT INTO logs_config (guild_id, config_json) VALUES (?, ?)",
+                (guild_id, json.dumps(cfg)),
+            )
+            return cfg
 
+        cfg = json.loads(row["config_json"])
         changed = False
-        for guild_id, guild_cfg in list(data.items()):
-            if isinstance(guild_cfg, list):
-                data[guild_id] = {"channels": guild_cfg, "categories": dict(DEFAULT_CATEGORIES)}
+        if "channels" not in cfg:
+            cfg["channels"] = []
+            changed = True
+        categories = cfg.setdefault("categories", {})
+        for key, default in DEFAULT_CATEGORIES.items():
+            if key not in categories:
+                categories[key] = default
                 changed = True
-            elif isinstance(guild_cfg, dict):
-                guild_cfg.setdefault("channels", [])
-                categories = guild_cfg.setdefault("categories", {})
-                for key, default in DEFAULT_CATEGORIES.items():
-                    categories.setdefault(key, default)
         if changed:
-            self._save_config(data)
-        return data
+            self.save_guild_config(guild_id, cfg)
+        return cfg
 
-    def _save_config(self, cfg):
-        with open(self.config_path, 'w') as f:
-            json.dump(cfg, f, indent=2)
-
-    def get_guild_config(self, guild_id):
-        cfg = self._load_config()
-        return cfg.setdefault(str(guild_id), {"channels": [], "categories": dict(DEFAULT_CATEGORIES)})
+    def save_guild_config(self, guild_id: int, cfg: dict):
+        self.db.execute(
+            "INSERT INTO logs_config (guild_id, config_json) VALUES (?, ?) "
+            "ON CONFLICT(guild_id) DO UPDATE SET config_json = excluded.config_json",
+            (guild_id, json.dumps(cfg)),
+        )
 
     def get_channels(self, guild, category: str):
         """Renvoie les salons configurés pour recevoir la catégorie de log donnée."""
         if guild is None or category not in LOG_CATEGORIES:
             return []
-        cfg = self._load_config()
-        guild_cfg = cfg.get(str(guild.id))
-        if not guild_cfg or not guild_cfg["categories"].get(category, True):
+        guild_cfg = self.get_guild_config(guild.id)
+        if not guild_cfg["categories"].get(category, True):
             return []
         channels = []
         for cid in guild_cfg["channels"]:
@@ -78,13 +75,12 @@ class cmdlogs(commands.Cog):
     async def setlog(self, ctx, channel: discord.TextChannel = None):
         """Active les logs dans le canal spécifié (ou canal courant)."""
         channel = channel or ctx.channel
-        cfg = self._load_config()
-        guild_cfg = cfg.setdefault(str(ctx.guild.id), {"channels": [], "categories": dict(DEFAULT_CATEGORIES)})
+        guild_cfg = self.get_guild_config(ctx.guild.id)
         if channel.id in guild_cfg["channels"]:
             await ctx.send(f"Les logs sont déjà activés dans {channel.mention}.")
             return
         guild_cfg["channels"].append(channel.id)
-        self._save_config(cfg)
+        self.save_guild_config(ctx.guild.id, guild_cfg)
         await ctx.send(f"Logs activés dans {channel.mention}.")
 
     @commands.command()
@@ -92,13 +88,12 @@ class cmdlogs(commands.Cog):
     async def unsetlog(self, ctx, channel: discord.TextChannel = None):
         """Désactive les logs dans le canal spécifié (ou canal courant)."""
         channel = channel or ctx.channel
-        cfg = self._load_config()
-        guild_cfg = cfg.setdefault(str(ctx.guild.id), {"channels": [], "categories": dict(DEFAULT_CATEGORIES)})
+        guild_cfg = self.get_guild_config(ctx.guild.id)
         if channel.id not in guild_cfg["channels"]:
             await ctx.send(f"Les logs ne sont pas activés dans {channel.mention}.")
             return
         guild_cfg["channels"] = [cid for cid in guild_cfg["channels"] if cid != channel.id]
-        self._save_config(cfg)
+        self.save_guild_config(ctx.guild.id, guild_cfg)
         await ctx.send(f"Logs désactivés dans {channel.mention}.")
 
     @commands.command()
@@ -159,10 +154,9 @@ class LogsPanelView(discord.ui.View):
         button = discord.ui.Button(label=short_label, style=discord.ButtonStyle.primary, row=0)
 
         async def callback(interaction: discord.Interaction):
-            cfg = self.cog._load_config()
-            guild_cfg = cfg.setdefault(str(self.guild_id), {"channels": [], "categories": dict(DEFAULT_CATEGORIES)})
+            guild_cfg = self.cog.get_guild_config(self.guild_id)
             guild_cfg["categories"][key] = not guild_cfg["categories"].get(key, True)
-            self.cog._save_config(cfg)
+            self.cog.save_guild_config(self.guild_id, guild_cfg)
             await interaction.response.edit_message(embed=self.cog.build_panel_embed(interaction.guild), view=self)
 
         button.callback = callback
@@ -186,11 +180,10 @@ class LogsPanelView(discord.ui.View):
 
     @discord.ui.button(label="Canal logs = ici", style=discord.ButtonStyle.secondary, row=1)
     async def set_log_here(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cfg = self.cog._load_config()
-        guild_cfg = cfg.setdefault(str(self.guild_id), {"channels": [], "categories": dict(DEFAULT_CATEGORIES)})
+        guild_cfg = self.cog.get_guild_config(self.guild_id)
         if interaction.channel_id not in guild_cfg["channels"]:
             guild_cfg["channels"].append(interaction.channel_id)
-            self.cog._save_config(cfg)
+            self.cog.save_guild_config(self.guild_id, guild_cfg)
         await interaction.response.edit_message(embed=self.cog.build_panel_embed(interaction.guild), view=self)
 
     @discord.ui.button(label="Fermer", style=discord.ButtonStyle.danger, row=1)
@@ -200,5 +193,5 @@ class LogsPanelView(discord.ui.View):
         await interaction.response.edit_message(view=self)
 
 
-def setup(bot):
-    bot.add_cog(cmdlogs(bot))
+def setup(bot, db):
+    bot.add_cog(cmdlogs(bot, db))

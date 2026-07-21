@@ -65,47 +65,37 @@ def _install_discord_stubs():
 
 _install_discord_stubs()
 
-from cogs.Notifrss import cmdrss
+from data.db import Database  # noqa: E402
+from cogs.Notifrss import cmdrss  # noqa: E402
 
 
 def _make_cog():
     bot = MagicMock()
     bot.fetch_user = AsyncMock()
-    return cmdrss(bot)
+    db = Database(path=":memory:")
+    return cmdrss(bot, db)
 
 
 class TestNotifRssHelpers(unittest.TestCase):
-    def test_remove_user_notifications_for_show_removes_every_matching_entry(self):
+    def test_delete_user_notifications_for_show_removes_every_matching_entry(self):
         cog = _make_cog()
-        notifications = [
-            {"show_name": "The Boys", "user_id": 1, "season": 5, "number": 1, "airdate": "2026-05-20T00:00:00"},
-            {"show_name": "The Boys", "user_id": 1, "season": 5, "number": 2, "airdate": "2026-05-27T00:00:00"},
-            {"show_name": "Another Show", "user_id": 1, "season": 1, "number": 1, "airdate": "2026-05-20T00:00:00"},
-            {"show_name": "The Boys", "user_id": 2, "season": 5, "number": 1, "airdate": "2026-05-20T00:00:00"},
-        ]
+        cog.add_notification("The Boys", 5, 1, "2026-05-20T00:00:00", 1)
+        cog.add_notification("The Boys", 5, 2, "2026-05-27T00:00:00", 1)
+        cog.add_notification("Another Show", 1, 1, "2026-05-20T00:00:00", 1)
+        cog.add_notification("The Boys", 5, 1, "2026-05-20T00:00:00", 2)
 
-        filtered = cog._remove_user_notifications_for_show(notifications, 1, "The Boys")
+        cog.delete_user_notifications_for_show(1, "The Boys")
 
-        self.assertEqual(len(filtered), 2)
-        self.assertEqual(filtered[0]["show_name"], "Another Show")
-        self.assertEqual(filtered[1]["user_id"], 2)
+        remaining = cog.list_notifications()
+        self.assertEqual(len(remaining), 2)
+        remaining_keys = sorted((n["show_name"], n["user_id"]) for n in remaining)
+        self.assertEqual(remaining_keys, [("Another Show", 1), ("The Boys", 2)])
 
 
 class TestNotifRssCheckNotifications(unittest.IsolatedAsyncioTestCase):
     async def test_check_notifications_advances_to_next_unreleased_episode(self):
         cog = _make_cog()
-        cog._load_notifications = MagicMock(
-            return_value=[
-                {
-                    "show_name": "The Boys",
-                    "season": 5,
-                    "number": 1,
-                    "airdate": "2020-01-01T00:00:00",
-                    "user_id": 123,
-                }
-            ]
-        )
-        cog._save_notifications = MagicMock()
+        cog.add_notification("The Boys", 5, 1, "2020-01-01T00:00:00", 123)
         cog._get_next_episode = AsyncMock(
             return_value={
                 "show_name": "The Boys",
@@ -123,19 +113,11 @@ class TestNotifRssCheckNotifications(unittest.IsolatedAsyncioTestCase):
         await cog.check_notifications()
 
         cog._get_next_episode.assert_awaited_once_with("The Boys", 123)
-        cog._save_notifications.assert_called_once()
-        self.assertEqual(
-            cog._save_notifications.call_args.args[0],
-            [
-                {
-                    "show_name": "The Boys",
-                    "season": 5,
-                    "number": 9,
-                    "airdate": "2026-06-01",
-                    "user_id": 123,
-                }
-            ],
-        )
+        remaining = cog.list_notifications()
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(remaining[0]["season"], 5)
+        self.assertEqual(remaining[0]["number"], 9)
+        self.assertEqual(remaining[0]["airdate"], "2026-06-01")
         user.send.assert_not_awaited()
 
 
