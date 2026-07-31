@@ -1,25 +1,16 @@
-"""Version unique du bot, partagee par ,help, ,version et ,changelog."""
+"""Version unique du bot : le hash du commit courant de la branche deployee."""
 
-import hashlib
 import os
 import subprocess
 
-PROJECT_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-VERSION_FILE = os.path.join(PROJECT_ROOT, "VERSION")
+PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
-def read_version_file():
-    try:
-        with open(VERSION_FILE, "r") as f:
-            return f.read().strip()
-    except OSError:
-        return "1.0.0"
-
-
-def git_short_hash():
+def git_commit_hash():
+    """Retourne le hash complet du commit courant (HEAD)."""
     try:
         proc = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
+            ["git", "rev-parse", "HEAD"],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
@@ -31,25 +22,6 @@ def git_short_hash():
         return None
 
 
-def _file_digest():
-    digest = hashlib.sha1()
-    for root, dirs, files in os.walk(PROJECT_ROOT):
-        dirs[:] = [d for d in dirs if d != "__pycache__"]
-        for filename in sorted(files):
-            if not filename.endswith(".py"):
-                continue
-            file_path = os.path.join(root, filename)
-            relative_path = os.path.relpath(file_path, PROJECT_ROOT)
-            digest.update(relative_path.encode("utf-8"))
-            with open(file_path, "rb") as file_handle:
-                digest.update(file_handle.read())
-    return digest.hexdigest()[:7]
-
-
 def bot_version():
-    """Retourne la version semver suivie du hash git (ou digest fichier)."""
-    base = read_version_file()
-    commit = git_short_hash()
-    if commit:
-        return f"{base}+{commit}"
-    return f"{base}+{_file_digest()}"
+    """Retourne le hash du commit courant, ou \"inconnu\" si git est indisponible."""
+    return git_commit_hash() or "inconnu"

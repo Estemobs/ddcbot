@@ -95,9 +95,6 @@ EXPECTED_COMMANDS = {
     "badword",
     "lang",
     "guildlang",
-    "translator",
-    "translations",
-    "translate",
 }
 
 REQUIRED_MODULES = [
@@ -142,7 +139,6 @@ EXPECTED_TABLES = [
     "automod_config",
     "user_lang",
     "guild_lang",
-    "translation_subs",
 ]
 
 

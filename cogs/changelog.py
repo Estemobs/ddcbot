@@ -4,7 +4,7 @@ import subprocess
 import discord
 from discord.ext import commands, tasks
 
-from versioning import VERSION_FILE, read_version_file
+from versioning import bot_version
 
 
 STATE_FILE = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "data", ".last_announced_commit")
@@ -101,15 +101,13 @@ class cmdchangelog(commands.Cog):
             return
         description = "\n".join(f"`{line}`" for line in commits)
         embed = discord.Embed(title="Derniers changements", description=description, color=discord.Color.blurple())
-        embed.set_footer(text=f"Version {read_version_file()}")
+        embed.set_footer(text=f"Commit {bot_version()}")
         await ctx.send(embed=embed)
 
     @commands.command()
     async def version(self, ctx):
-        """Affiche la version actuelle du bot."""
-        current = _current_commit()
-        commit_label = current[:7] if current else "inconnu"
-        await ctx.send(f"DDCBot **v{read_version_file()}** (commit `{commit_label}`)")
+        """Affiche le hash du commit actuellement deploye."""
+        await ctx.send(f"DDCBot commit `{bot_version()}`")
 
 
 def setup(bot):

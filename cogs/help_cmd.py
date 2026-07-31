@@ -95,7 +95,7 @@ class cmdhelp(commands.Cog):
                     value=description,
                     inline=False
                 )
-            embed.set_footer(text=f"Préfixe : {prefix}  •  Bot v{BOT_VERSION}  •  ,help <catégorie> pour plus de détails")
+            embed.set_footer(text=f"Préfixe : {prefix}  •  Commit {BOT_VERSION}  •  ,help <catégorie> pour plus de détails")
             await ctx.send(embed=embed)
             return
 
@@ -118,7 +118,7 @@ class cmdhelp(commands.Cog):
                 value=cmd_list,
                 inline=False
             )
-        embed.set_footer(text=f"Bot v{BOT_VERSION}")
+        embed.set_footer(text=f"Commit {BOT_VERSION}")
         await ctx.send(embed=embed)
 
 

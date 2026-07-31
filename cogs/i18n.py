@@ -217,34 +217,6 @@ STRINGS = {
         "fr": "Auto-mod : message supprimé pour mot banni.",
         "en": "Auto-mod: message deleted for banned word.",
     },
-    "translation_disabled": {
-        "fr": "La traduction automatique est désactivée dans ce salon pour vous.",
-        "en": "Automatic translation is disabled in this channel for you.",
-    },
-    "translation_enabled": {
-        "fr": "La traduction automatique est activée dans ce salon. Les messages seront traduits en **{lang}** et envoyés en message privé.",
-        "en": "Automatic translation is enabled in this channel. Messages will be translated to **{lang}** and sent to you in DM.",
-    },
-    "translation_invalid_lang": {
-        "fr": "Langue cible invalide. Exemple : `,translator on en` ou `,translator off`.",
-        "en": "Invalid target language. Example: `,translator on en` or `,translator off`.",
-    },
-    "translation_need_channel": {
-        "fr": "Cette commande doit être utilisée dans un salon.",
-        "en": "This command must be used in a channel.",
-    },
-    "translation_status_title": {
-        "fr": "🌐 Traduction automatique",
-        "en": "🌐 Automatic translation",
-    },
-    "translation_status_empty": {
-        "fr": "Vous n'êtes abonné à la traduction automatique dans aucun salon.",
-        "en": "You are not subscribed to automatic translation in any channel.",
-    },
-    "translation_dm_intro": {
-        "fr": "🌐 Traduction (salon {channel}) :",
-        "en": "🌐 Translation (channel {channel}):",
-    },
     "translation_error": {
         "fr": "Impossible de traduire ce message.",
         "en": "Unable to translate this message.",

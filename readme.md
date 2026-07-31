@@ -1,7 +1,6 @@
 # DDCBot 🤖
 
 [![Tests](https://github.com/Estemobs/ddcbot/actions/workflows/tests.yml/badge.svg)](https://github.com/Estemobs/ddcbot/actions/workflows/tests.yml)
-[![Version](https://img.shields.io/badge/version-1.0.0-informational.svg)](VERSION)
 [![Licence PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/licence-PolyForm%20Noncommercial%201.0.0-lightgrey.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
 [![discord.py](https://img.shields.io/badge/discord.py-2.4-5865F2.svg)](https://github.com/Rapptz/discord.py)
@@ -35,7 +34,7 @@ Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, 
 | 📝 **Notes & tags** | mémos textuels par serveur (`,addtag`, `,tag`, ...) |
 | 🧠 **Assistant IA** | réponses et OCR via `g4f` / `easyocr`, rate-limit par utilisateur |
 | 📋 **Logs** | salons et catégories de logs configurables par serveur, panneau `,logspanel` |
-| 🌐 **Traduction** | `,translate` (éphémère en slash), traduction automatique par salon en DM (`,translator`), langues `,lang`/`,guildlang` (fr/en) |
+| 🌐 **Traduction** | `/translate` (éphémère, visible uniquement par l'auteur), langues `,lang`/`,guildlang` (fr/en) |
 | 🎭 **Reaction roles** | attribue un rôle par réaction (`reactrole`) |
 | 📈 **Leveling** | XP par message, `,rank`, `,levels`, config `,xpconfig` |
 | 👋 **Accueil** | messages de bienvenue/départ avec placeholders `,setwelcome`/`,setleave` |
@@ -137,20 +136,11 @@ Toutes les données du bot vivent dans une base **SQLite** unique, `data/ddcbot.
 
 ## Commandes
 
-Liste complète et à jour dans Discord via `,help`. Pour vérifier que toutes les commandes et fichiers requis sont bien en place : `,selftest` (ou `,selftest deep` pour un contrôle approfondi). `,version` affiche la version courante et le commit déployé ; `,changelog` affiche les derniers commits.
+Liste complète et à jour dans Discord via `,help`. Pour vérifier que toutes les commandes et fichiers requis sont bien en place : `,selftest` (ou `,selftest deep` pour un contrôle approfondi). `,version` affiche le hash du commit déployé ; `,changelog` affiche les derniers commits.
 
 ## Versioning
 
-Le numéro de version vit dans le fichier [VERSION](VERSION) (semver, ex. `1.0.0`) et est exposé dans Discord via `,version`. Comme le service `updater` déploie automatiquement chaque nouveau commit sur `master` (voir [Auto-mise à jour](#auto-mise-à-jour)), la version n'est pas un gate de déploiement — c'est un repère pour communiquer les changements notables. Convention : bump `VERSION` lors d'un changement d'API/comportement significatif, pas à chaque commit.
-
-Pour publier une release GitHub : mettez à jour `VERSION`, committez, puis pour un tag `vX.Y.Z` (le `X.Y.Z` doit correspondre exactement au contenu de `VERSION`) :
-
-```bash
-git tag vX.Y.Z
-git push github vX.Y.Z   # pousser vers le remote GitHub (Estemobs/ddcbot), pas Gitea
-```
-
-Le workflow [.github/workflows/release.yml](.github/workflows/release.yml) vérifie que le tag correspond à `VERSION` puis crée automatiquement la release GitHub avec les notes générées à partir des commits. Il ne se déclenche que sur le dépôt GitHub (pas sur ce Gitea auto-hébergé) — pensez à configurer ce remote (`git remote add github https://github.com/Estemobs/ddcbot.git`) si ce n'est pas déjà fait.
+Le seul numéro de version du bot est le **hash du commit** de la branche déployée (HEAD). Il est affiché dans Discord via `,version` (et en pied de page de `,help` / `,changelog`), et correspond exactement au commit visible sur le miroir GitHub (`git rev-parse HEAD`). Aucun fichier de version n'est maintenu à la main.
 
 ## Développement
 
