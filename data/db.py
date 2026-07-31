@@ -62,5 +62,12 @@ class Database:
         with self._lock:
             return self._conn.execute(sql, params).fetchall()
 
+    def log_transaction(self, guild_id, user_id, amount, kind, detail=""):
+        """Ajoute une entree dans l'historique des transactions economiques."""
+        self.execute(
+            "INSERT INTO transactions (guild_id, user_id, amount, kind, detail) VALUES (?, ?, ?, ?, ?)",
+            (guild_id, user_id, amount, kind, detail),
+        )
+
     def close(self):
         self._conn.close()

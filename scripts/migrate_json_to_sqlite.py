@@ -102,6 +102,13 @@ def migrate_income_config(db):
 
 
 def migrate_work(db):
+    # Depuis la migration 0002, work_settings/work_state sont par serveur (guild_id).
+    # L'ancienne config globale JSON n'est rattachable a aucun serveur : on la saute.
+    columns = {row["name"] for row in db.fetchall("PRAGMA table_info(work_settings)")}
+    if "guild_id" in columns:
+        print("work_settings/work_state: per-serveur depuis 0002, ancienne config globale ignoree.")
+        return
+
     if table_has_rows(db, "work_settings"):
         print("work_settings: deja peuplee, ignore.")
     else:

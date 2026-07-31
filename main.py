@@ -5,6 +5,7 @@ import os
 import traceback
 from discord.ext import commands
 from data.db import Database
+from admin import ADMIN_COMMANDS
 from cogs.Notifrss import cmdrss
 from cogs.utility import cmdutility
 from cogs.moderation import cmdmoderation
@@ -19,17 +20,17 @@ from cogs.diagnostics import cmddiagnostics
 from cogs.logs_cmd import cmdlogs
 from cogs.notes import cmdnotes
 from cogs.changelog import cmdchangelog
+from cogs.leveling import cmdleveling
+from cogs.reactroles import cmdreactroles
+from cogs.guild_settings import cmdguildsettings
+from cogs.automod import cmdautomod
+from cogs.translation import cmdtranslation
 
-bot = commands.Bot(command_prefix=",", intents=discord.Intents.all(), help_command=None)
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+bot = commands.Bot(command_prefix=",", intents=intents, help_command=None)
 db = Database()
-
-ADMIN_COMMANDS = {
-    "modpanel", "warnconfig", "permpanel", "warn", "warns", "clearwarns", "ban", "kick", "clear", "unban",
-    "timeout", "untimeout", "slowmode", "lock", "unlock", "addmoney", "removemoney", "reset_money",
-    "reset_economy", "clean_leaderboard", "ecopanel", "incomepanel", "gamepanel", "config_work", "role_income_add", "role_income_remove",
-    "role_income_edit", "addgame", "deletegame", "addquest", "deletequete", "config_quete", "clearinventory",
-    "gstart", "gend", "gcancel", "selftest", "logspanel",
-}
 
 
 def load_permission_config(guild_id: int):
@@ -72,6 +73,10 @@ async def on_ready():
     print("Le bot est en ligne")
     print(f"[DEBUG] Commandes chargees: {len(bot.commands)}")
     await bot.change_presence(activity=discord.Game(name=",help"))
+    try:
+        await bot.tree.sync()
+    except Exception as exc:
+        print(f"[DEBUG] Synchronisation slash impossible: {exc}")
 
 
 @bot.event
@@ -168,9 +173,9 @@ def load_token():
 async def main():
     token = load_token()
     await bot.add_cog(cmdrss(bot, db))
-    await bot.add_cog(cmdutility(bot))
+    await bot.add_cog(cmdutility(bot, db))
     await bot.add_cog(cmdmoderation(bot, db))
-    await bot.add_cog(cmdanim(bot))
+    await bot.add_cog(cmdanim(bot, db))
     await bot.add_cog(cmdincome(bot, db))
     await bot.add_cog(cmdeco(bot, db))
     await bot.add_cog(cmdwork(bot, db))
@@ -181,6 +186,11 @@ async def main():
     await bot.add_cog(cmdnotes(bot, db))
     await bot.add_cog(cmdchangelog(bot))
     await bot.add_cog(cmddiagnostics(bot, db))
+    await bot.add_cog(cmdleveling(bot, db))
+    await bot.add_cog(cmdreactroles(bot, db))
+    await bot.add_cog(cmdguildsettings(bot, db))
+    await bot.add_cog(cmdautomod(bot, db))
+    await bot.add_cog(cmdtranslation(bot, db))
     await bot.start(token)
 
 asyncio.run(main())

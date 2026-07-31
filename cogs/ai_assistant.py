@@ -212,7 +212,7 @@ class cmdai(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        """Répond aux mentions."""
+        """Répond aux mentions (avec un rate-limit par utilisateur)."""
         if (
             message.author.bot
             or not message.guild
@@ -226,6 +226,13 @@ class cmdai(commands.Cog):
         content = re.sub(rf"<@!?{self.bot.user.id}>", "", message.content).strip()
         if not content or content.startswith(","):
             return
+
+        now = time.time()
+        last = getattr(self, "_last_ai_reply", {})
+        if now - last.get(message.author.id, 0) < 10:
+            return
+        last[message.author.id] = now
+        self._last_ai_reply = last
 
         await message.channel.send("Je réfléchis...")
 

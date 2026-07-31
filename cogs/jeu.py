@@ -83,7 +83,6 @@ class cmdjeu(commands.Cog):
     def __init__(self, bot, db):
         self.bot = bot
         self.db = db
-        self.intents = discord.Intents.all()
 
     # --- balances (table partagee avec economie.py/income.py/work.py) ---
 
@@ -316,6 +315,7 @@ class cmdjeu(commands.Cog):
                 await ctx.send(f"🎟️ Vous avez gagné un ticket pour : **{prize_value}** !")
             elif prize_type == 'argent':
                 self.add_balance(user_id, int(prize_value))
+                self.db.log_transaction(ctx.guild.id, user_id, int(prize_value), "game", "lot gagné")
                 await ctx.send(f"💰 Vous avez gagné **{prize_value}** pièces !")
 
     # ─── Commandes ──────────────────────────────────────────────────────────────
@@ -442,6 +442,7 @@ class cmdjeu(commands.Cog):
                 await ctx.send(f"❌ Vous n'avez pas assez d'argent pour ouvrir ce lot. Prix : **{game_price}** pièces.")
                 return
             self.add_balance(user_id, -game_price)
+            self.db.log_transaction(ctx.guild.id, user_id, -game_price, "game", f"ouverture {lot_name}")
         # Si game_price == 0, ouverture gratuite sans ticket
 
         prize = random.choice(game['lots'])

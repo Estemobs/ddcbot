@@ -9,7 +9,6 @@ class cmdwork(commands.Cog):
     def __init__(self, bot, db):
         self.bot = bot
         self.db = db
-        self.intents = discord.Intents.all()
 
     # --- balances (table partagée avec economie.py/income.py/jeu.py) ---
 
@@ -24,11 +23,13 @@ class cmdwork(commands.Cog):
             (user_id, delta),
         )
 
-    # --- configuration globale de ,work (singleton, non liee a un serveur) ---
+    # --- configuration du travail par serveur ---
 
-    def get_work_settings(self):
+    def get_work_settings(self, guild_id: int):
         row = self.db.fetchone(
-            "SELECT min_amount, max_amount, reward_tiers, cooldown, rewards_json FROM work_settings WHERE id = 1"
+            "SELECT min_amount, max_amount, reward_tiers, cooldown, rewards_json "
+            "FROM work_settings WHERE guild_id = ?",
+            (guild_id,),
         )
         if row is None:
             return None
@@ -40,31 +41,35 @@ class cmdwork(commands.Cog):
             "rewards": json.loads(row["rewards_json"]),
         }
 
-    def set_work_settings(self, min_amount, max_amount, reward_tiers, cooldown, rewards):
+    def set_work_settings(self, guild_id: int, min_amount, max_amount, reward_tiers, cooldown, rewards):
         self.db.execute(
-            "INSERT INTO work_settings (id, min_amount, max_amount, reward_tiers, cooldown, rewards_json) "
-            "VALUES (1, ?, ?, ?, ?, ?) "
-            "ON CONFLICT(id) DO UPDATE SET min_amount=excluded.min_amount, max_amount=excluded.max_amount, "
+            "INSERT INTO work_settings (guild_id, min_amount, max_amount, reward_tiers, cooldown, rewards_json) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(guild_id) DO UPDATE SET min_amount=excluded.min_amount, max_amount=excluded.max_amount, "
             "reward_tiers=excluded.reward_tiers, cooldown=excluded.cooldown, rewards_json=excluded.rewards_json",
-            (min_amount, max_amount, reward_tiers, cooldown, json.dumps(list(rewards))),
+            (guild_id, min_amount, max_amount, reward_tiers, cooldown, json.dumps(list(rewards))),
         )
 
-    # --- etat par utilisateur ---
+    # --- etat par utilisateur (par serveur) ---
 
-    def get_work_state(self, user_id: int):
-        row = self.db.fetchone("SELECT work_count, last_worked FROM work_state WHERE user_id = ?", (user_id,))
+    def get_work_state(self, guild_id: int, user_id: int):
+        row = self.db.fetchone(
+            "SELECT work_count, last_worked FROM work_state WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
         if row is None:
             return None
         return {"work_count": row["work_count"], "last_worked": row["last_worked"]}
 
-    def record_work(self, user_id: int, timestamp: float):
+    def record_work(self, guild_id: int, user_id: int, timestamp: float):
         self.db.execute(
-            "INSERT INTO work_state (user_id, work_count, last_worked) VALUES (?, 1, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET work_count = work_count + 1, last_worked = excluded.last_worked",
-            (user_id, timestamp),
+            "INSERT INTO work_state (guild_id, user_id, work_count, last_worked) VALUES (?, ?, 1, ?) "
+            "ON CONFLICT(guild_id, user_id) DO UPDATE SET work_count = work_count + 1, last_worked = excluded.last_worked",
+            (guild_id, user_id, timestamp),
         )
 
     @commands.command()
+    @commands.has_permissions(manage_guild=True)
     async def config_work(self, ctx, min_amount: int, max_amount: int, reward_tiers: int, cooldown: int, *rewards: int):
         if len(rewards) != reward_tiers:
             await ctx.send(f"Le nombre de récompenses doit être égal au nombre de paliers de récompenses ({reward_tiers})")
@@ -75,15 +80,15 @@ class cmdwork(commands.Cog):
             return
 
         cooldown_sec = cooldown * 3600
-        self.set_work_settings(min_amount, max_amount, reward_tiers, cooldown_sec, rewards)
+        self.set_work_settings(ctx.guild.id, min_amount, max_amount, reward_tiers, cooldown_sec, rewards)
 
         await ctx.send(f"Commande configurée avec succès : montant minimum = {min_amount}, montant maximum = {max_amount}, nombre de paliers de récompenses = {reward_tiers}, cooldown = {cooldown} heures, récompenses = {rewards}")
 
     @commands.command()
     async def show_work_config(self, ctx):
-        settings = self.get_work_settings()
+        settings = self.get_work_settings(ctx.guild.id)
         if settings is None:
-            await ctx.send("La commande configure_work doit être exécutée avant d'utiliser la commande show_work_config")
+            await ctx.send("La commande config_work doit être exécutée avant d'utiliser la commande show_work_config")
             return
 
         embed = discord.Embed(title="Configuration de la commande work", color=0x00ff00)
@@ -97,13 +102,14 @@ class cmdwork(commands.Cog):
 
     @commands.command()
     async def work(self, ctx):
-        settings = self.get_work_settings()
+        settings = self.get_work_settings(ctx.guild.id)
         if settings is None:
-            await ctx.send("La commande configure_work doit être exécutée avant d'utiliser la commande work")
+            await ctx.send("La commande config_work doit être exécutée avant d'utiliser la commande work")
             return
 
         user_id = ctx.author.id
-        state = self.get_work_state(user_id)
+        guild_id = ctx.guild.id
+        state = self.get_work_state(guild_id, user_id)
         if state is not None:
             time_since_last_worked = time.time() - state["last_worked"]
             if time_since_last_worked < settings["cooldown"]:
@@ -120,7 +126,8 @@ class cmdwork(commands.Cog):
             bonus_reward = settings["rewards"][tier]
 
         self.add_balance(user_id, amount + bonus_reward)
-        self.record_work(user_id, time.time())
+        self.record_work(guild_id, user_id, time.time())
+        self.db.log_transaction(guild_id, user_id, amount + bonus_reward, "work", f"bonus={bonus_reward}")
         new_balance = self.get_balance(user_id)
 
         await ctx.send(f"Vous avez travaillé et gagné {amount}$! Vous avez également reçu une récompense bonus de {bonus_reward}. Votre solde actuel est de {new_balance}.")

@@ -28,13 +28,19 @@ Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, 
 | Module | Description |
 |---|---|
 | 🛡️ **Modération** | avertissements, sanctions, verrouillage de salons, panneau `,modpanel` |
-| 💰 **Économie** | soldes, classement, transferts, panneau `,ecopanel` |
-| 💼 **Travail & revenus** | `,work`, revenus liés aux rôles, panneau `,incomepanel` |
-| 🎮 **Mini-jeux & loot** | boutique, lots, quêtes, giveaways, panneau `,gamepanel` |
-| 📰 **Notifications RSS** | suivi de sorties d'épisodes/animes via `,subscribe` |
+| 💰 **Économie** | soldes, classement, transferts, historique `,transactions`, panneau `,ecopanel` |
+| 💼 **Travail & revenus** | `,work` (config par serveur), revenus liés aux rôles, panneau `,incomepanel` |
+| 🎮 **Mini-jeux & loot** | boutique, lots, quêtes, giveaways par réaction, panneau `,gamepanel` |
+| 📰 **Notifications RSS** | suivi de sorties d'épisodes/animes via `,subscribe` (aiohttp + HTTPS) |
 | 📝 **Notes & tags** | mémos textuels par serveur (`,addtag`, `,tag`, ...) |
-| 🧠 **Assistant IA** | réponses et OCR via `g4f` / `easyocr` |
+| 🧠 **Assistant IA** | réponses et OCR via `g4f` / `easyocr`, rate-limit par utilisateur |
 | 📋 **Logs** | salons et catégories de logs configurables par serveur, panneau `,logspanel` |
+| 🌐 **Traduction** | `,translate` (éphémère en slash), traduction automatique par salon en DM (`,translator`), langues `,lang`/`,guildlang` (fr/en) |
+| 🎭 **Reaction roles** | attribue un rôle par réaction (`reactrole`) |
+| 📈 **Leveling** | XP par message, `,rank`, `,levels`, config `,xpconfig` |
+| 👋 **Accueil** | messages de bienvenue/départ avec placeholders `,setwelcome`/`,setleave` |
+| 🚫 **Auto-mod** | filtre de mots bannis (`,automod`, `,badword`) |
+| ⏰ **Rappels** | `,rmd` persisté en base, `,reminders`, `,rmcancel` |
 | 🩺 **Auto-diagnostic** | `,selftest` vérifie commandes, cogs, modules et tables SQLite |
 | 🔄 **Changelog auto** | annonce les mises à jour du bot dans un salon Discord |
 

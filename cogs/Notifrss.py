@@ -1,17 +1,16 @@
 import asyncio
 import discord
-import json
-import requests
 from datetime import datetime
 from io import BytesIO
 from discord.ext import commands
+
+from http_utils import get_bytes, get_json
 
 
 class cmdrss(commands.Cog):
     def __init__(self, bot, db):
         self.bot = bot
         self.db = db
-        self.intents = discord.Intents.all()
         self.notification_lock = asyncio.Lock()
         self._notification_task = None
 
@@ -76,12 +75,10 @@ class cmdrss(commands.Cog):
         return list(compacted.values())
 
     async def _get_next_episode(self, show_name, user_id, after_date=None):
-        show_url = f'http://api.tvmaze.com/singlesearch/shows?q={show_name}&embed=episodes'
+        show_url = f'https://api.tvmaze.com/singlesearch/shows?q={show_name}&embed=episodes'
         try:
-            show_response = requests.get(show_url)
-            show_response.raise_for_status()
-            show_data = show_response.json()
-        except (requests.RequestException, ValueError):
+            show_data = await get_json(show_url)
+        except Exception:
             return None
 
         episodes = show_data.get('_embedded', {}).get('episodes', [])
@@ -183,9 +180,12 @@ class cmdrss(commands.Cog):
         show_name = msg.content
 
         # search for show
-        search_url = f'http://api.tvmaze.com/search/shows?q={show_name}'
-        search_response = requests.get(search_url)
-        search_results = json.loads(search_response.text)
+        search_url = f'https://api.tvmaze.com/search/shows?q={show_name}'
+        try:
+            search_results = await get_json(search_url)
+        except Exception:
+            await ctx.send("Impossible de contacter l'API de recherche. Réessayez plus tard.")
+            return
 
         # check if search found any shows
         if len(search_results) == 0:
@@ -200,10 +200,12 @@ class cmdrss(commands.Cog):
             image_url = result['show']['image']['original'] if result['show']['image'] else None
             message = f"{i+1}. {name} ({network})"
             if image_url:
-                response = requests.get(image_url)
-                file = BytesIO(response.content)
-                image = discord.File(file, filename="image.png")
-                await ctx.send(message, file=image)
+                try:
+                    image_bytes = await get_bytes(image_url)
+                    file = discord.File(BytesIO(image_bytes), filename="image.png")
+                    await ctx.send(message, file=file)
+                except Exception:
+                    await ctx.send(message)
             else:
                 await ctx.send(message)
             option = (name, network, image_url)
@@ -227,9 +229,12 @@ class cmdrss(commands.Cog):
         show_name = selected_option[0]
 
         # find show by name
-        show_url = f'http://api.tvmaze.com/singlesearch/shows?q={show_name}&embed=episodes'
-        show_response = requests.get(show_url)
-        show_data = json.loads(show_response.text)
+        show_url = f'https://api.tvmaze.com/singlesearch/shows?q={show_name}&embed=episodes'
+        try:
+            show_data = await get_json(show_url)
+        except Exception:
+            await ctx.send("Impossible de récupérer les épisodes. Réessayez plus tard.")
+            return
 
         # get future episode release dates
         episodes = show_data.get('_embedded', {}).get('episodes', [])

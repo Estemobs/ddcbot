@@ -96,7 +96,6 @@ class cmdincome(commands.Cog):
     def __init__(self, bot, db):
         self.bot = bot
         self.db = db
-        self.intents = discord.Intents.all()
 
     # --- balances (table partagée avec economie.py/jeu.py/work.py) ---
 
@@ -337,6 +336,7 @@ class cmdincome(commands.Cog):
             if current_time - role_data["last_collect"] >= role_data["collect_interval"]:
                 self.add_balance(member.id, role_data["amount"])
                 self.set_role_income_last_collect(role_id, current_time)
+                self.db.log_transaction(ctx.guild.id, member.id, role_data["amount"], "income", f"rôle {role_data['name']}")
                 new_balance = self.get_balance(member.id)
                 await ctx.send(f"{member.mention}, vous avez collecté **{role_data['amount']:.2f}** pièces grâce à votre rôle **{role_data['name']}**. Nouveau solde : **{new_balance:.2f}** pièces.")
                 collected_any = True

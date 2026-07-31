@@ -85,7 +85,6 @@ class cmdeco(commands.Cog):
     def __init__(self, bot, db):
         self.bot = bot
         self.db = db
-        self.intents = discord.Intents.all()
 
     # --- balances ---
 
@@ -232,6 +231,7 @@ class cmdeco(commands.Cog):
         else:
             self.add_balance(member.id, amount)
             await ctx.send(f'{amount:.2f} a été ajouté au compte de {member.mention}. Nouveau solde : {self.get_balance(member.id):.2f}.')
+        self.db.log_transaction(ctx.guild.id, member.id, amount, "admin_add", f"par {ctx.author.display_name}")
         await self.send_eco_log(ctx.guild, f"[ECO] +{amount:.2f} pour {member.mention} par {ctx.author.mention}")
 
     @commands.command()
@@ -247,6 +247,7 @@ class cmdeco(commands.Cog):
         if cfg["allow_negative_balances"] or current >= amount:
             self.add_balance(member.id, -amount)
             await ctx.send(f'{amount:.2f} a été retiré du compte de {member.mention}. Nouveau solde : {self.get_balance(member.id):.2f}.')
+            self.db.log_transaction(ctx.guild.id, member.id, -amount, "admin_remove", f"par {ctx.author.display_name}")
             await self.send_eco_log(ctx.guild, f"[ECO] -{amount:.2f} pour {member.mention} par {ctx.author.mention}")
         else:
             await ctx.send(f"{member.mention} n'a pas suffisamment de fonds pour retirer {amount:.2f}. Solde actuel : {current:.2f}.")
@@ -271,6 +272,8 @@ class cmdeco(commands.Cog):
             return
         self.add_balance(member.id, amount)
         self.add_balance(ctx.author.id, -amount)
+        self.db.log_transaction(ctx.guild.id, ctx.author.id, -amount, "transfer", f"vers {member.display_name}")
+        self.db.log_transaction(ctx.guild.id, member.id, amount, "transfer", f"de {ctx.author.display_name}")
         await ctx.send(f"{amount:.2f} a été donné à {member.mention}. Votre nouveau solde est : {self.get_balance(ctx.author.id):.2f}.")
         await self.send_eco_log(ctx.guild, f"[ECO] transfert {amount:.2f} de {ctx.author.mention} vers {member.mention}")
 
@@ -305,6 +308,49 @@ class cmdeco(commands.Cog):
     async def reset_economy(self, ctx):
         self.db.execute("UPDATE balances SET amount = 0.0")
         await ctx.send("Les comptes de tous les utilisateurs ont été remis à zéro.")
+
+    @commands.command()
+    async def transactions(self, ctx, member: discord.Member = None, count: int = 10):
+        """Affiche les dernières transactions du compte (le vôtre ou celui d'un membre si vous êtes admin)."""
+        if member is None:
+            member = ctx.author
+        elif not ctx.author.guild_permissions.manage_guild:
+            await ctx.send("Vous ne pouvez consulter que vos propres transactions.")
+            return
+        count = max(1, min(count, 50))
+        rows = self.db.fetchall(
+            "SELECT user_id, amount, kind, detail, created_at FROM transactions "
+            "WHERE guild_id = ? AND user_id = ? ORDER BY id DESC LIMIT ?",
+            (ctx.guild.id, member.id, count),
+        )
+        if not rows:
+            await ctx.send(f"Aucune transaction enregistrée pour {member.mention}.")
+            return
+        embed = discord.Embed(
+            title=f"Transactions de {member.display_name}",
+            color=discord.Color.gold(),
+        )
+        kind_labels = {
+            "transfer": "Transfert",
+            "admin_add": "Ajout admin",
+            "admin_remove": "Retrait admin",
+            "work": "Travail",
+            "income": "Revenus",
+            "game": "Jeu",
+            "quest": "Quête",
+        }
+        for row in rows:
+            sign = "+" if row["amount"] >= 0 else "-"
+            label = kind_labels.get(row["kind"], row["kind"])
+            value = f"{sign}{abs(row['amount']):.2f} — {label}"
+            if row["detail"]:
+                value += f" ({row['detail']})"
+            embed.add_field(
+                name=row["created_at"][:16],
+                value=value,
+                inline=False,
+            )
+        await ctx.send(embed=embed)
 
 
 def setup(bot, db):

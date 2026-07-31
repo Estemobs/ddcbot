@@ -1,47 +1,10 @@
 import discord
 from discord.ext import commands
-import hashlib
-import os
-import subprocess
+
+from versioning import bot_version
 
 
-def _compute_file_digest_version(base="1.0.1"):
-    project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    digest = hashlib.sha1()
-
-    for root, dirs, files in os.walk(project_root):
-        dirs[:] = [d for d in dirs if d != "__pycache__"]
-        for filename in sorted(files):
-            if not filename.endswith(".py"):
-                continue
-
-            file_path = os.path.join(root, filename)
-            relative_path = os.path.relpath(file_path, project_root)
-            digest.update(relative_path.encode("utf-8"))
-            with open(file_path, "rb") as file_handle:
-                digest.update(file_handle.read())
-
-    return f"{base}+{digest.hexdigest()[:7]}"
-
-
-def _git_short_hash(project_root):
-    try:
-        proc = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=project_root, capture_output=True, text=True, check=True)
-        return proc.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-
-def _compute_bot_version():
-    project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    base = "1.0.1"
-    git_hash = _git_short_hash(project_root)
-    if git_hash:
-        return f"{base}+{git_hash}"
-    return _compute_file_digest_version(base=base)
-
-
-BOT_VERSION = _compute_bot_version()
+BOT_VERSION = bot_version()
 
 
 class cmdhelp(commands.Cog):

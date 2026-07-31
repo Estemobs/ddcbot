@@ -4,6 +4,8 @@ from datetime import timedelta
 import discord
 from discord.ext import commands
 
+from admin import ADMIN_COMMANDS
+
 
 DEFAULT_MOD_CONFIG = {
     "warn": {
@@ -26,44 +28,6 @@ DEFAULT_MOD_CONFIG = {
         "dm_on_ban": True,
     },
 }
-
-ADMIN_COMMANDS = [
-    "modpanel",
-    "warnconfig",
-    "permpanel",
-    "warn",
-    "warns",
-    "clearwarns",
-    "ban",
-    "kick",
-    "clear",
-    "unban",
-    "timeout",
-    "untimeout",
-    "slowmode",
-    "lock",
-    "unlock",
-    "addmoney",
-    "removemoney",
-    "reset_money",
-    "reset_economy",
-    "clean_leaderboard",
-    "ecopanel",
-    "config_work",
-    "role_income_add",
-    "role_income_remove",
-    "role_income_edit",
-    "addgame",
-    "deletegame",
-    "addquest",
-    "deletequete",
-    "config_quete",
-    "clearinventory",
-    "gstart",
-    "gend",
-    "gcancel",
-]
-
 
 class BaseModPanelView(discord.ui.View):
     page_name = "warn"
@@ -252,7 +216,7 @@ class PermissionCommandSelect(discord.ui.Select):
         options = [
             discord.SelectOption(label="Default admin roles", value="__default__"),
         ]
-        for cmd_name in ADMIN_COMMANDS[:24]:
+        for cmd_name in sorted(ADMIN_COMMANDS)[:24]:
             options.append(discord.SelectOption(label=cmd_name, value=cmd_name))
         super().__init__(
             placeholder="Selectionner une commande admin",
@@ -392,7 +356,6 @@ class cmdmoderation(commands.Cog):
     def __init__(self, bot, db):
         self.bot = bot
         self.db = db
-        self.intents = discord.Intents.all()
 
     def _default_config(self):
         return json.loads(json.dumps(DEFAULT_MOD_CONFIG))
