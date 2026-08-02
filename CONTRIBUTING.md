@@ -33,4 +33,4 @@ pytest -q
 
 ## Licence
 
-Ce projet est sous licence PolyForm Noncommercial 1.0.0 : l'utilisation commerciale est interdite.
+Ce projet est sous licence GNU General Public License v3.0 (GPL-3.0). Toute contribution est acceptée sous cette licence ; toute version modifiée ou redistribuée doit rester sous GPL-3.0 avec le code source.

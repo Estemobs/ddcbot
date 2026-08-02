@@ -1,7 +1,7 @@
 # DDCBot 🤖
 
 [![Tests](https://github.com/Estemobs/ddcbot/actions/workflows/tests.yml/badge.svg)](https://github.com/Estemobs/ddcbot/actions/workflows/tests.yml)
-[![Licence PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/licence-PolyForm%20Noncommercial%201.0.0-lightgrey.svg)](LICENSE)
+[![Licence GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
 [![discord.py](https://img.shields.io/badge/discord.py-2.4-5865F2.svg)](https://github.com/Rapptz/discord.py)
 
@@ -154,5 +154,4 @@ Les cogs vivent dans [cogs/](cogs/) et la base SQLite / ses migrations dans [dat
 
 ## Licence
 
-Ce projet est sous licence [PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0), une licence source-available conçue pour le logiciel.
-Utilisation commerciale interdite. Voir le fichier [LICENSE](LICENSE) pour plus de details.
+Ce projet est sous licence [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html) (GPL-3.0) : vous pouvez l'utiliser, le modifier et le redistribuer librement, à condition que toute version modifiée ou distribuée reste sous GPL-3.0 avec le code source. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
