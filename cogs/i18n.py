@@ -225,6 +225,68 @@ STRINGS = {
         "fr": "Rappel [{reminder_id}] annulé.",
         "en": "Reminder [{reminder_id}] cancelled.",
     },
+    "minecraft_need_log": {
+        "fr": "Configurez d'abord le chemin du log : `,mcconfig log <chemin>`.",
+        "en": "First set the log path: `,mcconfig log <path>`.",
+    },
+    "minecraft_enabled": {
+        "fr": "✅ Pont Discord <-> Minecraft activé. Canal de relais : ce salon.",
+        "en": "✅ Discord <-> Minecraft bridge enabled. Relay channel: this channel.",
+    },
+    "minecraft_disabled": {
+        "fr": "❌ Pont Discord <-> Minecraft désactivé.",
+        "en": "❌ Discord <-> Minecraft bridge disabled.",
+    },
+    "minecraft_config_title": {
+        "fr": "⚙️ Configuration du pont Minecraft",
+        "en": "⚙️ Minecraft bridge configuration",
+    },
+    "minecraft_set_log": {
+        "fr": "✅ Chemin du log défini : `{path}`.",
+        "en": "✅ Log path set: `{path}`.",
+    },
+    "minecraft_set_channel": {
+        "fr": "✅ Canal de relais défini sur ce salon.",
+        "en": "✅ Relay channel set to this channel.",
+    },
+    "minecraft_set_method": {
+        "fr": "✅ Méthode d'envoi : `{method}`.",
+        "en": "✅ Send method: `{method}`.",
+    },
+    "minecraft_set_rcon": {
+        "fr": "✅ RCON configuré : `{host}`.",
+        "en": "✅ RCON configured: `{host}`.",
+    },
+    "minecraft_set_tmux": {
+        "fr": "✅ Session tmux définie : `{session}`.",
+        "en": "✅ tmux session set: `{session}`.",
+    },
+    "minecraft_set_sudo": {
+        "fr": "✅ sudo : `{state}`.",
+        "en": "✅ sudo: `{state}`.",
+    },
+    "minecraft_config_usage": {
+        "fr": "Syntaxe : `,mcconfig log <chemin>` | `channel` | `method <rcon|tmux>` | "
+              "`rcon <host> <port> <motdepasse>` | `tmux <session>` | `sudo on/off` | `show`.",
+        "en": "Usage: `,mcconfig log <path>` | `channel` | `method <rcon|tmux>` | "
+              "`rcon <host> <port> <password>` | `tmux <session>` | `sudo on/off` | `show`.",
+    },
+    "minecraft_empty": {
+        "fr": "Message vide après nettoyage.",
+        "en": "Message empty after sanitization.",
+    },
+    "minecraft_send_error": {
+        "fr": "❌ Échec d'envoi vers Minecraft : {error}.",
+        "en": "❌ Failed to send to Minecraft: {error}.",
+    },
+    "minecraft_sent": {
+        "fr": "✅ Envoyé via {method} : {text}.",
+        "en": "✅ Sent via {method}: {text}.",
+    },
+    "minecraft_status_title": {
+        "fr": "📡 Statut du pont Minecraft",
+        "en": "📡 Minecraft bridge status",
+    },
 }
 
 

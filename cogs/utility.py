@@ -2,6 +2,7 @@ import asyncio
 import time
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 
@@ -118,6 +119,30 @@ class cmdutility(commands.Cog):
         )
         await ctx.send(embed=embed)
 
+    @app_commands.command(name="reminders")
+    async def reminders_slash(self, interaction: discord.Interaction):
+        """Affiche tous vos rappels en attente."""
+        rows = self.list_user_reminders(interaction.user.id)
+        if not rows:
+            await interaction.response.send_message("Vous n'avez aucun rappel en attente.")
+            return
+        lines = []
+        for row in rows:
+            remaining = int(row["remind_at"] - time.time())
+            minutes, seconds = divmod(remaining, 60)
+            hours, minutes = divmod(minutes, 60)
+            if hours:
+                delay = f"{hours}h{minutes}m"
+            else:
+                delay = f"{minutes}m{seconds}s"
+            lines.append(f"**[{row['id']}]** dans {delay} : {row['message']}")
+        embed = discord.Embed(
+            title="Rappels en attente",
+            description="\n".join(lines),
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed)
+
     @commands.command()
     async def rmcancel(self, ctx, reminder_id: int):
         row = self.db.fetchone(
@@ -129,6 +154,19 @@ class cmdutility(commands.Cog):
         self.delete_reminder(reminder_id)
         await ctx.send(f"Rappel [{reminder_id}] annulé.")
 
+    @app_commands.command(name="rmcancel")
+    @app_commands.describe(reminder_id="L'ID du rappel à annuler (voir /reminders)")
+    async def rmcancel_slash(self, interaction: discord.Interaction, reminder_id: int):
+        """Annule un de vos rappels en attente."""
+        row = self.db.fetchone(
+            "SELECT id FROM reminders WHERE id = ? AND user_id = ?", (reminder_id, interaction.user.id)
+        )
+        if row is None:
+            await interaction.response.send_message("Aucun rappel avec cet ID pour vous.")
+            return
+        self.delete_reminder(reminder_id)
+        await interaction.response.send_message(f"Rappel [{reminder_id}] annulé.")
+
     # --- autres utilitaires ---
 
     @commands.command()
@@ -138,6 +176,16 @@ class cmdutility(commands.Cog):
             await ctx.send(f"L'ID du rôle {role_name} est : {role.id}")
         else:
             await ctx.send(f"Le rôle {role_name} n'existe pas sur ce serveur.")
+
+    @app_commands.command(name="role_id")
+    @app_commands.describe(role_name="Le nom exact du rôle")
+    async def role_id_slash(self, interaction: discord.Interaction, role_name: str):
+        """Affiche l'ID d'un rôle."""
+        role = discord.utils.get(interaction.guild.roles, name=role_name) if interaction.guild else None
+        if role is not None:
+            await interaction.response.send_message(f"L'ID du rôle {role_name} est : {role.id}")
+        else:
+            await interaction.response.send_message(f"Le rôle {role_name} n'existe pas sur ce serveur.")
 
     @commands.command()
     async def role_name(self, ctx, role_id: int):
@@ -153,6 +201,15 @@ class cmdutility(commands.Cog):
         em = discord.Embed(description=f'● Voici la photo de profil de {member}', color=0x04ff00)
         em.set_image(url=member.display_avatar.url)
         await ctx.send(embed=em)
+
+    @app_commands.command(name="avatar")
+    @app_commands.describe(member="Le membre dont afficher l'avatar (vide = vous)")
+    async def avatar_slash(self, interaction: discord.Interaction, member: discord.Member = None):
+        """Affiche la photo de profil d'un membre."""
+        member = member or interaction.user
+        em = discord.Embed(description=f'● Voici la photo de profil de {member}', color=0x04ff00)
+        em.set_image(url=member.display_avatar.url)
+        await interaction.response.send_message(embed=em)
 
     @commands.command()
     async def serverpicture(self, ctx):

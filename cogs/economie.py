@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 
@@ -212,6 +213,18 @@ class cmdeco(commands.Cog):
         else:
             await ctx.send(f'Votre solde est de **{self.get_balance(member.id):.2f}** pièces.')
 
+    @app_commands.command(name="balance")
+    @app_commands.describe(member="Le membre dont afficher le solde (vide = vous)")
+    async def balance_slash(self, interaction: discord.Interaction, member: discord.Member = None):
+        """Affiche le solde d'un membre."""
+        member = member or interaction.user
+        if not self.has_account(member.id):
+            await interaction.response.send_message(f'{member.mention} a un solde de **0.00** pièces.')
+        else:
+            await interaction.response.send_message(
+                f'{member.mention} a un solde de **{self.get_balance(member.id):.2f}** pièces.'
+            )
+
     @commands.command()
     async def balance(self, ctx, member: discord.Member):
         if not self.has_account(member.id):
@@ -277,6 +290,39 @@ class cmdeco(commands.Cog):
         await ctx.send(f"{amount:.2f} a été donné à {member.mention}. Votre nouveau solde est : {self.get_balance(ctx.author.id):.2f}.")
         await self.send_eco_log(ctx.guild, f"[ECO] transfert {amount:.2f} de {ctx.author.mention} vers {member.mention}")
 
+    @app_commands.command(name="pay")
+    @app_commands.describe(member="Le membre à qui donner de l'argent", amount="Le montant à transférer")
+    async def pay_slash(self, interaction: discord.Interaction, member: discord.Member, amount: float):
+        """Donne de l'argent à un membre."""
+        cfg = self.get_eco_config(interaction.guild.id)
+        if not cfg["allow_transfers"]:
+            await interaction.response.send_message("Les transferts entre membres sont desactives sur ce serveur.")
+            return
+        if amount <= 0:
+            await interaction.response.send_message("Le montant doit etre superieur a 0.")
+            return
+        if amount > cfg["max_transfer"]:
+            await interaction.response.send_message(f"Montant trop eleve. Maximum autorise: {cfg['max_transfer']}.")
+            return
+        if not self.has_account(interaction.user.id):
+            await interaction.response.send_message("Vous n'avez pas de compte.")
+            return
+        if self.get_balance(interaction.user.id) < amount:
+            await interaction.response.send_message("Vous n'avez pas suffisamment d'argent sur votre compte.")
+            return
+        self.add_balance(member.id, amount)
+        self.add_balance(interaction.user.id, -amount)
+        self.db.log_transaction(interaction.guild.id, interaction.user.id, -amount, "transfer", f"vers {member.display_name}")
+        self.db.log_transaction(interaction.guild.id, member.id, amount, "transfer", f"de {interaction.user.display_name}")
+        await interaction.response.send_message(
+            f"{amount:.2f} a été donné à {member.mention}. "
+            f"Votre nouveau solde est : {self.get_balance(interaction.user.id):.2f}."
+        )
+        await self.send_eco_log(
+            interaction.guild,
+            f"[ECO] transfert {amount:.2f} de {interaction.user.mention} vers {member.mention}",
+        )
+
     @commands.command()
     async def leaderboard(self, ctx):
         rows = self.db.fetchall("SELECT user_id, amount FROM balances WHERE amount > 0 ORDER BY amount DESC LIMIT 10")
@@ -286,6 +332,17 @@ class cmdeco(commands.Cog):
             if member:
                 embed.add_field(name=f"{i+1}. {member.display_name}", value=f"{row['amount']:.2f}", inline=False)
         await ctx.send(embed=embed)
+
+    @app_commands.command(name="leaderboard")
+    async def leaderboard_slash(self, interaction: discord.Interaction):
+        """Affiche le Top 10 des plus riches du serveur."""
+        rows = self.db.fetchall("SELECT user_id, amount FROM balances WHERE amount > 0 ORDER BY amount DESC LIMIT 10")
+        embed = discord.Embed(title="Top 10 des utilisateurs les plus riches :", color=0xffd700)
+        for i, row in enumerate(rows):
+            member = interaction.guild.get_member(row["user_id"]) if interaction.guild else None
+            if member:
+                embed.add_field(name=f"{i+1}. {member.display_name}", value=f"{row['amount']:.2f}", inline=False)
+        await interaction.response.send_message(embed=embed)
 
     @commands.command()
     async def clean_leaderboard(self, ctx):

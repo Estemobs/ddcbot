@@ -1,5 +1,6 @@
 import asyncio
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 
@@ -112,6 +113,16 @@ class cmdnotes(commands.Cog):
         else:
             await ctx.send(f"❌ Aucune note trouvée avec le titre '{title}'.")
 
+    @app_commands.command(name="tag")
+    @app_commands.describe(title="Le titre de la note")
+    async def tag_slash(self, interaction: discord.Interaction, title: str):
+        """Affiche le contenu d'une note."""
+        content = self.get_note(title)
+        if content is not None:
+            await interaction.response.send_message(content)
+        else:
+            await interaction.response.send_message(f"❌ Aucune note trouvée avec le titre '{title}'.")
+
     @commands.command()
     async def taglist(self, ctx):
         """Affiche toutes les notes dans une liste organisee."""
@@ -119,6 +130,14 @@ class cmdnotes(commands.Cog):
         description = "\n".join(titles) if titles else "(aucune note)"
         embed = discord.Embed(title="Liste des notes", description=description, color=discord.Color.green())
         await ctx.send(embed=embed)
+
+    @app_commands.command(name="taglist")
+    async def taglist_slash(self, interaction: discord.Interaction):
+        """Affiche toutes les notes dans une liste organisee."""
+        titles = self.list_notes()
+        description = "\n".join(titles) if titles else "(aucune note)"
+        embed = discord.Embed(title="Liste des notes", description=description, color=discord.Color.green())
+        await interaction.response.send_message(embed=embed)
 
 
 def setup(bot, db):

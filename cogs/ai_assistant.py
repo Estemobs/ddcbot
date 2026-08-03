@@ -5,11 +5,8 @@ import re
 import time
 
 import discord
-import nest_asyncio
 import requests
 from discord.ext import commands
-
-nest_asyncio.apply()
 
 PROVIDER_TIMEOUT = 20
 #last file edit: 2024-06-17

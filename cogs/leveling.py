@@ -1,6 +1,7 @@
 import time
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from cogs.i18n import t
@@ -144,6 +145,61 @@ class cmdleveling(commands.Cog):
         embed.add_field(name=t(self.db, "rank_field_global_rank", ctx.guild.id, ctx.author.id), value=f"#{global_rank if global_rank else '—'}", inline=True)
         embed.set_thumbnail(url=member.display_avatar.url)
         await ctx.send(embed=embed)
+
+    @app_commands.command(name="rank")
+    @app_commands.describe(member="Le membre dont afficher le rang (vide = vous)")
+    async def rank_slash(self, interaction: discord.Interaction, member: discord.Member = None):
+        """Affiche le niveau et le rang XP d'un membre."""
+        member = member or interaction.user
+        xp = self.get_xp(member.id)
+        level = level_from_xp(xp)
+        in_level = xp_in_level(xp)
+
+        server_rank = 0
+        for guild_member in interaction.guild.members:
+            if self.get_xp(guild_member.id) > xp:
+                server_rank += 1
+        server_rank += 1
+
+        global_rank = 0
+        rows = self.db.fetchall("SELECT user_id, xp FROM levels ORDER BY xp DESC")
+        for i, row in enumerate(rows, start=1):
+            if row["user_id"] == member.id:
+                global_rank = i
+                break
+
+        embed = discord.Embed(
+            title=t(
+                self.db,
+                "rank_title",
+                interaction.guild.id,
+                interaction.user.id,
+                member=member.display_name,
+            ),
+            color=discord.Color.green(),
+        )
+        embed.add_field(
+            name=t(self.db, "rank_field_level", interaction.guild.id, interaction.user.id),
+            value=str(level),
+            inline=True,
+        )
+        embed.add_field(
+            name=t(self.db, "rank_field_xp", interaction.guild.id, interaction.user.id),
+            value=f"{in_level}/{LEVEL_FACTOR}",
+            inline=True,
+        )
+        embed.add_field(
+            name=t(self.db, "rank_field_server_rank", interaction.guild.id, interaction.user.id),
+            value=f"#{server_rank}",
+            inline=True,
+        )
+        embed.add_field(
+            name=t(self.db, "rank_field_global_rank", interaction.guild.id, interaction.user.id),
+            value=f"#{global_rank if global_rank else '—'}",
+            inline=True,
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        await interaction.response.send_message(embed=embed)
 
     @commands.command()
     async def levels(self, ctx):

@@ -30,6 +30,7 @@ EXPECTED_COMMANDS = {
     "mybalance",
     "balance",
     "paye",
+    "pay",
     "leaderboard",
     "addmoney",
     "removemoney",
@@ -95,6 +96,11 @@ EXPECTED_COMMANDS = {
     "badword",
     "lang",
     "guildlang",
+    "mcenable",
+    "mcdisable",
+    "mcconfig",
+    "mcsay",
+    "mcstatus",
 }
 
 REQUIRED_MODULES = [
@@ -106,7 +112,6 @@ REQUIRED_MODULES = [
     "cv2",
     "PIL",
     "easyocr",
-    "nest_asyncio",
     "curl_cffi",
 ]
 
@@ -139,6 +144,7 @@ EXPECTED_TABLES = [
     "automod_config",
     "user_lang",
     "guild_lang",
+    "minecraft_config",
 ]
 
 

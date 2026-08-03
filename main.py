@@ -25,6 +25,7 @@ from cogs.reactroles import cmdreactroles
 from cogs.guild_settings import cmdguildsettings
 from cogs.automod import cmdautomod
 from cogs.translation import cmdtranslation
+from cogs.minecraft import cmdminecraft
 
 intents = discord.Intents.default()
 intents.members = True
@@ -165,9 +166,18 @@ def load_token():
     env_token = os.environ.get("DDC_TOKEN")
     if env_token:
         return env_token
-    with open('secrets.json') as f:
+    secrets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'secrets.json')
+    if not os.path.exists(secrets_path):
+        raise FileNotFoundError(
+            "Aucun token trouvé. Définissez DDC_TOKEN dans l'environnement "
+            "ou créez un fichier secrets.json contenant {\"ddc_token\": \"...\"}."
+        )
+    with open(secrets_path) as f:
         data = json.load(f)
-    return data['ddc_token']
+    token = data.get('ddc_token')
+    if not token:
+        raise ValueError("La cle 'ddc_token' est absente de secrets.json.")
+    return token
 
 
 async def main():
@@ -191,6 +201,7 @@ async def main():
     await bot.add_cog(cmdguildsettings(bot, db))
     await bot.add_cog(cmdautomod(bot, db))
     await bot.add_cog(cmdtranslation(bot, db))
+    await bot.add_cog(cmdminecraft(bot, db))
     await bot.start(token)
 
 asyncio.run(main())

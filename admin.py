@@ -12,4 +12,5 @@ ADMIN_COMMANDS = frozenset({
     "deletequete", "config_quete", "clearinventory", "gstart", "gend", "gcancel", "selftest", "logspanel",
     "guildlang", "xpconfig", "xpset", "xptoggle", "reactrole", "reactroles", "reactrolerm", "setwelcome", "setleave",
     "welcomeconfig", "automod", "automodconfig", "badword",
+    "mcenable", "mcdisable", "mcconfig", "mcsay", "mcstatus",
 })
