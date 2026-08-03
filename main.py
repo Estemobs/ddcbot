@@ -26,6 +26,8 @@ from cogs.guild_settings import cmdguildsettings
 from cogs.automod import cmdautomod
 from cogs.translation import cmdtranslation
 from cogs.minecraft import cmdminecraft
+from cogs.invitations import cmdinvitations
+from cogs.steam import cmdsteam
 
 intents = discord.Intents.default()
 intents.members = True
@@ -202,6 +204,8 @@ async def main():
     await bot.add_cog(cmdautomod(bot, db))
     await bot.add_cog(cmdtranslation(bot, db))
     await bot.add_cog(cmdminecraft(bot, db))
+    await bot.add_cog(cmdinvitations(bot, db))
+    await bot.add_cog(cmdsteam(bot, db))
     await bot.start(token)
 
 asyncio.run(main())

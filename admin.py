@@ -13,4 +13,5 @@ ADMIN_COMMANDS = frozenset({
     "guildlang", "xpconfig", "xpset", "xptoggle", "reactrole", "reactroles", "reactrolerm", "setwelcome", "setleave",
     "welcomeconfig", "automod", "automodconfig", "badword",
     "mcenable", "mcdisable", "mcconfig", "mcsay", "mcstatus",
+    "invleft", "steamconfig",
 })

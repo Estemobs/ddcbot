@@ -287,6 +287,80 @@ STRINGS = {
         "fr": "📡 Statut du pont Minecraft",
         "en": "📡 Minecraft bridge status",
     },
+    # --- invitations ---
+    "inv_total_title": {
+        "fr": "📊 Invitations sur le serveur",
+        "en": "📊 Server invitations",
+    },
+    "inv_total": {
+        "fr": "Total invitées",
+        "en": "Total invited",
+    },
+    "inv_left": {
+        "fr": "Parties",
+        "en": "Left",
+    },
+    "inv_member_title": {
+        "fr": "📊 Informations d'invitation",
+        "en": "📊 Invitation info",
+    },
+    "inv_member": {
+        "fr": "Utilisateur",
+        "en": "User",
+    },
+    "inv_invited": {
+        "fr": "Invitées",
+        "en": "Invited",
+    },
+    "inv_remained": {
+        "fr": "Restées",
+        "en": "Remained",
+    },
+    "inv_top_title": {
+        "fr": "🏆 Top invitateurs",
+        "en": "🏆 Top inviters",
+    },
+    "inv_no_data": {
+        "fr": "Aucune invitation enregistrée sur ce serveur.",
+        "en": "No invitations recorded on this server.",
+    },
+    "inv_marked_left": {
+        "fr": "✅ {member} est marqué comme ayant quitté le serveur.",
+        "en": "✅ {member} marked as having left the server.",
+    },
+    # --- steam ---
+    "steam_config_saved": {
+        "fr": "✅ Clé API Steam enregistrée pour ce serveur.",
+        "en": "✅ Steam API key saved for this server.",
+    },
+    "steam_no_key": {
+        "fr": "❌ Aucune clé API Steam configurée. Un admin doit lancer `,steamconfig <cle_api>`.",
+        "en": "❌ No Steam API key configured. An admin must run `,steamconfig <api_key>`.",
+    },
+    "steam_resolving": {
+        "fr": "🔎 Résolution du pseudo Steam…",
+        "en": "🔎 Resolving Steam username…",
+    },
+    "steam_not_found": {
+        "fr": "❌ Aucun compte Steam trouvé pour `{name}`.",
+        "en": "❌ No Steam account found for `{name}`.",
+    },
+    "steam_fetching": {
+        "fr": "📦 Récupération de l'inventaire de `{steam_id}`…",
+        "en": "📦 Fetching inventory for `{steam_id}`…",
+    },
+    "steam_empty": {
+        "fr": "📭 L'inventaire de `{steam_id}` est vide ou privé.",
+        "en": "📭 Inventory for `{steam_id}` is empty or private.",
+    },
+    "steam_inventory_title": {
+        "fr": "🎮 Inventaire CS:GO de `{steam_id}`",
+        "en": "🎮 CS:GO inventory of `{steam_id}`",
+    },
+    "steam_id_result": {
+        "fr": "✅ SteamID64 de `{name}` : `{steam_id}`",
+        "en": "✅ SteamID64 of `{name}`: `{steam_id}`",
+    },
 }
 
 

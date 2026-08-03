@@ -101,6 +101,12 @@ EXPECTED_COMMANDS = {
     "mcconfig",
     "mcsay",
     "mcstatus",
+    "invitations",
+    "topinvitations",
+    "invleft",
+    "steamconfig",
+    "steaminv",
+    "steamid",
 }
 
 REQUIRED_MODULES = [
@@ -145,6 +151,8 @@ EXPECTED_TABLES = [
     "user_lang",
     "guild_lang",
     "minecraft_config",
+    "invites",
+    "steam_config",
 ]
 
 
