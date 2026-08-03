@@ -13,6 +13,10 @@
     {
       "matchUpdateTypes": ["major"],
       "automerge": false
+    },
+    {
+      "matchPackageNames": ["numpy"],
+      "allowedVersions": "<2.3"
     }
   ]
 }
