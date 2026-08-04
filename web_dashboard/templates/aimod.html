@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}AI-Moderation - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>AI-Moderation</h2>
+  <p>Serveur {{ guild_id }} - Detection intelligente de contenu toxique</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/aimod/config">
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">AI-Moderation activee</div>
+        <div class="toggle-desc">Analyse les messages via g4f pour detecter le contenu toxique</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="enabled" value="1" {% if config and config.enabled %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Action (warn/delete/warn_delete)</label>
+        <select name="action">
+          <option value="warn" {% if config and config.action == 'warn' %}selected{% endif %}>Warn</option>
+          <option value="delete" {% if config and config.action == 'delete' %}selected{% endif %}>Supprimer</option>
+          <option value="warn_delete" {% if config and config.action == 'warn_delete' %}selected{% endif %}>Warn + Supprimer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Seuil de detection (0.0 - 1.0)</label>
+        <input type="number" name="threshold" value="{{ config.threshold if config else 0.7 }}" min="0" max="1" step="0.05">
+      </div>
+      <div class="form-group">
+        <label>Cooldown (secondes)</label>
+        <input type="number" name="cooldown_seconds" value="{{ config.cooldown_seconds if config else 10 }}" min="0">
+      </div>
+      <div class="form-group">
+        <label>Canal de logs (ID)</label>
+        <input type="number" name="log_channel_id" value="{{ config.log_channel_id if config and config.log_channel_id else '' }}" placeholder="ID salon">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Roles ignores</h3></div>
+  {% if ignored_roles %}
+  <p style="color: var(--text-secondary); font-size: 0.85rem;">
+    Roles ignores par l'AI-mod : {% for rid in ignored_roles %}<code>{{ rid }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+  </p>
+  {% else %}
+  <p style="color: var(--text-muted); font-size: 0.85rem;">Aucun role ignore. Utilisez <code>,aimodignore @role</code> dans Discord.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Commande</th><th>Description</th></tr>
+      <tr><td><code>,aimod on/off</code></td><td>Active/desactive l'AI-moderation</td></tr>
+      <tr><td><code>,aimodaction warn|delete|warn_delete</code></td><td>Change l'action</td></tr>
+      <tr><td><code>,aimodthreshold 0.7</code></td><td>Change le seuil</td></tr>
+      <tr><td><code>,aimodignore @role</code></td><td>Ajoute/retire un role ignore</td></tr>
+      <tr><td><code>,aimodlog #salon</code></td><td>Definit le canal de logs</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

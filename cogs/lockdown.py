@@ -191,6 +191,45 @@ class cmdlockdown(commands.Cog):
         self.save_config(ctx.guild.id, auto_lockon_mass_join=(state.lower() == "on"))
         await ctx.send(f"✅ Auto-lock mass-join {'active' if state.lower() == 'on' else 'desactive'}.")
 
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        cfg = self.get_config(member.guild.id)
+        if not cfg["auto_lockon_mass_join"]:
+            return
+        now = __import__("time").time()
+        guild_id = member.guild.id
+        if guild_id not in self._join_tracker:
+            self._join_tracker[guild_id] = []
+        self._join_tracker[guild_id].append(now)
+        window = cfg["mass_join_window_seconds"]
+        self._join_tracker[guild_id] = [
+            t for t in self._join_tracker[guild_id] if now - t < window
+        ]
+        if len(self._join_tracker[guild_id]) >= cfg["mass_join_threshold"]:
+            self._join_tracker[guild_id] = []
+            for channel in member.guild.text_channels:
+                overwrites = channel.overwrites_for(member.guild.default_role)
+                overwrites.send_messages = False
+                try:
+                    await channel.set_permissions(
+                        member.guild.default_role,
+                        overwrite=overwrites,
+                        reason=f"Lockdown auto: mass-join detecte ({cfg['mass_join_threshold']} joins en {window}s)",
+                    )
+                except (discord.errors.Forbidden, discord.errors.HTTPException):
+                    pass
+            log_channel = self.bot.get_channel(cfg["log_channel_id"]) if cfg["log_channel_id"] else None
+            if log_channel:
+                embed = discord.Embed(
+                    title="🔒 Lockdown auto-active",
+                    description=f"Mass-join detecte : {cfg['mass_join_threshold']} joins en {window}s.\nTous les salons ont ete verrouilles.",
+                    color=discord.Color.red(),
+                )
+                try:
+                    await log_channel.send(embed=embed)
+                except discord.errors.Forbidden:
+                    pass
+
 
 def setup(bot, db):
     bot.add_cog(cmdlockdown(bot, db))

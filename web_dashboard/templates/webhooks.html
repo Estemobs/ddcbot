@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Webhooks - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Webhooks</h2>
+  <p>Serveur {{ guild_id }} - Notifications automatiques</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/webhooks/config">
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Webhooks actives</div>
+        <div class="toggle-desc">Envoyer des notifications vers un webhook Discord</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="enabled" value="1" {% if config and config.enabled %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="form-group">
+      <label>URL du webhook</label>
+      <input type="text" name="webhook_url" value="{{ config.webhook_url if config and config.webhook_url else '' }}" placeholder="https://discord.com/api/webhooks/...">
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">member_join</div>
+        <div class="toggle-desc">Notification quand un membre rejoint</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="events_json" value="member_join"
+          {% if config and config.events.get('member_join', true) %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">member_leave</div>
+        <div class="toggle-desc">Notification quand un membre quitte</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="events_json" value="member_leave"
+          {% if config and config.events.get('member_leave', true) %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">member_ban</div>
+        <div class="toggle-desc">Notification quand un membre est banni</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="events_json" value="member_ban"
+          {% if config and config.events.get('member_ban', true) %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">member_unban</div>
+        <div class="toggle-desc">Notification quand un membre est debanni</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="events_json" value="member_unban"
+          {% if config and config.events.get('member_unban', true) %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">member_warn</div>
+        <div class="toggle-desc">Notification quand un membre recoit un warn</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="events_json" value="member_warn"
+          {% if config and config.events.get('member_warn', true) %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">member_kick</div>
+        <div class="toggle-desc">Notification quand un membre est expulse</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="events_json" value="member_kick"
+          {% if config and config.events.get('member_kick', true) %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Commande</th><th>Description</th></tr>
+      <tr><td><code>,webhookset URL</code></td><td>Definit l'URL du webhook</td></tr>
+      <tr><td><code>,webhooktoggle on/off</code></td><td>Active/desactive les webhooks</td></tr>
+      <tr><td><code>,webhookevent event on/off</code></td><td>Active/desactive un evenement</td></tr>
+      <tr><td><code>,webhooksend Message</code></td><td>Envoie un test au webhook</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

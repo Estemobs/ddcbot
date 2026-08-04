@@ -5,9 +5,12 @@ que le bot Discord. Expose une interface web pour gerer toutes les
 configurations par serveur.
 """
 
+import hashlib
 import json
 import os
+import secrets
 import sys
+import time
 
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -27,6 +30,60 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 DB_PATH = os.environ.get("DDC_DB_PATH", os.path.join(BASE_DIR, "..", "data", "ddcbot.sqlite3"))
 db = Database(path=DB_PATH)
 
+DASHBOARD_TOKEN = os.environ.get("DASHBOARD_TOKEN", "")
+_sessions = {}
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def require_auth(request: Request) -> bool:
+    if not DASHBOARD_TOKEN:
+        return True
+    session_id = request.cookies.get("ddc_session")
+    if session_id and session_id in _sessions:
+        if _sessions[session_id] > time.time():
+            return True
+        del _sessions[session_id]
+    return False
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/static") or path == "/login" or path == "/api/login":
+        return await call_next(request)
+    if not require_auth(request):
+        return templates.TemplateResponse("login.html", {
+            "request": request, "error": None
+        })
+    return await call_next(request)
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    if not DASHBOARD_TOKEN:
+        return RedirectResponse("/", status_code=303)
+    if require_auth(request):
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+
+
+@app.post("/login")
+async def login_submit(request: Request, token: str = Form(...)):
+    if not DASHBOARD_TOKEN:
+        return RedirectResponse("/", status_code=303)
+    if token == DASHBOARD_TOKEN:
+        session_id = secrets.token_urlsafe(32)
+        _sessions[session_id] = time.time() + 86400
+        response = RedirectResponse("/", status_code=303)
+        response.set_cookie("ddc_session", session_id, httponly=True, max_age=86400)
+        return response
+    return templates.TemplateResponse("login.html", {
+        "request": request, "error": "Token invalide"
+    })
+
 
 def get_guilds():
     tables_to_check = [
@@ -42,6 +99,10 @@ def get_guilds():
         ("work_settings", "guild_id"),
         ("game_panel_config", "guild_id"),
         ("minecraft_config", "guild_id"),
+        ("ai_moderation_config", "guild_id"),
+        ("ticket_config", "guild_id"),
+        ("webhook_config", "guild_id"),
+        ("lockdown_config", "guild_id"),
     ]
     guild_ids = set()
     for table, col in tables_to_check:
@@ -106,6 +167,10 @@ async def guild_overview(request: Request, guild_id: int):
         ("minecraft_config", "guild_id", "Minecraft"),
         ("work_settings", "guild_id", "Travail"),
         ("game_panel_config", "guild_id", "Jeux"),
+        ("ai_moderation_config", "guild_id", "AI-Moderation"),
+        ("ticket_config", "guild_id", "Tickets"),
+        ("webhook_config", "guild_id", "Webhooks"),
+        ("lockdown_config", "guild_id", "Lockdown"),
     ]:
         try:
             row = db.fetchone(f"SELECT COUNT(*) as c FROM {table} WHERE {col} = ?", (guild_id,))
@@ -486,6 +551,241 @@ async def notes_delete(title: str = Form(...)):
     return RedirectResponse("/notes", status_code=303)
 
 
+# ── AI-Moderation ──
+
+@app.get("/guild/{guild_id}/aimod", response_class=HTMLResponse)
+async def aimod_page(request: Request, guild_id: int):
+    cfg_row = db.fetchone(
+        "SELECT enabled, action, log_channel_id, threshold, cooldown_seconds "
+        "FROM ai_moderation_config WHERE guild_id = ?", (guild_id,)
+    )
+    config = None
+    if cfg_row:
+        config = {
+            "enabled": bool(cfg_row["enabled"]),
+            "action": cfg_row["action"],
+            "log_channel_id": cfg_row["log_channel_id"],
+            "threshold": cfg_row["threshold"],
+            "cooldown_seconds": cfg_row["cooldown_seconds"],
+        }
+    ignored = db.fetchall(
+        "SELECT role_id FROM ai_moderation_ignored_roles WHERE guild_id = ?", (guild_id,)
+    )
+    return templates.TemplateResponse("aimod.html", {
+        "request": request, "guild_id": guild_id,
+        "config": config, "ignored_roles": [r["role_id"] for r in ignored],
+    })
+
+
+@app.post("/guild/{guild_id}/aimod/config")
+async def aimod_save_config(
+    guild_id: int,
+    enabled: str = Form("0"),
+    action: str = Form("warn"),
+    threshold: float = Form(0.7),
+    cooldown_seconds: int = Form(10),
+    log_channel_id: int = Form(0),
+):
+    db.execute(
+        "INSERT INTO ai_moderation_config "
+        "(guild_id, enabled, action, log_channel_id, threshold, cooldown_seconds) "
+        "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(guild_id) DO UPDATE SET "
+        "enabled=excluded.enabled, action=excluded.action, log_channel_id=excluded.log_channel_id, "
+        "threshold=excluded.threshold, cooldown_seconds=excluded.cooldown_seconds",
+        (guild_id, int(enabled), action, log_channel_id or None, threshold, cooldown_seconds),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/aimod", status_code=303)
+
+
+# ── Tickets ──
+
+@app.get("/guild/{guild_id}/tickets", response_class=HTMLResponse)
+async def tickets_page(request: Request, guild_id: int):
+    cfg_row = db.fetchone(
+        "SELECT enabled, category_id, log_channel_id, welcome_message, close_message, max_open_tickets "
+        "FROM ticket_config WHERE guild_id = ?", (guild_id,)
+    )
+    config = None
+    if cfg_row:
+        config = {
+            "enabled": bool(cfg_row["enabled"]),
+            "category_id": cfg_row["category_id"],
+            "log_channel_id": cfg_row["log_channel_id"],
+            "welcome_message": cfg_row["welcome_message"],
+            "close_message": cfg_row["close_message"],
+            "max_open_tickets": cfg_row["max_open_tickets"],
+        }
+    open_tickets = db.fetchall(
+        "SELECT id, user_id, channel_id, created_at FROM tickets "
+        "WHERE guild_id = ? AND status = 'open' ORDER BY created_at DESC", (guild_id,)
+    )
+    closed_tickets = db.fetchall(
+        "SELECT id, user_id, channel_id, created_at, closed_at FROM tickets "
+        "WHERE guild_id = ? AND status = 'closed' ORDER BY closed_at DESC LIMIT 30", (guild_id,)
+    )
+    return templates.TemplateResponse("tickets.html", {
+        "request": request, "guild_id": guild_id,
+        "config": config, "open_tickets": open_tickets, "closed_tickets": closed_tickets,
+    })
+
+
+@app.post("/guild/{guild_id}/tickets/config")
+async def tickets_save_config(
+    guild_id: int,
+    enabled: str = Form("0"),
+    category_id: int = Form(0),
+    max_open_tickets: int = Form(5),
+    welcome_message: str = Form(""),
+    close_message: str = Form(""),
+    log_channel_id: int = Form(0),
+):
+    db.execute(
+        "INSERT INTO ticket_config "
+        "(guild_id, enabled, category_id, log_channel_id, welcome_message, close_message, max_open_tickets) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(guild_id) DO UPDATE SET "
+        "enabled=excluded.enabled, category_id=excluded.category_id, log_channel_id=excluded.log_channel_id, "
+        "welcome_message=excluded.welcome_message, close_message=excluded.close_message, "
+        "max_open_tickets=excluded.max_open_tickets",
+        (guild_id, int(enabled), category_id or None, log_channel_id or None,
+         welcome_message or None, close_message or None, max_open_tickets),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/tickets", status_code=303)
+
+
+# ── Webhooks ──
+
+@app.get("/guild/{guild_id}/webhooks", response_class=HTMLResponse)
+async def webhooks_page(request: Request, guild_id: int):
+    cfg_row = db.fetchone(
+        "SELECT webhook_url, enabled, events_json FROM webhook_config WHERE guild_id = ?", (guild_id,)
+    )
+    config = None
+    if cfg_row:
+        events = {}
+        if cfg_row["events_json"]:
+            try:
+                events = json.loads(cfg_row["events_json"])
+            except json.JSONDecodeError:
+                pass
+        config = {
+            "webhook_url": cfg_row["webhook_url"],
+            "enabled": bool(cfg_row["enabled"]),
+            "events": events,
+        }
+    return templates.TemplateResponse("webhooks.html", {
+        "request": request, "guild_id": guild_id, "config": config,
+    })
+
+
+@app.post("/guild/{guild_id}/webhooks/config")
+async def webhooks_save_config(
+    guild_id: int,
+    enabled: str = Form("0"),
+    webhook_url: str = Form(""),
+    events_json: str = Form("{}"),
+):
+    db.execute(
+        "INSERT INTO webhook_config (guild_id, webhook_url, enabled, events_json) "
+        "VALUES (?, ?, ?, ?) ON CONFLICT(guild_id) DO UPDATE SET "
+        "webhook_url=excluded.webhook_url, enabled=excluded.enabled, events_json=excluded.events_json",
+        (guild_id, webhook_url or None, int(enabled), events_json or None),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/webhooks", status_code=303)
+
+
+# ── Lockdown ──
+
+@app.get("/guild/{guild_id}/lockdown", response_class=HTMLResponse)
+async def lockdown_page(request: Request, guild_id: int):
+    cfg_row = db.fetchone(
+        "SELECT lockdown_role_id, log_channel_id, auto_lockon_mass_join, "
+        "mass_join_threshold, mass_join_window_seconds "
+        "FROM lockdown_config WHERE guild_id = ?", (guild_id,)
+    )
+    config = None
+    if cfg_row:
+        config = {
+            "lockdown_role_id": cfg_row["lockdown_role_id"],
+            "log_channel_id": cfg_row["log_channel_id"],
+            "auto_lockon_mass_join": bool(cfg_row["auto_lockon_mass_join"]),
+            "mass_join_threshold": cfg_row["mass_join_threshold"],
+            "mass_join_window_seconds": cfg_row["mass_join_window_seconds"],
+        }
+    return templates.TemplateResponse("lockdown.html", {
+        "request": request, "guild_id": guild_id, "config": config,
+    })
+
+
+@app.post("/guild/{guild_id}/lockdown/config")
+async def lockdown_save_config(
+    guild_id: int,
+    lockdown_role_id: int = Form(0),
+    log_channel_id: int = Form(0),
+    auto_lockon_mass_join: str = Form("0"),
+    mass_join_threshold: int = Form(10),
+    mass_join_window_seconds: int = Form(60),
+):
+    db.execute(
+        "INSERT INTO lockdown_config "
+        "(guild_id, lockdown_role_id, log_channel_id, auto_lockon_mass_join, mass_join_threshold, mass_join_window_seconds) "
+        "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(guild_id) DO UPDATE SET "
+        "lockdown_role_id=excluded.lockdown_role_id, log_channel_id=excluded.log_channel_id, "
+        "auto_lockon_mass_join=excluded.auto_lockon_mass_join, mass_join_threshold=excluded.mass_join_threshold, "
+        "mass_join_window_seconds=excluded.mass_join_window_seconds",
+        (guild_id, lockdown_role_id or None, log_channel_id or None,
+         int(auto_lockon_mass_join), mass_join_threshold, mass_join_window_seconds),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/lockdown", status_code=303)
+
+
+# ── API JSON ──
+
+@app.get("/api/guilds")
+async def api_guilds():
+    return {"guilds": get_guilds()}
+
+
+@app.get("/api/guild/{guild_id}/economy")
+async def api_guild_economy(guild_id: int):
+    cfg_row = db.fetchone("SELECT * FROM economy_config WHERE guild_id = ?", (guild_id,))
+    balances = db.fetchall("SELECT user_id, amount FROM balances ORDER BY amount DESC LIMIT 50")
+    return {"config": dict(cfg_row) if cfg_row else None, "balances": [dict(b) for b in balances]}
+
+
+@app.get("/api/guild/{guild_id}/moderation")
+async def api_guild_moderation(guild_id: int):
+    cfg_row = db.fetchone("SELECT config_json FROM moderation_config WHERE guild_id = ?", (guild_id,))
+    config = {}
+    if cfg_row:
+        try:
+            config = json.loads(cfg_row["config_json"])
+        except json.JSONDecodeError:
+            pass
+    warns = db.fetchall(
+        "SELECT user_id, count FROM warn_counts WHERE guild_id = ? AND count > 0 ORDER BY count DESC",
+        (guild_id,),
+    )
+    return {"config": config, "warns": [{"user_id": w["user_id"], "count": w["count"]} for w in warns]}
+
+
+@app.get("/api/stats")
+async def api_stats():
+    stats = {}
+    for table in ["balances", "levels", "transactions", "reminders", "giveaways", "notes"]:
+        try:
+            row = db.fetchone(f"SELECT COUNT(*) as c FROM {table}")
+            stats[table] = row["c"]
+        except Exception:
+            stats[table] = 0
+    try:
+        row = db.fetchone("SELECT COALESCE(SUM(count), 0) as c FROM warn_counts")
+        stats["warnings"] = row["c"]
+    except Exception:
+        stats["warnings"] = 0
+    stats["guilds"] = len(get_guilds())
+    return stats
+
+
 # ── Transactions (historique global) ──
 
 @app.get("/transactions", response_class=HTMLResponse)
@@ -537,53 +837,6 @@ async def giveaways_page(request: Request):
 @app.get("/api/guilds")
 async def api_guilds():
     return {"guilds": get_guilds()}
-
-
-@app.get("/api/guild/{guild_id}/economy")
-async def api_guild_economy(guild_id: int):
-    cfg_row = db.fetchone("SELECT * FROM economy_config WHERE guild_id = ?", (guild_id,))
-    balances = db.fetchall("SELECT user_id, amount FROM balances ORDER BY amount DESC LIMIT 50")
-    return {
-        "config": dict(cfg_row) if cfg_row else None,
-        "balances": [dict(b) for b in balances],
-    }
-
-
-@app.get("/api/guild/{guild_id}/moderation")
-async def api_guild_moderation(guild_id: int):
-    cfg_row = db.fetchone("SELECT config_json FROM moderation_config WHERE guild_id = ?", (guild_id,))
-    config = {}
-    if cfg_row:
-        try:
-            config = json.loads(cfg_row["config_json"])
-        except json.JSONDecodeError:
-            pass
-    warns = db.fetchall(
-        "SELECT user_id, count FROM warn_counts WHERE guild_id = ? AND count > 0 ORDER BY count DESC",
-        (guild_id,),
-    )
-    return {
-        "config": config,
-        "warns": [{"user_id": w["user_id"], "count": w["count"]} for w in warns],
-    }
-
-
-@app.get("/api/stats")
-async def api_stats():
-    stats = {}
-    for table in ["balances", "levels", "transactions", "reminders", "giveaways", "notes"]:
-        try:
-            row = db.fetchone(f"SELECT COUNT(*) as c FROM {table}")
-            stats[table] = row["c"]
-        except Exception:
-            stats[table] = 0
-    try:
-        row = db.fetchone("SELECT COALESCE(SUM(count), 0) as c FROM warn_counts")
-        stats["warnings"] = row["c"]
-    except Exception:
-        stats["warnings"] = 0
-    stats["guilds"] = len(get_guilds())
-    return stats
 
 
 if __name__ == "__main__":

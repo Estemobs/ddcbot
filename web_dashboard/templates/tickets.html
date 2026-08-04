@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Tickets - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Tickets de support</h2>
+  <p>Serveur {{ guild_id }} - Systeme de tickets prive</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/tickets/config">
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Tickets actives</div>
+        <div class="toggle-desc">Permet aux membres de creer des tickets de support</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="enabled" value="1" {% if config and config.enabled %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Categorie (ID)</label>
+        <input type="number" name="category_id" value="{{ config.category_id if config and config.category_id else '' }}" placeholder="ID categorie Discord">
+      </div>
+      <div class="form-group">
+        <label>Max tickets ouverts par user</label>
+        <input type="number" name="max_open_tickets" value="{{ config.max_open_tickets if config else 5 }}" min="1">
+      </div>
+      <div class="form-group">
+        <label>Canal de logs (ID)</label>
+        <input type="number" name="log_channel_id" value="{{ config.log_channel_id if config and config.log_channel_id else '' }}" placeholder="ID salon">
+      </div>
+      <div class="form-group full-width">
+        <label>Message de bienvenue</label>
+        <input type="text" name="welcome_message" value="{{ config.welcome_message if config else '' }}" placeholder="Bienvenue dans votre ticket.">
+      </div>
+      <div class="form-group full-width">
+        <label>Message de fermeture</label>
+        <input type="text" name="close_message" value="{{ config.close_message if config else '' }}" placeholder="Ticket ferme. Merci.">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Tickets ouverts ({{ open_tickets|length }})</h3></div>
+  {% if open_tickets %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>ID</th><th>User</th><th>Salon</th><th>Cree le</th></tr>
+      {% for t in open_tickets %}
+      <tr>
+        <td>#{{ t.id }}</td>
+        <td><code>{{ t.user_id }}</code></td>
+        <td><code>{{ t.channel_id }}</code></td>
+        <td>{{ t.created_at|int }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucun ticket ouvert.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Derniers tickets fermes</h3></div>
+  {% if closed_tickets %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>ID</th><th>User</th><th>Salon</th><th>Ferme le</th></tr>
+      {% for t in closed_tickets %}
+      <tr>
+        <td>#{{ t.id }}</td>
+        <td><code>{{ t.user_id }}</code></td>
+        <td><code>{{ t.channel_id }}</code></td>
+        <td>{{ t.closed_at|int if t.closed_at else '-' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucun ticket ferme.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Commande</th><th>Description</th></tr>
+      <tr><td><code>,ticket</code></td><td>Creer un ticket de support</td></tr>
+      <tr><td><code>,closeticket [raison]</code></td><td>Fermer le ticket courant</td></tr>
+      <tr><td><code>,ticketcategory #categorie</code></td><td>Definit la categorie des tickets</td></tr>
+      <tr><td><code>,ticketwelcome Message</code></td><td>Message de bienvenue des tickets</td></tr>
+      <tr><td><code>,ticketmax 5</code></td><td>Max tickets ouverts par user</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

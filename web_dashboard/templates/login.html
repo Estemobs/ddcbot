@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion - DDCBot Dashboard</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .login-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--bg-primary);
+    }
+    .login-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .login-card h1 { color: var(--accent); margin-bottom: 8px; }
+    .login-card p { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 24px; }
+    .login-card input[type="password"] { margin-bottom: 16px; }
+    .login-card .btn { width: 100%; justify-content: center; padding: 12px; }
+    .error-msg {
+      background: rgba(237, 66, 69, 0.1);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 10px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1>DDCBot</h1>
+      <p>Dashboard Admin</p>
+      {% if error %}
+      <div class="error-msg">{{ error }}</div>
+      {% endif %}
+      <form method="post" action="/login">
+        <div class="form-group">
+          <label>Token d'acces</label>
+          <input type="password" name="token" required placeholder="Entrez le token">
+        </div>
+        <button type="submit" class="btn btn-primary">Connexion</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
