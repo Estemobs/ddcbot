@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # git est nécessaire au runtime pour la fonctionnalité de changelog automatique (cogs/changelog.py)
 RUN apt-get update \
