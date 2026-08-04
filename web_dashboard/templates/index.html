@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}DDCBot - Accueil{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>DDCBot Dashboard</h2>
+  <p>Administration du bot Discord DDCBot</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="value">{{ stats.guilds }}</div>
+    <div class="label">Serveurs</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ stats.balances }}</div>
+    <div class="label">Comptes economie</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ stats.levels }}</div>
+    <div class="label">Utilisateurs XP</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ stats.transactions }}</div>
+    <div class="label">Transactions</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ stats.warnings }}</div>
+    <div class="label">Warnings</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Serveurs configures</h3></div>
+  {% if guilds %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>Guild ID</th><th>Actions</th></tr>
+      {% for gid in guilds %}
+      <tr>
+        <td><code>{{ gid }}</code></td>
+        <td><a href="/guild/{{ gid }}" class="btn btn-primary btn-sm">Gerer</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <div class="icon">&#128269;</div>
+    <p>Aucun serveur configure. Utilisez les commandes Discord pour initialiser.</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>API</h3></div>
+  <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px;">
+    Endpoints JSON disponibles :
+  </p>
+  <ul style="color: var(--text-secondary); font-size: 0.85rem; padding-left: 20px;">
+    <li><code>GET /api/guilds</code> - Liste des serveurs</li>
+    <li><code>GET /api/guild/{id}/economy</code> - Donnees economie</li>
+    <li><code>GET /api/guild/{id}/moderation</code> - Donnees moderation</li>
+    <li><code>GET /api/stats</code> - Statistiques globales</li>
+  </ul>
+</div>
+{% endblock %}

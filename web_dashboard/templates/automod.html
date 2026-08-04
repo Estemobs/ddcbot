@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}AutoMod - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Auto-Moderation</h2>
+  <p>Serveur {{ guild_id }} - Filtre de mots bannis</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/automod/config">
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">AutoMod active</div>
+        <div class="toggle-desc">Filtrer automatiquement les mots bannis</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="enabled" value="1" {% if config and config.enabled %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Warn sur detection</div>
+        <div class="toggle-desc">Donner un avertissement quand un mot banni est detecte</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="warn_on_match" value="1" {% if config and config.warn_on_match %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Supprimer le message</div>
+        <div class="toggle-desc">Supprimer automatiquement le message contenant le mot banni</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="delete_on_match" value="1" {% if config and config.delete_on_match %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Mots bannis</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/automod/addword" style="display:flex; gap:10px; align-items:end; margin-bottom:16px;">
+    <div class="form-group" style="margin:0; flex:1;">
+      <label>Ajouter un mot</label>
+      <input type="text" name="word" required placeholder="Mot a bannir">
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
+  </form>
+  {% if words %}
+  <div class="word-list">
+    {% for word in words %}
+    <div class="word-tag">
+      <span>{{ word }}</span>
+      <form method="post" action="/guild/{{ guild_id }}/automod/removeword">
+        <input type="hidden" name="word" value="{{ word }}">
+        <button type="submit" class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.7rem;">x</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucun mot banni.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

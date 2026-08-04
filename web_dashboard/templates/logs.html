@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Logs - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Logs</h2>
+  <p>Serveur {{ guild_id }} - Configuration des canaux de logs</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/logs/config">
+    <div class="form-group">
+      <label>ID du canal de logs</label>
+      <input type="number" name="log_channel_id"
+        value="{{ config.channels[0] if config.get('channels') else '' }}"
+        placeholder="ID du salon Discord">
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Erreurs utilisateur</div>
+        <div class="toggle-desc">Arguments invalides, permissions manquantes, cooldowns...</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="user_errors" value="1"
+          {% if config.get('categories', {}).get('user_errors', true) %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Erreurs inattendues</div>
+        <div class="toggle-desc">Bugs, exceptions, traces d'execution</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="unexpected_errors" value="1"
+          {% if config.get('categories', {}).get('unexpected_errors', true) %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+{% endblock %}

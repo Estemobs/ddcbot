@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Transactions - DDCBot{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Transactions</h2>
+  <p>Historique des transactions economiques</p>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if transactions %}
+    <table>
+      <tr><th>ID</th><th>Date</th><th>Guild</th><th>User</th><th>Montant</th><th>Type</th><th>Detail</th></tr>
+      {% for tx in transactions %}
+      <tr>
+        <td>{{ tx.id }}</td>
+        <td>{{ tx.created_at }}</td>
+        <td><code>{{ tx.guild_id or '-' }}</code></td>
+        <td><code>{{ tx.user_id }}</code></td>
+        <td style="color: {{ 'var(--success)' if tx.amount > 0 else 'var(--danger)' }}">
+          {{ '+' if tx.amount > 0 else '' }}{{ "%.2f"|format(tx.amount) }}
+        </td>
+        <td><span class="tag tag-info">{{ tx.kind }}</span></td>
+        <td>{{ tx.detail }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty"><p>Aucune transaction.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

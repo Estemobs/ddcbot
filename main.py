@@ -28,6 +28,10 @@ from cogs.translation import cmdtranslation
 from cogs.minecraft import cmdminecraft
 from cogs.invitations import cmdinvitations
 from cogs.steam import cmdsteam
+from cogs.ai_moderation import cmdaimoderation
+from cogs.tickets import cmdtickets
+from cogs.webhooks import cmdwebhooks
+from cogs.lockdown import cmdlockdown
 
 intents = discord.Intents.default()
 intents.members = True
@@ -206,6 +210,10 @@ async def main():
     await bot.add_cog(cmdminecraft(bot, db))
     await bot.add_cog(cmdinvitations(bot, db))
     await bot.add_cog(cmdsteam(bot, db))
+    await bot.add_cog(cmdaimoderation(bot, db))
+    await bot.add_cog(cmdtickets(bot, db))
+    await bot.add_cog(cmdwebhooks(bot, db))
+    await bot.add_cog(cmdlockdown(bot, db))
     await bot.start(token)
 
 asyncio.run(main())

@@ -14,4 +14,9 @@ ADMIN_COMMANDS = frozenset({
     "welcomeconfig", "automod", "automodconfig", "badword",
     "mcenable", "mcdisable", "mcconfig", "mcsay", "mcstatus",
     "invleft", "steamconfig",
+    "aimod", "aimodconfig", "aimodaction", "aimodthreshold", "aimodignore", "aimodlog",
+    "ticketpanel", "ticketcategory", "ticketwelcome", "ticketmax", "ticketlog",
+    "webhookset", "webhooktoggle", "webhookevent", "webhookconfig", "webhooksend",
+    "lockdown", "unlockdown", "lockdownchannel", "unlockdownchannel", "lockdownconfig",
+    "lockdownrole", "lockdownlog", "lockdownmassjoin", "lockdownauto",
 })

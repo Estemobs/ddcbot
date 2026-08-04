@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}DDCBot Dashboard{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>DDCBot</h1>
+      <small>Admin Dashboard</small>
+    </div>
+    <nav>
+      <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+        <span class="icon">&#9632;</span> Accueil
+      </a>
+      <a href="/notes" class="{% if request.url.path == '/notes' %}active{% endif %}">
+        <span class="icon">&#9998;</span> Notes
+      </a>
+      <a href="/transactions" class="{% if request.url.path == '/transactions' %}active{% endif %}">
+        <span class="icon">&#8644;</span> Transactions
+      </a>
+      <a href="/reminders" class="{% if request.url.path == '/reminders' %}active{% endif %}">
+        <span class="icon">&#9200;</span> Rappels
+      </a>
+      <a href="/giveaways" class="{% if request.url.path == '/giveaways' %}active{% endif %}">
+        <span class="icon">&#127873;</span> Giveaways
+      </a>
+      <div class="divider"></div>
+      <div class="section-label">Serveurs</div>
+      {% for gid in guilds %}
+      <a href="/guild/{{ gid }}">
+        <span class="icon">&#9881;</span> Serveur {{ gid }}
+      </a>
+      {% endfor %}
+    </nav>
+  </aside>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

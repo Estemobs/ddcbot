@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Rappels - DDCBot{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Rappels</h2>
+  <p>Rappels en attente</p>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if reminders %}
+    <table>
+      <tr><th>ID</th><th>User</th><th>Salon</th><th>Message</th><th>Prevu pour</th></tr>
+      {% for r in reminders %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td><code>{{ r.user_id }}</code></td>
+        <td><code>{{ r.channel_id or '-' }}</code></td>
+        <td>{{ r.message[:80] }}{% if r.message|length > 80 %}...{% endif %}</td>
+        <td>{{ r.remind_at|int }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty">
+      <div class="icon">&#9200;</div>
+      <p>Aucun rappel en attente.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

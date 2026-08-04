@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Welcome/Leave - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Messages Welcome / Leave</h2>
+  <p>Serveur {{ guild_id }} - Messages de bienvenue et de depart</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/welcome/config">
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Messages de bienvenue</div>
+        <div class="toggle-desc">Envoyer un message quand un membre rejoint</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="welcome_enabled" value="1" {% if settings and settings.welcome_enabled %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Canal de bienvenue (ID)</label>
+        <input type="number" name="welcome_channel_id" value="{{ settings.welcome_channel_id if settings and settings.welcome_channel_id else '' }}" placeholder="ID du salon">
+      </div>
+      <div class="form-group">
+        <label>Message de bienvenue</label>
+        <input type="text" name="welcome_message" value="{{ settings.welcome_message if settings else '' }}" placeholder="Bienvenue {user} sur {server} !">
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Messages de depart</div>
+        <div class="toggle-desc">Envoyer un message quand un membre quitte</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="leave_enabled" value="1" {% if settings and settings.leave_enabled %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Canal de depart (ID)</label>
+        <input type="number" name="leave_channel_id" value="{{ settings.leave_channel_id if settings and settings.leave_channel_id else '' }}" placeholder="ID du salon">
+      </div>
+      <div class="form-group">
+        <label>Message de depart</label>
+        <input type="text" name="leave_message" value="{{ settings.leave_message if settings else '' }}" placeholder="Au revoir {user} !">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Placeholders disponibles</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Placeholder</th><th>Description</th></tr>
+      <tr><td><code>{user}</code></td><td>Mention du membre</td></tr>
+      <tr><td><code>{server}</code></td><td>Nom du serveur</td></tr>
+      <tr><td><code>{count}</code></td><td>Nombre de membres</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Leveling - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Leveling / XP</h2>
+  <p>Serveur {{ guild_id }} - Configuration du systeme d'XP</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/leveling/config">
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Activer le leveling</div>
+        <div class="toggle-desc">Les utilisateurs gagnent de l'XP en envoyant des messages</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="enabled" value="1" {% if config and config.enabled %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>XP par message</label>
+        <input type="number" name="xp_per_message" value="{{ config.xp_per_message if config else 15 }}" min="1">
+      </div>
+      <div class="form-group">
+        <label>Cooldown (secondes)</label>
+        <input type="number" name="cooldown_seconds" value="{{ config.cooldown_seconds if config else 60 }}" min="0">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Classement XP (Top 50)</h3></div>
+  {% if levels %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>#</th><th>User ID</th><th>XP</th><th>Niveau</th></tr>
+      {% for l in levels %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><code>{{ l.user_id }}</code></td>
+        <td>{{ l.xp }}</td>
+        <td><span class="tag tag-info">Niv. {{ l.xp // 100 + 1 }}</span></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucun utilisateur avec de l'XP.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Reinitialiser un utilisateur</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/leveling/reset" style="display:flex; gap:10px; align-items:end;">
+    <div class="form-group" style="margin:0;">
+      <label>User ID</label>
+      <input type="number" name="user_id" required>
+    </div>
+    <button type="submit" class="btn btn-danger btn-sm"
+      onclick="return confirm('Supprimer toute l\'XP de cet utilisateur ?')">Reset XP</button>
+  </form>
+</div>
+{% endblock %}

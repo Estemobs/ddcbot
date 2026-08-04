@@ -8,6 +8,21 @@ services:
     volumes:
       - ${PROJECT_DIR}:/app
 
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: ddcbot-dashboard
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DASHBOARD_PORT:-8080}:${DASHBOARD_PORT:-8080}"
+    volumes:
+      - ${PROJECT_DIR}:/app
+    depends_on:
+      - ddcbot
+
   updater:
     build: ./docker/updater
     container_name: ddcbot-updater

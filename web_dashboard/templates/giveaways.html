@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Giveaways - DDCBot{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Giveaways</h2>
+  <p>Giveaways actifs et termines</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Giveaways actifs</h3></div>
+  {% if active %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>ID</th><th>Serveur</th><th>Prix</th><th>Organisateur</th><th>Se termine le</th></tr>
+      {% for g in active %}
+      <tr>
+        <td>{{ g.id }}</td>
+        <td><code>{{ g.guild_id }}</code></td>
+        <td>{{ g.prize }}</td>
+        <td><code>{{ g.host_id }}</code></td>
+        <td>{{ g.ends_at|int }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucun giveaway actif.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Giveaways termines</h3></div>
+  {% if ended %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>ID</th><th>Serveur</th><th>Prix</th><th>Organisateur</th></tr>
+      {% for g in ended %}
+      <tr>
+        <td>{{ g.id }}</td>
+        <td><code>{{ g.guild_id }}</code></td>
+        <td>{{ g.prize }}</td>
+        <td><code>{{ g.host_id }}</code></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucun giveaway termine.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

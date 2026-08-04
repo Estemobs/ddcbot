@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
 [![discord.py](https://img.shields.io/badge/discord.py-2.4-5865F2.svg)](https://github.com/Rapptz/discord.py)
 
-Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, notifications RSS, logs, notes/tags, assistant IA et auto-diagnostic — le tout piloté par des panneaux d'administration en un clic.
+Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, notifications RSS, logs, notes/tags, assistant IA, auto-moderation par IA, tickets de support, webhooks, mode lockdown et auto-diagnostic — le tout piloté par des panneaux d'administration en un clic ou via un dashboard web.
 
 <p align="center">
   <img src="docs/images/panel-preview.png" alt="Aperçu du panneau de modération DDCBot" width="720">
@@ -14,6 +14,7 @@ Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, 
 ## Sommaire
 
 - [Fonctionnalités](#fonctionnalités)
+- [Dashboard Web](#dashboard-web)
 - [Démarrage rapide avec Docker (recommandé)](#démarrage-rapide-avec-docker-recommandé)
 - [Auto-mise à jour](#auto-mise-à-jour)
 - [Installation manuelle (venv)](#installation-manuelle-venv)
@@ -42,10 +43,52 @@ Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, 
 | ⏰ **Rappels** | `,rmd` persisté en base, `,reminders`, `,rmcancel` |
 | 🩺 **Auto-diagnostic** | `,selftest` vérifie commandes, cogs, modules et tables SQLite |
 | 🔄 **Changelog auto** | annonce les mises à jour du bot dans un salon Discord |
+| 🛡️ **AI-Moderation** | modération intelligente par IA (g4f), détection de contenu toxique, actions automatiques `,aimod` |
+| 🎫 **Tickets** | système de tickets de support avec salons privés et archivage `,ticket`, `,closeticket` |
+| 🔗 **Webhooks** | notifications automatiques vers webhooks Discord pour joins/bans/warnings `,webhookset` |
+| 🔒 **Lockdown** | mode urgence : verrouillage rapide de tous les salons `,lockdown`, `,unlockdown` |
 
 <p align="center">
   <img src="docs/images/selftest-preview.png" alt="Exemple de sortie de ,selftest" width="600">
 </p>
+
+## Dashboard Web
+
+DDCBot inclut un dashboard web d'administration basé sur FastAPI, accessible via un navigateur. Il permet de gérer toutes les configurations du bot sans passer par Discord.
+
+### Fonctionnalités du dashboard
+
+- **Accueil** : statistiques globales (serveurs, comptes, transactions, warnings)
+- **Économie** : configuration, soldes, ajouter/retirer de l'argent, historique des transactions
+- **Moderation** : configuration des warns, auto-timeout, reset par utilisateur
+- **Leveling** : configuration XP/cooldown, classement, reset
+- **Welcome/Leave** : messages de bienvenue/départ avec placeholders
+- **AutoMod** : activation, gestion des mots bannis
+- **Logs** : configuration des canaux et catégories
+- **Notes** : CRUD complet des notes
+- **Transactions** : historique global
+- **Reminders** : rappels en attente
+- **Giveaways** : actifs et terminés
+- **API JSON** : `/api/guilds`, `/api/guild/{id}/economy`, `/api/stats`
+
+### Lancement du dashboard
+
+Le dashboard démarre automatiquement avec Docker (service `dashboard`). Pour le lancer manuellement :
+
+```bash
+python -m web_dashboard.main
+```
+
+Le dashboard sera accessible sur `http://<IP>:<DASHBOARD_PORT>` (par défaut `http://localhost:8080`).
+
+### Configuration du dashboard
+
+Dans le fichier `.env` :
+
+```dotenv
+DASHBOARD_HOST=0.0.0.0    # Adresse d'écoute (0.0.0.0 = toutes les interfaces)
+DASHBOARD_PORT=8080        # Port du dashboard
+```
 
 ## Démarrage rapide avec Docker (recommandé)
 
@@ -75,6 +118,7 @@ docker compose up -d
 Deux services démarrent :
 
 - `ddcbot` : le bot lui-même
+- `dashboard` : le dashboard web d'administration (port configurable via `DASHBOARD_PORT`)
 - `updater` : surveille le dépôt Git et redéploie automatiquement le bot dès qu'un nouveau commit est poussé (voir ci-dessous)
 
 Suivre les logs :
@@ -127,8 +171,9 @@ python main.py
 |---|---|
 | `DDC_TOKEN` (env) ou `secrets.json` | Token du bot Discord |
 | `CHANGELOG_CHANNEL_ID` (env) | Salon où poster le changelog automatique (optionnel) |
+| `DASHBOARD_HOST`, `DASHBOARD_PORT` (env) | Adresse et port du dashboard web (optionnel) |
 | `PROJECT_DIR`, `GIT_BRANCH`, `CHECK_INTERVAL` (env) | Utilisés uniquement par `docker-compose.yml` / le service `updater` |
-| Tables `permission_config`, `moderation_config`, `economy_config`, `logs_config`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
+| Tables `permission_config`, `moderation_config`, `economy_config`, `logs_config`, `ai_moderation_config`, `ticket_config`, `webhook_config`, `lockdown_config`, ... | Configuration par serveur, gérée via les panneaux `,*panel` |
 
 Toutes les données du bot vivent dans une base **SQLite** unique, `data/ddcbot.sqlite3`, créée automatiquement au premier lancement (schéma défini dans [data/migrations/0001_initial.sql](data/migrations/0001_initial.sql)). Ce fichier est volontairement exclu du dépôt (`.gitignore`) : il contient de vrais identifiants de serveur/salon Discord et des soldes réels, et ne doit jamais être commité, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur.
 
