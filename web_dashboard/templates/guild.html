@@ -54,6 +54,14 @@
           <a href="/guild/{{ guild_id }}/webhooks" class="btn btn-secondary btn-sm">Gerer</a>
           {% elif name == "Lockdown" %}
           <a href="/guild/{{ guild_id }}/lockdown" class="btn btn-secondary btn-sm">Gerer</a>
+          {% elif name == "Invitations" %}
+          <a href="/guild/{{ guild_id }}/invitations" class="btn btn-secondary btn-sm">Gerer</a>
+          {% elif name == "Steam" %}
+          <a href="/guild/{{ guild_id }}/steam" class="btn btn-secondary btn-sm">Gerer</a>
+          {% elif name == "Revenus" %}
+          <a href="/guild/{{ guild_id }}/work" class="btn btn-secondary btn-sm">Gerer</a>
+          {% elif name == "Langue" %}
+          <a href="/guild/{{ guild_id }}/lang" class="btn btn-secondary btn-sm">Gerer</a>
           {% else %}
           <span style="color: var(--text-muted);">-</span>
           {% endif %}

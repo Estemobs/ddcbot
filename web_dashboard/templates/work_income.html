@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Travail/Revenus - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Travail & Revenus</h2>
+  <p>Serveur {{ guild_id }} - Configuration travail et revenus passifs</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration Travail</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/work/config">
+    <div class="form-group">
+      <label>Montant minimum</label>
+      <input type="number" name="min_amount" value="{{ work.min_amount if work else '' }}" placeholder="10">
+    </div>
+    <div class="form-group">
+      <label>Montant maximum</label>
+      <input type="number" name="max_amount" value="{{ work.max_amount if work else '' }}" placeholder="100">
+    </div>
+    <div class="form-group">
+      <label>Nombre de paliers</label>
+      <input type="number" name="reward_tiers" value="{{ work.reward_tiers if work else '' }}" placeholder="3">
+    </div>
+    <div class="form-group">
+      <label>Cooldown (heures)</label>
+      <input type="number" name="cooldown" value="{{ work.cooldown if work else '' }}" placeholder="4">
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration Revenus</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/income/config">
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Revenus actives</div>
+        <div class="toggle-desc">Permettre la collecte de revenus passifs</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="collect_enabled" value="1" {% if income and income.collect_enabled %}checked{% endif %}>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="form-group">
+      <label>Montant par defaut</label>
+      <input type="number" name="default_amount" value="{{ income.default_amount if income else '' }}" placeholder="100">
+    </div>
+    <div class="form-group">
+      <label>Intervalle (heures)</label>
+      <input type="number" name="default_interval_hours" value="{{ income.default_interval_hours if income else '' }}" placeholder="24">
+    </div>
+    <div class="form-group">
+      <label>Canal de log</label>
+      <input type="text" name="log_channel_id" value="{{ income.log_channel_id if income and income.log_channel_id else '' }}" placeholder="ID du canal">
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Revenus par role</h3></div>
+  {% if role_incomes %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>Role ID</th><th>Nom</th><th>Montant</th><th>Intervalle (h)</th></tr>
+      {% for ri in role_incomes %}
+      <tr>
+        <td>{{ ri.role_id }}</td>
+        <td>{{ ri.name }}</td>
+        <td>{{ ri.amount }}</td>
+        <td>{{ ri.collect_interval }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucun revenu par role configure.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Commande</th><th>Description</th></tr>
+      <tr><td><code>,work</code></td><td>Travailler pour gagner de l'argent</td></tr>
+      <tr><td><code>,config_work min max tiers cooldown *rewards</code></td><td>Configure le travail</td></tr>
+      <tr><td><code>,collect_income</code></td><td>Collecter les revenus passifs</td></tr>
+      <tr><td><code>,role_income_add ROLE MONTANT INTERVALLE NOM</code></td><td>Ajoute un revenu par role</td></tr>
+      <tr><td><code>,role_income_remove ROLE</code></td><td>Supprime un revenu par role</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

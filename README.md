@@ -3,7 +3,7 @@
 [![Tests](https://github.com/Estemobs/ddcbot/actions/workflows/tests.yml/badge.svg)](https://github.com/Estemobs/ddcbot/actions/workflows/tests.yml)
 [![Licence GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
-[![discord.py](https://img.shields.io/badge/discord.py-2.4-5865F2.svg)](https://github.com/Rapptz/discord.py)
+[![discord.py](https://img.shields.io/badge/discord.py-2.7.1-5865F2.svg)](https://github.com/Rapptz/discord.py)
 
 Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, notifications RSS, logs, notes/tags, assistant IA, auto-moderation par IA, tickets de support, webhooks, mode lockdown et auto-diagnostic — le tout piloté par des panneaux d'administration en un clic ou via un dashboard web.
 

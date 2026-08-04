@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Langue - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Langue / Internationalisation</h2>
+  <p>Serveur {{ guild_id }} - Configuration de la langue du bot</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Configuration</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/lang/config">
+    <div class="form-group">
+      <label>Langue du serveur</label>
+      <select name="lang">
+        <option value="fr" {% if lang_config and lang_config.lang == 'fr' %}selected{% endif %}>Francais</option>
+        <option value="en" {% if lang_config and lang_config.lang == 'en' %}selected{% endif %}>English</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Commande</th><th>Description</th></tr>
+      <tr><td><code>,lang fr/en</code></td><td>Change la langue personnelle</td></tr>
+      <tr><td><code>,guildlang fr/en</code></td><td>Change la langue du serveur (admin)</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

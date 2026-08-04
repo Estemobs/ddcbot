@@ -30,7 +30,6 @@ EXPECTED_COMMANDS = {
     "mybalance",
     "balance",
     "paye",
-    "pay",
     "leaderboard",
     "addmoney",
     "removemoney",

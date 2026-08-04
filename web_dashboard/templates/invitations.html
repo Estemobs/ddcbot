@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Invitations - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Invitations</h2>
+  <p>Serveur {{ guild_id }} - Suivi des invitations</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="value">{{ total_invited }}</div>
+    <div class="label">Invites totales</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ total_left }}</div>
+    <div class="label">Departs</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ total_active }}</div>
+    <div class="label">Actifs</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Classement des inviteurs</h3></div>
+  {% if invites %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>Utilisateur</th><th>Invites</th><th>Departs</th><th>Actifs</th></tr>
+      {% for inv in invites %}
+      <tr>
+        <td>{{ inv.user_id }}</td>
+        <td>{{ inv.invited }}</td>
+        <td>{{ inv.left }}</td>
+        <td>{{ inv.invited - inv.left }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucune donnee d'invitation.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Commande</th><th>Description</th></tr>
+      <tr><td><code>,invitations</code></td><td>Affiche le classement des invitations</td></tr>
+      <tr><td><code>,topinvitations</code></td><td>Top 10 des inviteurs</td></tr>
+      <tr><td><code>,invleft @user</code></td><td>Affiche les invitations restantes</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

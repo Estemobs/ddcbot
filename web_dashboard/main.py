@@ -132,6 +132,8 @@ def get_guilds():
         ("ticket_config", "guild_id"),
         ("webhook_config", "guild_id"),
         ("lockdown_config", "guild_id"),
+        ("invites", "guild_id"),
+        ("steam_config", "guild_id"),
     ]
     guild_ids = set()
     for table, col in tables_to_check:
@@ -200,6 +202,10 @@ async def guild_overview(request: Request, guild_id: int):
         ("ticket_config", "guild_id", "Tickets"),
         ("webhook_config", "guild_id", "Webhooks"),
         ("lockdown_config", "guild_id", "Lockdown"),
+        ("invites", "guild_id", "Invitations"),
+        ("steam_config", "guild_id", "Steam"),
+        ("income_config", "guild_id", "Revenus"),
+        ("guild_lang", "guild_id", "Langue"),
     ]:
         try:
             row = db.fetchone(f"SELECT COUNT(*) as c FROM {table} WHERE {col} = ?", (guild_id,))
@@ -767,6 +773,169 @@ async def lockdown_save_config(
     return RedirectResponse(f"/guild/{guild_id}/lockdown", status_code=303)
 
 
+# ── Invitations ──
+
+@app.get("/guild/{guild_id}/invitations", response_class=HTMLResponse)
+async def invitations_page(request: Request, guild_id: int):
+    invites = db.fetchall(
+        "SELECT user_id, invited, left FROM invites WHERE guild_id = ? ORDER BY invited DESC",
+        (guild_id,),
+    )
+    total_invited = sum(i["invited"] for i in invites)
+    total_left = sum(i["left"] for i in invites)
+    return templates.TemplateResponse("invitations.html", {
+        "request": request, "guild_id": guild_id,
+        "invites": invites, "total_invited": total_invited,
+        "total_left": total_left, "total_active": total_invited - total_left,
+    })
+
+
+# ── Minecraft ──
+
+@app.get("/guild/{guild_id}/minecraft", response_class=HTMLResponse)
+async def minecraft_page(request: Request, guild_id: int):
+    cfg = db.fetchone("SELECT * FROM minecraft_config WHERE guild_id = ?", (guild_id,))
+    return templates.TemplateResponse("minecraft.html", {
+        "request": request, "guild_id": guild_id, "config": cfg,
+    })
+
+
+@app.post("/guild/{guild_id}/minecraft/config")
+async def minecraft_save(
+    request: Request, guild_id: int,
+    enabled: str = Form("0"),
+    channel_id: int = Form(0),
+    method: str = Form("tmux"),
+    tmux_session: str = Form(""),
+    use_sudo: str = Form("0"),
+    rcon_host: str = Form(""),
+    rcon_port: int = Form(0),
+    rcon_password: str = Form(""),
+):
+    db.execute(
+        "INSERT INTO minecraft_config "
+        "(guild_id, channel_id, method, tmux_session, use_sudo, rcon_host, rcon_port, rcon_password, enabled) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET "
+        "channel_id=excluded.channel_id, method=excluded.method, tmux_session=excluded.tmux_session, "
+        "use_sudo=excluded.use_sudo, rcon_host=excluded.rcon_host, rcon_port=excluded.rcon_port, "
+        "rcon_password=excluded.rcon_password, enabled=excluded.enabled",
+        (guild_id, channel_id or None, method, tmux_session or None,
+         int(use_sudo), rcon_host or None, rcon_port or None, rcon_password or None, int(enabled)),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/minecraft", status_code=303)
+
+
+# ── Steam ──
+
+@app.get("/guild/{guild_id}/steam", response_class=HTMLResponse)
+async def steam_page(request: Request, guild_id: int):
+    cfg = db.fetchone("SELECT * FROM steam_config WHERE guild_id = ?", (guild_id,))
+    return templates.TemplateResponse("steam.html", {
+        "request": request, "guild_id": guild_id, "config": cfg,
+    })
+
+
+@app.post("/guild/{guild_id}/steam/config")
+async def steam_save(
+    request: Request, guild_id: int,
+    api_key: str = Form(""),
+):
+    db.execute(
+        "INSERT INTO steam_config (guild_id, api_key) VALUES (?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET api_key=excluded.api_key",
+        (guild_id, api_key or None),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/steam", status_code=303)
+
+
+# ── Work / Income ──
+
+@app.get("/guild/{guild_id}/work", response_class=HTMLResponse)
+async def work_income_page(request: Request, guild_id: int):
+    work = db.fetchone("SELECT * FROM work_settings WHERE guild_id = ?", (guild_id,))
+    income = db.fetchone("SELECT * FROM income_config WHERE guild_id = ?", (guild_id,))
+    role_incomes = db.fetchall("SELECT * FROM role_income ORDER BY amount DESC")
+    return templates.TemplateResponse("work_income.html", {
+        "request": request, "guild_id": guild_id,
+        "work": work, "income": income, "role_incomes": role_incomes,
+    })
+
+
+@app.post("/guild/{guild_id}/work/config")
+async def work_save(
+    request: Request, guild_id: int,
+    min_amount: float = Form(10),
+    max_amount: float = Form(100),
+    reward_tiers: int = Form(3),
+    cooldown: int = Form(4),
+):
+    db.execute(
+        "INSERT INTO work_settings (guild_id, min_amount, max_amount, reward_tiers, cooldown, rewards_json) "
+        "VALUES (?, ?, ?, ?, ?, '[]') "
+        "ON CONFLICT(guild_id) DO UPDATE SET "
+        "min_amount=excluded.min_amount, max_amount=excluded.max_amount, "
+        "reward_tiers=excluded.reward_tiers, cooldown=excluded.cooldown",
+        (guild_id, min_amount, max_amount, reward_tiers, cooldown),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/work", status_code=303)
+
+
+@app.post("/guild/{guild_id}/income/config")
+async def income_save(
+    request: Request, guild_id: int,
+    collect_enabled: str = Form("0"),
+    default_amount: float = Form(100),
+    default_interval_hours: int = Form(24),
+    log_channel_id: int = Form(0),
+):
+    db.execute(
+        "INSERT INTO income_config "
+        "(guild_id, collect_enabled, default_amount, default_interval_hours, log_channel_id) "
+        "VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET "
+        "collect_enabled=excluded.collect_enabled, default_amount=excluded.default_amount, "
+        "default_interval_hours=excluded.default_interval_hours, log_channel_id=excluded.log_channel_id",
+        (guild_id, int(collect_enabled), default_amount, default_interval_hours, log_channel_id or None),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/work", status_code=303)
+
+
+# ── Notifications TV ──
+
+@app.get("/guild/{guild_id}/rss", response_class=HTMLResponse)
+async def rss_page(request: Request, guild_id: int):
+    notifications = db.fetchall(
+        "SELECT id, show_name, season, number, airdate, user_id FROM notifications ORDER BY show_name, season, number"
+    )
+    return templates.TemplateResponse("rss.html", {
+        "request": request, "guild_id": guild_id, "notifications": notifications,
+    })
+
+
+# ── Langue / i18n ──
+
+@app.get("/guild/{guild_id}/lang", response_class=HTMLResponse)
+async def lang_page(request: Request, guild_id: int):
+    lang_config = db.fetchone("SELECT * FROM guild_lang WHERE guild_id = ?", (guild_id,))
+    return templates.TemplateResponse("lang.html", {
+        "request": request, "guild_id": guild_id, "lang_config": lang_config,
+    })
+
+
+@app.post("/guild/{guild_id}/lang/config")
+async def lang_save(
+    request: Request, guild_id: int,
+    lang: str = Form("fr"),
+):
+    db.execute(
+        "INSERT INTO guild_lang (guild_id, lang) VALUES (?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET lang=excluded.lang",
+        (guild_id, lang),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/lang", status_code=303)
+
+
 # ── API JSON ──
 
 @app.get("/api/guilds")
@@ -859,13 +1028,6 @@ async def giveaways_page(request: Request):
     return templates.TemplateResponse("giveaways.html", {
         "request": request, "active": active, "ended": ended,
     })
-
-
-# ── API JSON (pour usage externe / bots) ──
-
-@app.get("/api/guilds")
-async def api_guilds():
-    return {"guilds": get_guilds()}
 
 
 if __name__ == "__main__":

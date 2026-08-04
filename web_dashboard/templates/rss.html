@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Notifications TV - Serveur {{ guild_id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Notifications Series/TV</h2>
+  <p>Serveur {{ guild_id }} - Suivi des series et emissions</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Notifications actives</h3></div>
+  {% if notifications %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>ID</th><th>Serie</th><th>Saison</th><th>Episode</th><th>Date</th><th>Utilisateur</th></tr>
+      {% for notif in notifications %}
+      <tr>
+        <td>{{ notif.id }}</td>
+        <td>{{ notif.show_name }}</td>
+        <td>{{ notif.season }}</td>
+        <td>{{ notif.number }}</td>
+        <td>{{ notif.airdate }}</td>
+        <td>{{ notif.user_id }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>Aucune notification active.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Commande</th><th>Description</th></tr>
+      <tr><td><code>,subscribe NOM SAISON EPISODE DATE</code></td><td>Ajoute une notification pour un episode</td></tr>
+      <tr><td><code>,notifications</code></td><td>Liste les notifications actives</td></tr>
+      <tr><td><code>,delnotif ID</code></td><td>Supprime une notification</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}
