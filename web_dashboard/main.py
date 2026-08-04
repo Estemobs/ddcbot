@@ -11,6 +11,7 @@ import os
 import secrets
 import sys
 import time
+from collections import defaultdict
 
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -32,6 +33,21 @@ db = Database(path=DB_PATH)
 
 DASHBOARD_TOKEN = os.environ.get("DASHBOARD_TOKEN", "")
 _sessions = {}
+
+# ── Rate limiting ──
+_login_attempts = defaultdict(list)
+RATE_LIMIT_MAX = int(os.environ.get("DASHBOARD_RATE_LIMIT_MAX", "5"))
+RATE_LIMIT_WINDOW = int(os.environ.get("DASHBOARD_RATE_LIMIT_WINDOW", "300"))
+
+
+def _check_rate_limit(ip: str) -> bool:
+    now = time.time()
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if now - t < RATE_LIMIT_WINDOW]
+    return len(_login_attempts[ip]) >= RATE_LIMIT_MAX
+
+
+def _record_login_attempt(ip: str):
+    _login_attempts[ip].append(time.time())
 
 
 def _hash_token(token: str) -> str:
@@ -74,14 +90,27 @@ async def login_page(request: Request):
 async def login_submit(request: Request, token: str = Form(...)):
     if not DASHBOARD_TOKEN:
         return RedirectResponse("/", status_code=303)
+
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_rate_limit(client_ip):
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": f"Trop de tentatives. Reessayez dans {RATE_LIMIT_WINDOW}s.",
+        })
+
     if token == DASHBOARD_TOKEN:
+        _login_attempts[client_ip] = []
         session_id = secrets.token_urlsafe(32)
         _sessions[session_id] = time.time() + 86400
         response = RedirectResponse("/", status_code=303)
         response.set_cookie("ddc_session", session_id, httponly=True, max_age=86400)
         return response
+
+    _record_login_attempt(client_ip)
+    remaining = RATE_LIMIT_MAX - len(_login_attempts[client_ip])
     return templates.TemplateResponse("login.html", {
-        "request": request, "error": "Token invalide"
+        "request": request,
+        "error": f"Token invalide. ({remaining} tentatives restantes)",
     })
 
 
