@@ -177,8 +177,6 @@ python main.py
 
 Toutes les données du bot vivent dans une base **SQLite** unique, `data/ddcbot.sqlite3`, créée automatiquement au premier lancement (schéma défini dans [data/migrations/0001_initial.sql](data/migrations/0001_initial.sql)). Ce fichier est volontairement exclu du dépôt (`.gitignore`) : il contient de vrais identifiants de serveur/salon Discord et des soldes réels, et ne doit jamais être commité, pour éviter qu'un `git reset`/`git pull` n'écrase les données réelles d'un serveur.
 
-> Si vous mettez à jour un checkout antérieur à la migration SQLite (qui avait encore des fichiers `data/*.json`), lancez une seule fois `python scripts/migrate_json_to_sqlite.py` pour importer vos anciennes données avant de redémarrer le bot.
-
 ## Commandes
 
 Liste complète et à jour dans Discord via `,help`. Pour vérifier que toutes les commandes et fichiers requis sont bien en place : `,selftest` (ou `,selftest deep` pour un contrôle approfondi). `,version` affiche le hash du commit déployé ; `,changelog` affiche les derniers commits.

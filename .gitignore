@@ -3,29 +3,12 @@ secrets.json
 venv/
 .venv/
 __pycache__/
+.pytest_cache/
 
 # Base SQLite en production (persistée via volumes Docker, ne doit pas être versionnée)
 data/ddcbot.sqlite3
 data/ddcbot.sqlite3-wal
 data/ddcbot.sqlite3-shm
-
-# Anciens fichiers JSON plats (remplacés par la base SQLite, conserves comme sauvegarde locale)
-data/balances.json
-data/inventaire.json
-data/income.json
-data/quete.json
-data/warnconfig.json
-data/notifications.json
-data/workconfig.json
-data/notes.json
-data/economy_config.json
-data/gameconfig.json
-data/moderation_config.json
-data/income_config.json
-data/game_panel_config.json
-data/permission_config.json
-data/warn_history.json
-data/logs_config.json
 
 # état interne de l'auto-update (docker)
 data/.last_announced_commit
