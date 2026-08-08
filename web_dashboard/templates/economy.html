@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Economie - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.economy.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Economie</h2>
-  <p>Serveur {{ guild_id }} - Configuration et soldes</p>
+  <h2>{{ t('economy.heading') }}</h2>
+  <p>{{ t('economy.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Configuration</h3></div>
+  <div class="card-header"><h3>{{ t('common.config') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/economy/config">
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Autoriser les transferts</div>
-        <div class="toggle-desc">Les utilisateurs peuvent s'envoyer de l'argent</div>
+        <div class="toggle-label">{{ t('economy.transfers') }}</div>
+        <div class="toggle-desc">{{ t('economy.transfers_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="allow_transfers" value="1" {% if config and config.allow_transfers %}checked{% endif %}>
@@ -21,8 +21,8 @@
     </div>
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Autoriser les soldes negatifs</div>
-        <div class="toggle-desc">Les utilisateurs peuvent etre dans le rouge</div>
+        <div class="toggle-label">{{ t('economy.negative') }}</div>
+        <div class="toggle-desc">{{ t('economy.negative_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="allow_negative" value="1" {% if config and config.allow_negative_balances %}checked{% endif %}>
@@ -30,45 +30,45 @@
       </label>
     </div>
     <div class="form-group">
-      <label>Max transfert</label>
+      <label>{{ t('economy.max_transfer') }}</label>
       <input type="number" name="max_transfer" value="{{ config.max_transfer if config else 10000 }}" min="1">
     </div>
-    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+    <button type="submit" class="btn btn-primary">{{ t('btn.save') }}</button>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Ajouter / Retirer de l'argent</h3></div>
+  <div class="card-header"><h3>{{ t('economy.add_remove') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/economy/addmoney" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
     <div class="form-group" style="margin:0;">
-      <label>User ID</label>
+      <label>{{ t('economy.user_id') }}</label>
       <input type="number" name="user_id" required>
     </div>
     <div class="form-group" style="margin:0;">
-      <label>Montant</label>
+      <label>{{ t('economy.amount') }}</label>
       <input type="number" name="amount" step="0.01" required>
     </div>
-    <button type="submit" class="btn btn-success btn-sm">+ Ajouter</button>
+    <button type="submit" class="btn btn-success btn-sm">{{ t('economy.add') }}</button>
   </form>
   <form method="post" action="/guild/{{ guild_id }}/economy/removemoney" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-top:10px;">
     <div class="form-group" style="margin:0;">
-      <label>User ID</label>
+      <label>{{ t('economy.user_id') }}</label>
       <input type="number" name="user_id" required>
     </div>
     <div class="form-group" style="margin:0;">
-      <label>Montant</label>
+      <label>{{ t('economy.amount') }}</label>
       <input type="number" name="amount" step="0.01" required>
     </div>
-    <button type="submit" class="btn btn-danger btn-sm">- Retirer</button>
+    <button type="submit" class="btn btn-danger btn-sm">{{ t('economy.remove') }}</button>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Classement des soldes (Top 50)</h3></div>
+  <div class="card-header"><h3>{{ t('economy.top50') }}</h3></div>
   {% if balances %}
   <div class="table-wrap">
     <table>
-      <tr><th>#</th><th>User ID</th><th>Solde</th></tr>
+      <tr><th>#</th><th>{{ t('economy.user_id') }}</th><th>{{ t('economy.col_balance') }}</th></tr>
       {% for b in balances %}
       <tr>
         <td>{{ loop.index }}</td>
@@ -79,16 +79,16 @@
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>Aucun solde enregistre.</p></div>
+  <div class="empty"><p>{{ t('economy.empty_balances') }}</p></div>
   {% endif %}
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Dernieres transactions (ce serveur)</h3></div>
+  <div class="card-header"><h3>{{ t('economy.recent_tx') }}</h3></div>
   {% if transactions %}
   <div class="table-wrap">
     <table>
-      <tr><th>Date</th><th>User</th><th>Montant</th><th>Type</th><th>Detail</th></tr>
+      <tr><th>{{ t('economy.col_date') }}</th><th>{{ t('economy.col_user') }}</th><th>{{ t('economy.amount') }}</th><th>{{ t('economy.col_type') }}</th><th>{{ t('economy.col_detail') }}</th></tr>
       {% for tx in transactions %}
       <tr>
         <td>{{ tx.created_at }}</td>
@@ -103,7 +103,7 @@
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>Aucune transaction.</p></div>
+  <div class="empty"><p>{{ t('economy.empty_tx') }}</p></div>
   {% endif %}
 </div>
 {% endblock %}

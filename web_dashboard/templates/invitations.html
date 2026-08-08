@@ -1,32 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Invitations - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.invitations.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Invitations</h2>
-  <p>Serveur {{ guild_id }} - Suivi des invitations</p>
+  <h2>{{ t('invitations.heading') }}</h2>
+  <p>{{ t('invitations.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="stats-grid">
   <div class="stat-card">
     <div class="value">{{ total_invited }}</div>
-    <div class="label">Invites totales</div>
+    <div class="label">{{ t('invitations.total') }}</div>
   </div>
   <div class="stat-card">
     <div class="value">{{ total_left }}</div>
-    <div class="label">Departs</div>
+    <div class="label">{{ t('invitations.leaves') }}</div>
   </div>
   <div class="stat-card">
     <div class="value">{{ total_active }}</div>
-    <div class="label">Actifs</div>
+    <div class="label">{{ t('invitations.active') }}</div>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Classement des inviteurs</h3></div>
+  <div class="card-header"><h3>{{ t('invitations.leaderboard') }}</h3></div>
   {% if invites %}
   <div class="table-wrap">
     <table>
-      <tr><th>Utilisateur</th><th>Invites</th><th>Departs</th><th>Actifs</th></tr>
+      <tr><th>{{ t('invitations.col_user') }}</th><th>{{ t('invitations.col_invited') }}</th><th>{{ t('invitations.col_left') }}</th><th>{{ t('invitations.active') }}</th></tr>
       {% for inv in invites %}
       <tr>
         <td>{{ inv.user_id }}</td>
@@ -38,18 +38,18 @@
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>Aucune donnee d'invitation.</p></div>
+  <div class="empty"><p>{{ t('invitations.empty') }}</p></div>
   {% endif %}
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="card-header"><h3>{{ t('aimod.commands') }}</h3></div>
   <div class="table-wrap">
     <table>
-      <tr><th>Commande</th><th>Description</th></tr>
-      <tr><td><code>,invitations</code></td><td>Affiche le classement des invitations</td></tr>
-      <tr><td><code>,topinvitations</code></td><td>Top 10 des inviteurs</td></tr>
-      <tr><td><code>,invleft @user</code></td><td>Affiche les invitations restantes</td></tr>
+      <tr><th>{{ t('col.command') }}</th><th>{{ t('col.description') }}</th></tr>
+      <tr><td><code>,invitations</code></td><td>{{ t('invitations.cmd_list') }}</td></tr>
+      <tr><td><code>,topinvitations</code></td><td>{{ t('invitations.cmd_top') }}</td></tr>
+      <tr><td><code>,invleft @user</code></td><td>{{ t('invitations.cmd_left') }}</td></tr>
     </table>
   </div>
 </div>

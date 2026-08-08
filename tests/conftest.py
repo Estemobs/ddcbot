@@ -100,7 +100,21 @@ if "discord" not in sys.modules:
     commands.Cog = _Cog
     commands.CogMeta = type("CogMeta", (), {})
     commands.command = lambda *a, **kw: (lambda f: f)
-    commands.group = lambda *a, **kw: (lambda f: f)
+
+    class _GroupStub:
+        """Stub minimal d'un commands.Group avec sous-commandes."""
+        def __init__(self, name):
+            self.name = name
+            self.commands = []
+        def command(self, *a, **kw):
+            def decorator(func):
+                self.commands.append(func)
+                return func
+            return decorator
+        def __call__(self, func):
+            return self
+
+    commands.group = lambda *a, **kw: _GroupStub(kw.get("name", a[0] if a else None))
     commands.hybrid_command = lambda *a, **kw: (lambda f: f)
     commands.hybrid_group = lambda *a, **kw: (lambda f: f)
     commands.has_permissions = lambda **kw: (lambda f: f)

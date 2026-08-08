@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Moderation - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.moderation.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Moderation</h2>
-  <p>Serveur {{ guild_id }} - Configuration des warns et actions</p>
+  <h2>{{ t('moderation.heading') }}</h2>
+  <p>{{ t('moderation.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Configuration des warnings</h3></div>
+  <div class="card-header"><h3>{{ t('moderation.warn_cfg') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/moderation/config">
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Envoyer un DM quand un warn est donne</div>
-        <div class="toggle-desc">L'utilisateur recoit un message prive</div>
+        <div class="toggle-label">{{ t('moderation.dm_user') }}</div>
+        <div class="toggle-desc">{{ t('moderation.dm_user_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="dm_user" value="1" {% if config.get('warn', {}).get('dm_user', true) %}checked{% endif %}>
@@ -21,8 +21,8 @@
     </div>
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Annonce publique</div>
-        <div class="toggle-desc">Le warn est affiche publiquement dans le canal</div>
+        <div class="toggle-label">{{ t('moderation.announce_public') }}</div>
+        <div class="toggle-desc">{{ t('moderation.announce_public_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="announce_public" value="1" {% if config.get('warn', {}).get('announce_public', true) %}checked{% endif %}>
@@ -31,8 +31,8 @@
     </div>
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Raison obligatoire</div>
-        <div class="toggle-desc">Exiger une raison pour chaque warn</div>
+        <div class="toggle-label">{{ t('moderation.require_reason') }}</div>
+        <div class="toggle-desc">{{ t('moderation.require_reason_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="require_reason" value="1" {% if config.get('warn', {}).get('require_reason', true) %}checked{% endif %}>
@@ -41,8 +41,8 @@
     </div>
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Auto-timeout</div>
-        <div class="toggle-desc">Timeout automatique apres un certain nombre de warns</div>
+        <div class="toggle-label">{{ t('moderation.auto_timeout') }}</div>
+        <div class="toggle-desc">{{ t('moderation.auto_timeout_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="auto_timeout" value="1" {% if config.get('actions', {}).get('auto_timeout_enabled', false) %}checked{% endif %}>
@@ -51,24 +51,24 @@
     </div>
     <div class="form-grid">
       <div class="form-group">
-        <label>Auto-timeout apres X warns</label>
+        <label>{{ t('moderation.auto_timeout_warns') }}</label>
         <input type="number" name="auto_timeout_warns" value="{{ config.get('actions', {}).get('auto_timeout_after_warns', 3) }}" min="1">
       </div>
       <div class="form-group">
-        <label>Duree du timeout (minutes)</label>
+        <label>{{ t('moderation.timeout_minutes') }}</label>
         <input type="number" name="auto_timeout_minutes" value="{{ config.get('actions', {}).get('auto_timeout_minutes', 30) }}" min="1">
       </div>
     </div>
-    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+    <button type="submit" class="btn btn-primary">{{ t('btn.save') }}</button>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Warnings par utilisateur</h3></div>
+  <div class="card-header"><h3>{{ t('moderation.per_user') }}</h3></div>
   {% if warns %}
   <div class="table-wrap">
     <table>
-      <tr><th>User ID</th><th>Warnings</th><th>Actions</th></tr>
+      <tr><th>{{ t('economy.user_id') }}</th><th>{{ t('moderation.col_warnings') }}</th><th>{{ t('index.col_actions') }}</th></tr>
       {% for w in warns %}
       <tr>
         <td><code>{{ w.user_id }}</code></td>
@@ -77,7 +77,7 @@
           <form method="post" action="/guild/{{ guild_id }}/moderation/clearwarns" style="display:inline;">
             <input type="hidden" name="user_id" value="{{ w.user_id }}">
             <button type="submit" class="btn btn-danger btn-sm"
-              onclick="return confirm('Supprimer les warns de cet utilisateur ?')">Reset</button>
+              onclick="return confirm('{{ t('moderation.confirm_clear') }}')">{{ t('btn.reset') }}</button>
           </form>
         </td>
       </tr>
@@ -85,7 +85,7 @@
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>Aucun warning enregistre.</p></div>
+  <div class="empty"><p>{{ t('moderation.empty_warns') }}</p></div>
   {% endif %}
 </div>
 {% endblock %}

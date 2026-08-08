@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Minecraft - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.minecraft.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Minecraft Bridge</h2>
-  <p>Serveur {{ guild_id }} - Pont Discord <-> Minecraft</p>
+  <h2>{{ t('minecraft.heading') }}</h2>
+  <p>{{ t('minecraft.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Configuration</h3></div>
+  <div class="card-header"><h3>{{ t('common.config') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/minecraft/config">
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Bridge actif</div>
-        <div class="toggle-desc">Activer le pont Discord <-> Minecraft</div>
+        <div class="toggle-label">{{ t('minecraft.bridge') }}</div>
+        <div class="toggle-desc">{{ t('minecraft.bridge_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="enabled" value="1" {% if config and config.enabled %}checked{% endif %}>
@@ -20,24 +20,24 @@
       </label>
     </div>
     <div class="form-group">
-      <label>Canal Discord</label>
-      <input type="text" name="channel_id" value="{{ config.channel_id if config and config.channel_id else '' }}" placeholder="ID du canal">
+      <label>{{ t('minecraft.channel') }}</label>
+      <input type="text" name="channel_id" value="{{ config.channel_id if config and config.channel_id else '' }}" placeholder="{{ t('minecraft.channel_ph') }}">
     </div>
     <div class="form-group">
-      <label>Methode</label>
+      <label>{{ t('minecraft.method') }}</label>
       <select name="method">
         <option value="tmux" {% if config and config.method == 'tmux' %}selected{% endif %}>tmux</option>
         <option value="rcon" {% if config and config.method == 'rcon' %}selected{% endif %}>RCON</option>
       </select>
     </div>
     <div class="form-group">
-      <label>Session tmux</label>
-      <input type="text" name="tmux_session" value="{{ config.tmux_session if config and config.tmux_session else '' }}" placeholder="Nom de la session tmux">
+      <label>{{ t('minecraft.tmux_session') }}</label>
+      <input type="text" name="tmux_session" value="{{ config.tmux_session if config and config.tmux_session else '' }}" placeholder="{{ t('minecraft.tmux_session_ph') }}">
     </div>
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Utiliser sudo</div>
-        <div class="toggle-desc">Prefixer les commandes avec sudo</div>
+        <div class="toggle-label">{{ t('minecraft.sudo') }}</div>
+        <div class="toggle-desc">{{ t('minecraft.sudo_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="use_sudo" value="1" {% if config and config.use_sudo %}checked{% endif %}>
@@ -45,31 +45,31 @@
       </label>
     </div>
     <div class="form-group">
-      <label>RCON Host</label>
+      <label>{{ t('minecraft.rcon_host') }}</label>
       <input type="text" name="rcon_host" value="{{ config.rcon_host if config and config.rcon_host else '' }}" placeholder="127.0.0.1">
     </div>
     <div class="form-group">
-      <label>RCON Port</label>
+      <label>{{ t('minecraft.rcon_port') }}</label>
       <input type="number" name="rcon_port" value="{{ config.rcon_port if config and config.rcon_port else '' }}" placeholder="25575">
     </div>
     <div class="form-group">
-      <label>RCON Mot de passe</label>
-      <input type="password" name="rcon_password" value="{{ config.rcon_password if config and config.rcon_password else '' }}" placeholder="Mot de passe RCON">
+      <label>{{ t('minecraft.rcon_password') }}</label>
+      <input type="password" name="rcon_password" value="{{ config.rcon_password if config and config.rcon_password else '' }}" placeholder="{{ t('minecraft.rcon_password_ph') }}">
     </div>
-    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+    <button type="submit" class="btn btn-primary">{{ t('btn.save') }}</button>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="card-header"><h3>{{ t('aimod.commands') }}</h3></div>
   <div class="table-wrap">
     <table>
-      <tr><th>Commande</th><th>Description</th></tr>
-      <tr><td><code>,mcenable</code></td><td>Active le bridge Minecraft</td></tr>
-      <tr><td><code>,mcdisable</code></td><td>Desactive le bridge Minecraft</td></tr>
-      <tr><td><code>,mcconfig</code></td><td>Configure le bridge</td></tr>
-      <tr><td><code>,mcsay Message</code></td><td>Envoie un message au serveur Minecraft</td></tr>
-      <tr><td><code>,mcstatus</code></td><td>Statut du serveur Minecraft</td></tr>
+      <tr><th>{{ t('col.command') }}</th><th>{{ t('col.description') }}</th></tr>
+      <tr><td><code>,mcenable</code></td><td>{{ t('minecraft.cmd_enable') }}</td></tr>
+      <tr><td><code>,mcdisable</code></td><td>{{ t('minecraft.cmd_disable') }}</td></tr>
+      <tr><td><code>,mcconfig</code></td><td>{{ t('minecraft.cmd_config') }}</td></tr>
+      <tr><td><code>,mcsay Message</code></td><td>{{ t('minecraft.cmd_say') }}</td></tr>
+      <tr><td><code>,mcstatus</code></td><td>{{ t('minecraft.cmd_status') }}</td></tr>
     </table>
   </div>
 </div>

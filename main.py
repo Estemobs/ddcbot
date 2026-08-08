@@ -32,6 +32,8 @@ from cogs.ai_moderation import cmdaimoderation
 from cogs.tickets import cmdtickets
 from cogs.webhooks import cmdwebhooks
 from cogs.lockdown import cmdlockdown
+from cogs.plugins_cmd import cmdplugins
+import plugin_loader
 
 intents = discord.Intents.default()
 intents.members = True
@@ -214,6 +216,8 @@ async def main():
     await bot.add_cog(cmdtickets(bot, db))
     await bot.add_cog(cmdwebhooks(bot, db))
     await bot.add_cog(cmdlockdown(bot, db))
+    await bot.add_cog(cmdplugins(bot, db))
+    await plugin_loader.load_plugins(bot, db)
     await bot.start(token)
 
 asyncio.run(main())

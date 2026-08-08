@@ -1,0 +1,467 @@
+"""i18n pour le dashboard web.
+
+Traductions fr/en des textes du dashboard. Le francais est la langue par
+defaut (fallback cle -> francais -> cle), comme pour le bot Discord.
+"""
+
+# flake8: noqa: E501
+
+# Dictionnaire de traduction. Chaque cle est partagee entre fr et en.
+STRINGS = {
+    "brand.subtitle": {"fr": "Admin Dashboard", "en": "Admin Dashboard"},
+
+    # Navigation
+    "nav.home": {"fr": "Accueil", "en": "Home"},
+    "nav.notes": {"fr": "Notes", "en": "Notes"},
+    "nav.transactions": {"fr": "Transactions", "en": "Transactions"},
+    "nav.reminders": {"fr": "Rappels", "en": "Reminders"},
+    "nav.giveaways": {"fr": "Giveaways", "en": "Giveaways"},
+    "nav.section.servers": {"fr": "Serveurs", "en": "Servers"},
+    "nav.server": {"fr": "Serveur {id}", "en": "Server {id}"},
+    "nav.language": {"fr": "Langue", "en": "Language"},
+    "nav.theme": {"fr": "Theme", "en": "Theme"},
+
+    # Accueil (index)
+    "index.title": {"fr": "DDCBot - Accueil", "en": "DDCBot - Home"},
+    "index.subtitle": {"fr": "Administration du bot Discord DDCBot", "en": "Administration of the DDCBot Discord bot"},
+    "index.stat.servers": {"fr": "Serveurs", "en": "Servers"},
+    "index.stat.econ_accounts": {"fr": "Comptes economie", "en": "Economy accounts"},
+    "index.stat.xp_users": {"fr": "Utilisateurs XP", "en": "XP users"},
+    "index.stat.transactions": {"fr": "Transactions", "en": "Transactions"},
+    "index.stat.warnings": {"fr": "Warnings", "en": "Warnings"},
+    "index.servers_configured": {"fr": "Serveurs configures", "en": "Configured servers"},
+    "index.col_guild_id": {"fr": "Guild ID", "en": "Guild ID"},
+    "index.col_actions": {"fr": "Actions", "en": "Actions"},
+    "index.btn_manage": {"fr": "Gerer", "en": "Manage"},
+    "index.empty_servers": {"fr": "Aucun serveur configure. Utilisez les commandes Discord pour initialiser.", "en": "No configured servers. Use Discord commands to set things up."},
+    "index.api_title": {"fr": "API", "en": "API"},
+    "index.api_desc": {"fr": "Endpoints JSON disponibles :", "en": "Available JSON endpoints:"},
+
+    # Vue d'ensemble d'un serveur
+    "guild.title": {"fr": "Serveur {id} - DDCBot", "en": "Server {id} - DDCBot"},
+    "guild.overview": {"fr": "Vue d'ensemble des configurations", "en": "Configuration overview"},
+    "guild.warnings": {"fr": "Warnings", "en": "Warnings"},
+    "guild.transactions": {"fr": "Transactions", "en": "Transactions"},
+    "guild.modules": {"fr": "Modules actifs", "en": "Active modules"},
+    "guild.col_module": {"fr": "Module", "en": "Module"},
+    "guild.col_status": {"fr": "Statut", "en": "Status"},
+    "guild.col_config": {"fr": "Configuration", "en": "Configuration"},
+    "guild.status_ok": {"fr": "Configure", "en": "Configured"},
+    "guild.status_ko": {"fr": "Non configure", "en": "Not configured"},
+
+    # Boutons / libelles communs
+    "btn.save": {"fr": "Sauvegarder", "en": "Save"},
+    "btn.add": {"fr": "Ajouter", "en": "Add"},
+    "btn.delete": {"fr": "Supprimer", "en": "Delete"},
+    "btn.reset": {"fr": "Reset", "en": "Reset"},
+
+    # titles (title block)
+    "page.economy.title": {"fr": "Economie - Serveur {id}", "en": "Economy - Server {id}"},
+    "page.moderation.title": {"fr": "Moderation - Serveur {id}", "en": "Moderation - Server {id}"},
+    "page.leveling.title": {"fr": "Leveling - Serveur {id}", "en": "Leveling - Server {id}"},
+    "page.welcome.title": {"fr": "Welcome/Leave - Serveur {id}", "en": "Welcome/Leave - Server {id}"},
+    "page.automod.title": {"fr": "AutoMod - Serveur {id}", "en": "AutoMod - Server {id}"},
+    "page.logs.title": {"fr": "Logs - Serveur {id}", "en": "Logs - Server {id}"},
+    "page.notes.title": {"fr": "Notes - DDCBot", "en": "Notes - DDCBot"},
+    "page.aimod.title": {"fr": "AI-Moderation - Serveur {id}", "en": "AI-Moderation - Server {id}"},
+    "page.tickets.title": {"fr": "Tickets - Serveur {id}", "en": "Tickets - Server {id}"},
+    "page.webhooks.title": {"fr": "Webhooks - Serveur {id}", "en": "Webhooks - Server {id}"},
+    "page.lockdown.title": {"fr": "Lockdown - Serveur {id}", "en": "Lockdown - Server {id}"},
+    "page.invitations.title": {"fr": "Invitations - Serveur {id}", "en": "Invitations - Server {id}"},
+    "page.minecraft.title": {"fr": "Minecraft - Serveur {id}", "en": "Minecraft - Server {id}"},
+    "page.steam.title": {"fr": "Steam - Serveur {id}", "en": "Steam - Server {id}"},
+    "page.work.title": {"fr": "Travail/Revenus - Serveur {id}", "en": "Work/Income - Server {id}"},
+    "page.rss.title": {"fr": "Notifications TV - Serveur {id}", "en": "TV notifications - Server {id}"},
+    "page.lang.title": {"fr": "Langue - Serveur {id}", "en": "Language - Server {id}"},
+    "page.transactions.title": {"fr": "Transactions - DDCBot", "en": "Transactions - DDCBot"},
+    "page.reminders.title": {"fr": "Rappels - DDCBot", "en": "Reminders - DDCBot"},
+    "page.giveaways.title": {"fr": "Giveaways - DDCBot", "en": "Giveaways - DDCBot"},
+
+    # Economy
+    "economy.heading": {"fr": "Economie", "en": "Economy"},
+    "economy.subtitle": {"fr": "Serveur {id} - Configuration et soldes", "en": "Server {id} - Configuration and balances"},
+    "economy.transfers": {"fr": "Autoriser les transferts", "en": "Allow transfers"},
+    "economy.transfers_desc": {"fr": "Les utilisateurs peuvent s'envoyer de l'argent", "en": "Users can send money to each other"},
+    "economy.negative": {"fr": "Autoriser les soldes negatifs", "en": "Allow negative balances"},
+    "economy.negative_desc": {"fr": "Les utilisateurs peuvent etre dans le rouge", "en": "Users can go negative"},
+    "economy.max_transfer": {"fr": "Max transfert", "en": "Max transfer"},
+    "economy.add_remove": {"fr": "Ajouter / Retirer de l'argent", "en": "Add / Remove money"},
+    "economy.user_id": {"fr": "User ID", "en": "User ID"},
+    "economy.amount": {"fr": "Montant", "en": "Amount"},
+    "economy.add": {"fr": "+ Ajouter", "en": "+ Add"},
+    "economy.remove": {"fr": "- Retirer", "en": "- Remove"},
+    "economy.top50": {"fr": "Classement des soldes (Top 50)", "en": "Balance leaderboard (Top 50)"},
+    "economy.col_balance": {"fr": "Solde", "en": "Balance"},
+    "economy.empty_balances": {"fr": "Aucun solde enregistre.", "en": "No balances recorded."},
+    "economy.recent_tx": {"fr": "Dernieres transactions (ce serveur)", "en": "Latest transactions (this server)"},
+    "economy.col_date": {"fr": "Date", "en": "Date"},
+    "economy.col_user": {"fr": "User", "en": "User"},
+    "economy.col_type": {"fr": "Type", "en": "Type"},
+    "economy.col_detail": {"fr": "Detail", "en": "Detail"},
+    "economy.empty_tx": {"fr": "Aucune transaction.", "en": "No transactions."},
+
+    # Moderation
+    "moderation.heading": {"fr": "Moderation", "en": "Moderation"},
+    "moderation.subtitle": {"fr": "Serveur {id} - Configuration des warns et actions", "en": "Server {id} - Warns and actions configuration"},
+    "moderation.warn_cfg": {"fr": "Configuration des warnings", "en": "Warnings configuration"},
+    "moderation.dm_user": {"fr": "Envoyer un DM quand un warn est donne", "en": "Send a DM when a warning is issued"},
+    "moderation.dm_user_desc": {"fr": "L'utilisateur recoit un message prive", "en": "The user receives a private message"},
+    "moderation.announce_public": {"fr": "Annonce publique", "en": "Public announcement"},
+    "moderation.announce_public_desc": {"fr": "Le warn est affiche publiquement dans le canal", "en": "The warning is shown publicly in the channel"},
+    "moderation.require_reason": {"fr": "Raison obligatoire", "en": "Required reason"},
+    "moderation.require_reason_desc": {"fr": "Exiger une raison pour chaque warn", "en": "Require a reason for every warning"},
+    "moderation.auto_timeout": {"fr": "Auto-timeout", "en": "Auto-timeout"},
+    "moderation.auto_timeout_desc": {"fr": "Timeout automatique apres un certain nombre de warns", "en": "Automatic timeout after a number of warnings"},
+    "moderation.auto_timeout_warns": {"fr": "Auto-timeout apres X warns", "en": "Auto-timeout after X warnings"},
+    "moderation.timeout_minutes": {"fr": "Duree du timeout (minutes)", "en": "Timeout duration (minutes)"},
+    "moderation.per_user": {"fr": "Warnings par utilisateur", "en": "Warnings per user"},
+    "moderation.col_warnings": {"fr": "Warnings", "en": "Warnings"},
+    "moderation.confirm_clear": {"fr": "Supprimer les warns de cet utilisateur ?", "en": "Delete this user's warnings?"},
+    "moderation.empty_warns": {"fr": "Aucun warning enregistre.", "en": "No warnings recorded."},
+
+    # Leveling
+    "leveling.heading": {"fr": "Leveling / XP", "en": "Leveling / XP"},
+    "leveling.subtitle": {"fr": "Serveur {id} - Configuration du systeme d'XP", "en": "Server {id} - XP system configuration"},
+    "leveling.enabled": {"fr": "Activer le leveling", "en": "Enable leveling"},
+    "leveling.enabled_desc": {"fr": "Les utilisateurs gagnent de l'XP en envoyant des messages", "en": "Users gain XP by sending messages"},
+    "leveling.xp_per_msg": {"fr": "XP par message", "en": "XP per message"},
+    "leveling.cooldown": {"fr": "Cooldown (secondes)", "en": "Cooldown (seconds)"},
+    "leveling.top50": {"fr": "Classement XP (Top 50)", "en": "XP leaderboard (Top 50)"},
+    "leveling.col_niveau": {"fr": "Niveau", "en": "Level"},
+    "leveling.niv": {"fr": "Niv. {level}", "en": "Lvl. {level}"},
+    "leveling.empty_xp": {"fr": "Aucun utilisateur avec de l'XP.", "en": "No users with XP."},
+    "leveling.reset_user": {"fr": "Reinitialiser un utilisateur", "en": "Reset a user"},
+    "leveling.reset_confirm": {"fr": "Supprimer toute l'XP de cet utilisateur ?", "en": "Delete all of this user's XP?"},
+    "leveling.reset_xp": {"fr": "Reset XP", "en": "Reset XP"},
+
+    # Welcome/Leave
+    "welcome.heading": {"fr": "Messages Welcome / Leave", "en": "Welcome / Leave messages"},
+    "welcome.subtitle": {"fr": "Serveur {id} - Messages de bienvenue et de depart", "en": "Server {id} - Welcome and leave messages"},
+    "welcome.enabled": {"fr": "Messages de bienvenue", "en": "Welcome messages"},
+    "welcome.enabled_desc": {"fr": "Envoyer un message quand un membre rejoint", "en": "Send a message when a member joins"},
+    "welcome.channel": {"fr": "Canal de bienvenue (ID)", "en": "Welcome channel (ID)"},
+    "welcome.channel_ph": {"fr": "ID du salon", "en": "Channel ID"},
+    "welcome.message": {"fr": "Message de bienvenue", "en": "Welcome message"},
+    "welcome.message_ph": {"fr": "Bienvenue {user} sur {server} !", "en": "Welcome {user} to {server}!"},
+    "welcome.leave_enabled": {"fr": "Messages de depart", "en": "Leave messages"},
+    "welcome.leave_enabled_desc": {"fr": "Envoyer un message quand un membre quitte", "en": "Send a message when a member leaves"},
+    "welcome.leave_channel": {"fr": "Canal de depart (ID)", "en": "Leave channel (ID)"},
+    "welcome.leave_message": {"fr": "Message de depart", "en": "Leave message"},
+    "welcome.leave_message_ph": {"fr": "Au revoir {user} !", "en": "Goodbye {user}!"},
+    "welcome.placeholders": {"fr": "Placeholders disponibles", "en": "Available placeholders"},
+    "welcome.col_ph": {"fr": "Placeholder", "en": "Placeholder"},
+    "welcome.col_desc": {"fr": "Description", "en": "Description"},
+    "welcome.ph_user": {"fr": "Mention du membre", "en": "Mention of the member"},
+    "welcome.ph_server": {"fr": "Nom du serveur", "en": "Server name"},
+    "welcome.ph_count": {"fr": "Nombre de membres", "en": "Member count"},
+
+    # AutoMod
+    "automod.heading": {"fr": "Auto-Moderation", "en": "Auto-Moderation"},
+    "automod.subtitle": {"fr": "Serveur {id} - Filtre de mots bannis", "en": "Server {id} - banned word filter"},
+    "automod.enabled": {"fr": "AutoMod active", "en": "AutoMod enabled"},
+    "automod.enabled_desc": {"fr": "Filtrer automatiquement les mots bannis", "en": "Automatically filter banned words"},
+    "automod.warn_on": {"fr": "Warn sur detection", "en": "Warn on detection"},
+    "automod.warn_on_desc": {"fr": "Donner un avertissement quand un mot banni est detecte", "en": "Issue a warning when a banned word is detected"},
+    "automod.delete": {"fr": "Supprimer le message", "en": "Delete the message"},
+    "automod.delete_desc": {"fr": "Supprimer automatiquement le message contenant le mot banni", "en": "Automatically delete the message containing the banned word"},
+    "automod.words": {"fr": "Mots bannis", "en": "Banned words"},
+    "automod.add_word": {"fr": "Ajouter un mot", "en": "Add a word"},
+    "automod.word_ph": {"fr": "Mot a bannir", "en": "Word to ban"},
+    "automod.empty_words": {"fr": "Aucun mot banni.", "en": "No banned words."},
+
+    # Logs
+    "logs.heading": {"fr": "Logs", "en": "Logs"},
+    "logs.subtitle": {"fr": "Serveur {id} - Configuration des canaux de logs", "en": "Server {id} - log channels configuration"},
+    "logs.channel": {"fr": "ID du canal de logs", "en": "Log channel ID"},
+    "logs.channel_ph": {"fr": "ID du salon Discord", "en": "Discord channel ID"},
+    "logs.user_errors": {"fr": "Erreurs utilisateur", "en": "User errors"},
+    "logs.user_errors_desc": {"fr": "Arguments invalides, permissions manquantes, cooldowns...", "en": "Invalid arguments, missing permissions, cooldowns..."},
+    "logs.unexpected": {"fr": "Erreurs inattendues", "en": "Unexpected errors"},
+    "logs.unexpected_desc": {"fr": "Bugs, exceptions, traces d'execution", "en": "Bugs, exceptions, stack traces"},
+
+    # Notes
+    "notes.subtitle": {"fr": "Notes globales du bot", "en": "Global bot notes"},
+    "notes.add": {"fr": "Ajouter une note", "en": "Add a note"},
+    "notes.title": {"fr": "Titre", "en": "Title"},
+    "notes.title_ph": {"fr": "Titre de la note", "en": "Note title"},
+    "notes.content": {"fr": "Contenu", "en": "Content"},
+    "notes.content_ph": {"fr": "Contenu de la note", "en": "Note content"},
+    "notes.all": {"fr": "Toutes les notes", "en": "All notes"},
+    "notes.empty": {"fr": "Aucune note.", "en": "No notes."},
+    "notes.confirm_delete": {"fr": "Supprimer cette note ?", "en": "Delete this note?"},
+
+    # AI-Moderation
+    "aimod.subtitle": {"fr": "Serveur {id} - Detection intelligente de contenu toxique", "en": "Server {id} - intelligent toxic content detection"},
+    "aimod.enabled": {"fr": "AI-Moderation activee", "en": "AI-Moderation enabled"},
+    "aimod.enabled_desc": {"fr": "Analyse les messages via g4f pour detecter le contenu toxique", "en": "Analyzes messages via g4f to detect toxic content"},
+    "aimod.action": {"fr": "Action (warn/delete/warn_delete)", "en": "Action (warn/delete/warn_delete)"},
+    "aimod.action_delete": {"fr": "Supprimer", "en": "Delete"},
+    "aimod.action_both": {"fr": "Warn + Supprimer", "en": "Warn + Delete"},
+    "aimod.threshold": {"fr": "Seuil de detection (0.0 - 1.0)", "en": "Detection threshold (0.0 - 1.0)"},
+    "aimod.cooldown": {"fr": "Cooldown (secondes)", "en": "Cooldown (seconds)"},
+    "aimod.log_channel": {"fr": "Canal de logs (ID)", "en": "Log channel (ID)"},
+    "aimod.ignored_roles": {"fr": "Roles ignores", "en": "Ignored roles"},
+    "aimod.ignored_list": {"fr": "Roles ignores par l'AI-mod :", "en": "Roles ignored by AI-mod:"},
+    "aimod.no_ignored": {"fr": "Aucun role ignore. Utilisez `,aimodignore @role` dans Discord.", "en": "No ignored roles. Use `,aimodignore @role` in Discord."},
+    "aimod.commands": {"fr": "Commandes Discord", "en": "Discord commands"},
+    "aimod.cmd_onoff": {"fr": "Active/desactive l'AI-moderation", "en": "Enable/disable AI-moderation"},
+    "aimod.cmd_action": {"fr": "Change l'action", "en": "Change the action"},
+    "aimod.cmd_threshold": {"fr": "Change le seuil", "en": "Change the threshold"},
+    "aimod.cmd_ignore": {"fr": "Ajoute/retire un role ignore", "en": "Add/remove an ignored role"},
+    "aimod.cmd_log": {"fr": "Definit le canal de logs", "en": "Set the log channel"},
+
+    # Tickets
+    "tickets.heading": {"fr": "Tickets de support", "en": "Support tickets"},
+    "tickets.subtitle": {"fr": "Serveur {id} - Systeme de tickets prive", "en": "Server {id} - private ticket system"},
+    "tickets.enabled": {"fr": "Tickets actives", "en": "Tickets enabled"},
+    "tickets.enabled_desc": {"fr": "Permet aux membres de creer des tickets de support", "en": "Let members create support tickets"},
+    "tickets.category": {"fr": "Categorie (ID)", "en": "Category (ID)"},
+    "tickets.category_ph": {"fr": "ID categorie Discord", "en": "Discord category ID"},
+    "tickets.max": {"fr": "Max tickets ouverts par user", "en": "Max open tickets per user"},
+    "tickets.log_channel": {"fr": "Canal de logs (ID)", "en": "Log channel (ID)"},
+    "tickets.welcome": {"fr": "Message de bienvenue", "en": "Welcome message"},
+    "tickets.welcome_ph": {"fr": "Bienvenue dans votre ticket.", "en": "Welcome to your ticket."},
+    "tickets.close": {"fr": "Message de fermeture", "en": "Closing message"},
+    "tickets.close_ph": {"fr": "Ticket ferme. Merci.", "en": "Ticket closed. Thanks."},
+    "tickets.open": {"fr": "Tickets ouverts ({count})", "en": "Open tickets ({count})"},
+    "tickets.col_channel": {"fr": "Salon", "en": "Channel"},
+    "tickets.col_created": {"fr": "Cree le", "en": "Created"},
+    "tickets.empty_open": {"fr": "Aucun ticket ouvert.", "en": "No open tickets."},
+    "tickets.closed": {"fr": "Derniers tickets fermes", "en": "Latest closed tickets"},
+    "tickets.col_closed": {"fr": "Ferme le", "en": "Closed"},
+    "tickets.empty_closed": {"fr": "Aucun ticket ferme.", "en": "No closed tickets."},
+    "tickets.cmd_create": {"fr": "Creer un ticket de support", "en": "Create a support ticket"},
+    "tickets.cmd_close": {"fr": "Fermer le ticket courant", "en": "Close the current ticket"},
+    "tickets.cmd_category": {"fr": "Definit la categorie des tickets", "en": "Set the ticket category"},
+    "tickets.cmd_welcome": {"fr": "Message de bienvenue des tickets", "en": "Ticket welcome message"},
+    "tickets.cmd_max": {"fr": "Max tickets ouverts par user", "en": "Max open tickets per user"},
+
+    # Webhooks
+    "webhooks.subtitle": {"fr": "Serveur {id} - Notifications automatiques", "en": "Server {id} - automatic notifications"},
+    "webhooks.enabled": {"fr": "Webhooks actives", "en": "Webhooks enabled"},
+    "webhooks.enabled_desc": {"fr": "Envoyer des notifications vers un webhook Discord", "en": "Send notifications to a Discord webhook"},
+    "webhooks.url": {"fr": "URL du webhook", "en": "Webhook URL"},
+    "webhooks.event_join": {"fr": "Notification quand un membre rejoint", "en": "Notification when a member joins"},
+    "webhooks.event_leave": {"fr": "Notification quand un membre quitte", "en": "Notification when a member leaves"},
+    "webhooks.event_ban": {"fr": "Notification quand un membre est banni", "en": "Notification when a member is banned"},
+    "webhooks.event_unban": {"fr": "Notification quand un membre est debanni", "en": "Notification when a member is unbanned"},
+    "webhooks.event_warn": {"fr": "Notification quand un membre recoit un warn", "en": "Notification when a member receives a warning"},
+    "webhooks.event_kick": {"fr": "Notification quand un membre est expulse", "en": "Notification when a member is kicked"},
+    "webhooks.cmd_set": {"fr": "Definit l'URL du webhook", "en": "Set the webhook URL"},
+    "webhooks.cmd_toggle": {"fr": "Active/desactive les webhooks", "en": "Enable/disable webhooks"},
+    "webhooks.cmd_event": {"fr": "Active/desactive un evenement", "en": "Enable/disable an event"},
+    "webhooks.cmd_send": {"fr": "Envoie un test au webhook", "en": "Send a test to the webhook"},
+
+    # Lockdown
+    "lockdown.heading": {"fr": "Lockdown / Urgence", "en": "Lockdown / Emergency"},
+    "lockdown.subtitle": {"fr": "Serveur {id} - Verrouillage d'urgence des salons", "en": "Server {id} - emergency channel locking"},
+    "lockdown.role": {"fr": "Role lockdown (ID)", "en": "Lockdown role (ID)"},
+    "lockdown.role_ph": {"fr": "ID role", "en": "Role ID"},
+    "lockdown.log_channel": {"fr": "Canal de logs (ID)", "en": "Log channel (ID)"},
+    "lockdown.mass_join_threshold": {"fr": "Seuil mass-join (nb de joins)", "en": "Mass-join threshold (join count)"},
+    "lockdown.mass_join_window": {"fr": "Fenetre mass-join (secondes)", "en": "Mass-join window (seconds)"},
+    "lockdown.auto": {"fr": "Auto-lock sur mass-join", "en": "Auto-lock on mass-join"},
+    "lockdown.auto_desc": {"fr": "Verrouille automatiquement les salons si trop de joins en peu de temps", "en": "Automatically lock channels if too many joins in a short time"},
+    "lockdown.quick": {"fr": "Actions rapides (via Discord)", "en": "Quick actions (via Discord)"},
+    "lockdown.cmd_lock": {"fr": "Verrouille TOUS les salons du serveur", "en": "Locks ALL channels on the server"},
+    "lockdown.cmd_unlock": {"fr": "Deverrouille TOUS les salons du serveur", "en": "Unlocks ALL channels on the server"},
+    "lockdown.cmd_lock_ch": {"fr": "Verrouille un salon specifique", "en": "Lock a specific channel"},
+    "lockdown.cmd_unlock_ch": {"fr": "Deverrouille un salon specifique", "en": "Unlock a specific channel"},
+    "lockdown.cmd_role": {"fr": "Definit le role a assigner en lockdown", "en": "Set the role to assign during lockdown"},
+    "lockdown.cmd_log": {"fr": "Definit le canal de logs", "en": "Set the log channel"},
+    "lockdown.cmd_auto": {"fr": "Active/desactive l'auto-lock mass-join", "en": "Enable/disable mass-join auto-lock"},
+    "lockdown.cmd_threshold": {"fr": "Configure le seuil mass-join", "en": "Configure the mass-join threshold"},
+
+    # Invitations
+    "invitations.heading": {"fr": "Invitations", "en": "Invitations"},
+    "invitations.subtitle": {"fr": "Serveur {id} - Suivi des invitations", "en": "Server {id} - invitation tracking"},
+    "invitations.total": {"fr": "Invites totales", "en": "Total invited"},
+    "invitations.leaves": {"fr": "Departs", "en": "Leave"},
+    "invitations.active": {"fr": "Actifs", "en": "Active"},
+    "invitations.leaderboard": {"fr": "Classement des inviteurs", "en": "Inviter leaderboard"},
+    "invitations.col_user": {"fr": "Utilisateur", "en": "User"},
+    "invitations.col_invited": {"fr": "Invites", "en": "Invited"},
+    "invitations.col_left": {"fr": "Departs", "en": "Left"},
+    "invitations.empty": {"fr": "Aucune donnee d'invitation.", "en": "No invitation data."},
+    "invitations.cmd_list": {"fr": "Affiche le classement des invitations", "en": "Show the invitation leaderboard"},
+    "invitations.cmd_top": {"fr": "Top 10 des inviteurs", "en": "Top 10 inviters"},
+    "invitations.cmd_left": {"fr": "Affiche les invitations restantes", "en": "Show remaining invitations"},
+
+    # Minecraft
+    "minecraft.heading": {"fr": "Minecraft Bridge", "en": "Minecraft Bridge"},
+    "minecraft.subtitle": {"fr": "Serveur {id} - Pont Discord <-> Minecraft", "en": "Server {id} - Discord <-> Minecraft bridge"},
+    "minecraft.bridge": {"fr": "Bridge actif", "en": "Bridge enabled"},
+    "minecraft.bridge_desc": {"fr": "Activer le pont Discord <-> Minecraft", "en": "Enable the Discord <-> Minecraft bridge"},
+    "minecraft.channel": {"fr": "Canal Discord", "en": "Discord channel"},
+    "minecraft.channel_ph": {"fr": "ID du canal", "en": "Channel ID"},
+    "minecraft.method": {"fr": "Methode", "en": "Method"},
+    "minecraft.tmux_session": {"fr": "Session tmux", "en": "tmux session"},
+    "minecraft.tmux_session_ph": {"fr": "Nom de la session tmux", "en": "tmux session name"},
+    "minecraft.sudo": {"fr": "Utiliser sudo", "en": "Use sudo"},
+    "minecraft.sudo_desc": {"fr": "Prefixer les commandes avec sudo", "en": "Prefix commands with sudo"},
+    "minecraft.rcon_host": {"fr": "RCON Host", "en": "RCON Host"},
+    "minecraft.rcon_port": {"fr": "RCON Port", "en": "RCON Port"},
+    "minecraft.rcon_password": {"fr": "RCON Mot de passe", "en": "RCON password"},
+    "minecraft.rcon_password_ph": {"fr": "Mot de passe RCON", "en": "RCON password"},
+    "minecraft.cmd_enable": {"fr": "Active le bridge Minecraft", "en": "Enable the Minecraft bridge"},
+    "minecraft.cmd_disable": {"fr": "Desactive le bridge Minecraft", "en": "Disable the Minecraft bridge"},
+    "minecraft.cmd_config": {"fr": "Configure le bridge", "en": "Configure the bridge"},
+    "minecraft.cmd_say": {"fr": "Envoie un message au serveur Minecraft", "en": "Send a message to the Minecraft server"},
+    "minecraft.cmd_status": {"fr": "Statut du serveur Minecraft", "en": "Minecraft server status"},
+
+    # Steam
+    "steam.heading": {"fr": "Steam", "en": "Steam"},
+    "steam.subtitle": {"fr": "Serveur {id} - Integration Steam", "en": "Server {id} - Steam integration"},
+    "steam.api_key": {"fr": "API Key Steam", "en": "Steam API Key"},
+    "steam.api_key_ph": {"fr": "Cle API Steam", "en": "Steam API Key"},
+    "steam.api_key_hint": {"fr": "Obtenir sur {url}", "en": "Get it at {url}"},
+    "steam.cmd_config": {"fr": "Configure la cle API Steam", "en": "Configure the Steam API key"},
+    "steam.cmd_inv": {"fr": "Invitations Steam d'un utilisateur", "en": "Steam invitations of a user"},
+    "steam.cmd_id": {"fr": "ID Steam d'un utilisateur", "en": "Steam ID of a user"},
+
+    # Work/Income
+    "work.heading": {"fr": "Travail & Revenus", "en": "Work & Income"},
+    "work.subtitle": {"fr": "Serveur {id} - Configuration travail et revenus passifs", "en": "Server {id} - work and passive income configuration"},
+    "work.config": {"fr": "Configuration Travail", "en": "Work configuration"},
+    "work.min": {"fr": "Montant minimum", "en": "Minimum amount"},
+    "work.max": {"fr": "Montant maximum", "en": "Maximum amount"},
+    "work.tiers": {"fr": "Nombre de paliers", "en": "Number of tiers"},
+    "work.cooldown": {"fr": "Cooldown (heures)", "en": "Cooldown (hours)"},
+    "income.config": {"fr": "Configuration Revenus", "en": "Income configuration"},
+    "income.enabled": {"fr": "Revenus actives", "en": "Income enabled"},
+    "income.enabled_desc": {"fr": "Permettre la collecte de revenus passifs", "en": "Allow collecting passive income"},
+    "income.default_amount": {"fr": "Montant par defaut", "en": "Default amount"},
+    "income.interval": {"fr": "Intervalle (heures)", "en": "Interval (hours)"},
+    "income.log_channel": {"fr": "Canal de log", "en": "Log channel"},
+    "income.log_channel_ph": {"fr": "ID du canal", "en": "Channel ID"},
+    "income.role_income": {"fr": "Revenus par role", "en": "Role income"},
+    "income.col_role": {"fr": "Role ID", "en": "Role ID"},
+    "income.col_name": {"fr": "Nom", "en": "Name"},
+    "income.col_amount": {"fr": "Montant", "en": "Amount"},
+    "income.col_interval": {"fr": "Intervalle (h)", "en": "Interval (h)"},
+    "income.empty_role": {"fr": "Aucun revenu par role configure.", "en": "No role income configured."},
+    "work.cmd_work": {"fr": "Travailler pour gagner de l'argent", "en": "Work to earn money"},
+    "work.cmd_config": {"fr": "Configure le travail", "en": "Configure work"},
+    "work.cmd_collect": {"fr": "Collecter les revenus passifs", "en": "Collect passive income"},
+    "work.cmd_role_add": {"fr": "Ajoute un revenu par role", "en": "Add a role income"},
+    "work.cmd_role_remove": {"fr": "Supprime un revenu par role", "en": "Remove a role income"},
+
+    # RSS/TV
+    "rss.heading": {"fr": "Notifications Series/TV", "en": "Series/TV notifications"},
+    "rss.subtitle": {"fr": "Serveur {id} - Suivi des series et emissions", "en": "Server {id} - series and shows tracking"},
+    "rss.active": {"fr": "Notifications actives", "en": "Active notifications"},
+    "rss.col_show": {"fr": "Serie", "en": "Show"},
+    "rss.col_season": {"fr": "Saison", "en": "Season"},
+    "rss.col_episode": {"fr": "Episode", "en": "Episode"},
+    "rss.col_date": {"fr": "Date", "en": "Date"},
+    "rss.col_user": {"fr": "Utilisateur", "en": "User"},
+    "rss.empty": {"fr": "Aucune notification active.", "en": "No active notifications."},
+    "rss.cmd_subscribe": {"fr": "Ajoute une notification pour un episode", "en": "Add a notification for an episode"},
+    "rss.cmd_list": {"fr": "Liste les notifications actives", "en": "List active notifications"},
+    "rss.cmd_delete": {"fr": "Supprime une notification", "en": "Delete a notification"},
+
+    # Langue
+    "lang_page.heading": {"fr": "Langue / Internationalisation", "en": "Language / Internationalization"},
+    "lang_page.subtitle": {"fr": "Serveur {id} - Configuration de la langue du bot", "en": "Server {id} - bot language configuration"},
+    "lang_page.server_lang": {"fr": "Langue du serveur", "en": "Server language"},
+    "lang_page.cmd_personal": {"fr": "Change la langue personnelle", "en": "Change personal language"},
+    "lang_page.cmd_guild": {"fr": "Change la langue du serveur (admin)", "en": "Change the server language (admin)"},
+
+    # Transactions
+    "transactions.heading": {"fr": "Transactions", "en": "Transactions"},
+    "transactions.subtitle": {"fr": "Historique des transactions economiques", "en": "Economic transaction history"},
+    "transactions.col_guild": {"fr": "Guild", "en": "Guild"},
+    "transactions.col_amount": {"fr": "Montant", "en": "Amount"},
+    "transactions.empty": {"fr": "Aucune transaction.", "en": "No transactions."},
+
+    # Reminders
+    "reminders.subtitle": {"fr": "Rappels en attente", "en": "Pending reminders"},
+    "reminders.col_channel": {"fr": "Salon", "en": "Channel"},
+    "reminders.col_message": {"fr": "Message", "en": "Message"},
+    "reminders.col_scheduled": {"fr": "Prevu pour", "en": "Scheduled for"},
+    "reminders.empty": {"fr": "Aucun rappel en attente.", "en": "No pending reminders."},
+
+    # Giveaways
+    "giveaways.active": {"fr": "Giveaways actifs", "en": "Active giveaways"},
+    "giveaways.subtitle": {"fr": "Giveaways actifs et termines", "en": "Active and ended giveaways"},
+    "giveaways.col_server": {"fr": "Serveur", "en": "Server"},
+    "giveaways.col_prize": {"fr": "Prix", "en": "Prize"},
+    "giveaways.col_host": {"fr": "Organisateur", "en": "Host"},
+    "giveaways.col_ends": {"fr": "Se termine le", "en": "Ends at"},
+    "giveaways.empty_active": {"fr": "Aucun giveaway actif.", "en": "No active giveaways."},
+    "giveaways.ended": {"fr": "Giveaways termines", "en": "Ended giveaways"},
+    "giveaways.empty_ended": {"fr": "Aucun giveaway termine.", "en": "No ended giveaways."},
+
+    # Login
+    "login.title": {"fr": "Connexion - DDCBot Dashboard", "en": "Login - DDCBot Dashboard"},
+    "login.token": {"fr": "Token d'acces", "en": "Access token"},
+    "login.token_ph": {"fr": "Entrez le token", "en": "Enter the token"},
+    "login.submit": {"fr": "Connexion", "en": "Login"},
+    "login.too_many": {"fr": "Trop de tentatives. Reessayez dans {seconds}s.", "en": "Too many attempts. Retry in {seconds}s."},
+    "login.invalid": {"fr": "Token invalide. ({remaining} tentatives restantes)", "en": "Invalid token. ({remaining} attempts left)"},
+
+    # API
+    "api.unauthorized": {"fr": "Non autorise", "en": "Unauthorized"},
+    "api.guilds": {"fr": "Liste des serveurs", "en": "List of servers"},
+    "api.stats": {"fr": "Statistiques globales", "en": "Global statistics"},
+    "api.economy": {"fr": "Donnees economie", "en": "Economy data"},
+    "api.moderation": {"fr": "Donnees moderation", "en": "Moderation data"},
+    "api.leveling": {"fr": "Donnees leveling/XP", "en": "Leveling/XP data"},
+    "api.welcome": {"fr": "Messages welcome/leave", "en": "Welcome/leave messages"},
+    "api.automod": {"fr": "Config AutoMod + mots", "en": "AutoMod config + words"},
+    "api.logs": {"fr": "Config des logs", "en": "Logs configuration"},
+    "api.aimod": {"fr": "Config AI-moderation", "en": "AI-moderation config"},
+    "api.tickets": {"fr": "Tickets ouverts/fermes", "en": "Open/closed tickets"},
+    "api.webhooks": {"fr": "Config webhooks", "en": "Webhooks configuration"},
+    "api.lockdown": {"fr": "Config lockdown", "en": "Lockdown configuration"},
+    "api.invitations": {"fr": "Statistiques invitations", "en": "Invitation statistics"},
+    "api.minecraft": {"fr": "Config bridge Minecraft", "en": "Minecraft bridge config"},
+    "api.steam": {"fr": "Config Steam", "en": "Steam configuration"},
+    "api.work": {"fr": "Config travail", "en": "Work configuration"},
+    "api.income": {"fr": "Revenus + revenus par role", "en": "Income + role income"},
+    "api.rss": {"fr": "Notifications series/TV", "en": "Series/TV notifications"},
+    "api.lang": {"fr": "Langue du serveur", "en": "Server language"},
+    "api.transactions": {"fr": "Historique des transactions", "en": "Transaction history"},
+    "api.reminders": {"fr": "Rappels en attente", "en": "Pending reminders"},
+    "api.giveaways": {"fr": "Giveaways actifs/termines", "en": "Active/ended giveaways"},
+    "api.notes": {"fr": "Notes globales", "en": "Global notes"},
+
+    # Colonnes communes tables
+    "col.command": {"fr": "Commande", "en": "Command"},
+    "col.description": {"fr": "Description", "en": "Description"},
+    "common.config": {"fr": "Configuration", "en": "Configuration"},
+    "common.placeholders": {"fr": "Placeholders disponibles", "en": "Available placeholders"},
+}
+
+SUPPORTED_LANGS = ("fr", "en")
+DEFAULT_LANG = "fr"
+
+
+def resolve_lang(request) -> str:
+    """Resout la langue demandee : ?lang= -> cookie dash_lang -> fr."""
+    if request is not None:
+        query_lang = request.query_params.get("lang")
+        if query_lang in SUPPORTED_LANGS:
+            return query_lang
+        cookie_lang = request.cookies.get("dash_lang")
+        if cookie_lang in SUPPORTED_LANGS:
+            return cookie_lang
+    return DEFAULT_LANG
+
+
+def get_text(key: str, lang: str, **kwargs) -> str:
+    """Retourne le texte traduit pour une cle (fallback: fr -> cle)."""
+    values = STRINGS.get(key, {})
+    text = values.get(lang) or values.get(DEFAULT_LANG) or key
+    if kwargs:
+        try:
+            text = text.format(**kwargs)
+        except (KeyError, IndexError, ValueError):
+            pass
+    return text
+
+
+def tr(ctx, key: str, **kwargs) -> str:
+    """Fonction Jinja context-aware: traduction avec langue du request."""
+    request = ctx.get("request")
+    return get_text(key, resolve_lang(request), **kwargs)

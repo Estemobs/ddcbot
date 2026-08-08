@@ -133,6 +133,7 @@ EXPECTED_COMMANDS = {
     "lockdownlog",
     "lockdownmassjoin",
     "lockdownauto",
+    "plugins",
 }
 
 REQUIRED_MODULES = [
@@ -186,6 +187,7 @@ EXPECTED_TABLES = [
     "ticket_counter",
     "webhook_config",
     "lockdown_config",
+    "plugins",
 ]
 
 

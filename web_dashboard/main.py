@@ -13,14 +13,16 @@ import sys
 import time
 from collections import defaultdict
 
-from fastapi import FastAPI, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from jinja2 import pass_context
 
 import sys as _sys
 _sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from data.db import Database
+from web_dashboard.i18n import tr, resolve_lang, get_text
 
 app = FastAPI(title="DDCBot Dashboard", docs_url=None, redoc_url=None)
 
@@ -28,10 +30,29 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+templates.env.globals["t"] = pass_context(tr)
+
+
+@pass_context
+def current_lang(ctx):
+    return resolve_lang(ctx.get("request"))
+
+
+templates.env.globals["current_lang"] = current_lang
+
+
+@pass_context
+def nav_guilds(ctx):
+    return get_guilds()
+
+
+templates.env.globals["nav_guilds"] = nav_guilds
+
 DB_PATH = os.environ.get("DDC_DB_PATH", os.path.join(BASE_DIR, "..", "data", "ddcbot.sqlite3"))
 db = Database(path=DB_PATH)
 
 DASHBOARD_TOKEN = os.environ.get("DASHBOARD_TOKEN", "")
+API_KEY = os.environ.get("DASHBOARD_API_KEY", "")
 _sessions = {}
 
 # ── Rate limiting ──
@@ -57,6 +78,9 @@ def _hash_token(token: str) -> str:
 def require_auth(request: Request) -> bool:
     if not DASHBOARD_TOKEN:
         return True
+    api_key_header = request.headers.get("X-API-Key")
+    if api_key_header and api_key_header in (API_KEY, DASHBOARD_TOKEN):
+        return True
     session_id = request.cookies.get("ddc_session")
     if session_id and session_id in _sessions:
         if _sessions[session_id] > time.time():
@@ -71,7 +95,10 @@ async def auth_middleware(request: Request, call_next):
     if path.startswith("/static") or path == "/login" or path == "/api/login":
         return await call_next(request)
     if not require_auth(request):
-        return templates.TemplateResponse("login.html", {
+        lang = resolve_lang(request)
+        if path.startswith("/api/"):
+            return JSONResponse({"detail": get_text("api.unauthorized", lang)}, status_code=401)
+        return templates.TemplateResponse(request, "login.html", {
             "request": request, "error": None
         })
     return await call_next(request)
@@ -83,7 +110,7 @@ async def login_page(request: Request):
         return RedirectResponse("/", status_code=303)
     if require_auth(request):
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"request": request, "error": None})
 
 
 @app.post("/login")
@@ -92,10 +119,11 @@ async def login_submit(request: Request, token: str = Form(...)):
         return RedirectResponse("/", status_code=303)
 
     client_ip = request.client.host if request.client else "unknown"
+    lang = resolve_lang(request)
     if _check_rate_limit(client_ip):
-        return templates.TemplateResponse("login.html", {
+        return templates.TemplateResponse(request, "login.html", {
             "request": request,
-            "error": f"Trop de tentatives. Reessayez dans {RATE_LIMIT_WINDOW}s.",
+            "error": get_text("login.too_many", lang, seconds=RATE_LIMIT_WINDOW),
         })
 
     if token == DASHBOARD_TOKEN:
@@ -108,9 +136,9 @@ async def login_submit(request: Request, token: str = Form(...)):
 
     _record_login_attempt(client_ip)
     remaining = RATE_LIMIT_MAX - len(_login_attempts[client_ip])
-    return templates.TemplateResponse("login.html", {
+    return templates.TemplateResponse(request, "login.html", {
         "request": request,
-        "error": f"Token invalide. ({remaining} tentatives restantes)",
+        "error": get_text("login.invalid", lang, remaining=remaining),
     })
 
 
@@ -178,7 +206,7 @@ async def index(request: Request):
         stats["warnings"] = row["c"]
     except Exception:
         pass
-    return templates.TemplateResponse("index.html", {
+    return templates.TemplateResponse(request, "index.html", {
         "request": request, "guilds": guilds, "stats": stats
     })
 
@@ -220,7 +248,7 @@ async def guild_overview(request: Request, guild_id: int):
         "SELECT COUNT(*) as c FROM transactions WHERE guild_id = ?", (guild_id,)
     ) if True else {"c": 0}
 
-    return templates.TemplateResponse("guild.html", {
+    return templates.TemplateResponse(request, "guild.html", {
         "request": request, "guild_id": guild_id, "info": info,
         "warnings": warn_row["c"], "transactions": eco_row["c"],
     })
@@ -241,7 +269,7 @@ async def economy_page(request: Request, guild_id: int):
         "SELECT * FROM transactions WHERE guild_id = ? ORDER BY created_at DESC LIMIT 30",
         (guild_id,),
     )
-    return templates.TemplateResponse("economy.html", {
+    return templates.TemplateResponse(request, "economy.html", {
         "request": request, "guild_id": guild_id,
         "config": config, "balances": balances, "transactions": recent_tx,
     })
@@ -311,7 +339,7 @@ async def moderation_page(request: Request, guild_id: int):
         "SELECT user_id, count FROM warn_counts WHERE guild_id = ? AND count > 0 ORDER BY count DESC",
         (guild_id,),
     )
-    return templates.TemplateResponse("moderation.html", {
+    return templates.TemplateResponse(request, "moderation.html", {
         "request": request, "guild_id": guild_id,
         "config": config, "warns": warns,
     })
@@ -384,7 +412,7 @@ async def leveling_page(request: Request, guild_id: int):
     top_levels = db.fetchall(
         "SELECT user_id, xp FROM levels ORDER BY xp DESC LIMIT 50"
     )
-    return templates.TemplateResponse("leveling.html", {
+    return templates.TemplateResponse(request, "leveling.html", {
         "request": request, "guild_id": guild_id,
         "config": config, "levels": top_levels,
     })
@@ -432,7 +460,7 @@ async def welcome_page(request: Request, guild_id: int):
             "leave_channel_id": row["leave_channel_id"],
             "leave_message": row["leave_message"] or "",
         }
-    return templates.TemplateResponse("welcome.html", {
+    return templates.TemplateResponse(request, "welcome.html", {
         "request": request, "guild_id": guild_id, "settings": settings,
     })
 
@@ -484,7 +512,7 @@ async def automod_page(request: Request, guild_id: int):
     words = db.fetchall(
         "SELECT word FROM automod_words WHERE guild_id = ? ORDER BY word", (guild_id,)
     )
-    return templates.TemplateResponse("automod.html", {
+    return templates.TemplateResponse(request, "automod.html", {
         "request": request, "guild_id": guild_id,
         "config": config, "words": [w["word"] for w in words],
     })
@@ -533,7 +561,7 @@ async def logs_page(request: Request, guild_id: int):
             config = json.loads(cfg_row["config_json"])
         except json.JSONDecodeError:
             config = {}
-    return templates.TemplateResponse("logs.html", {
+    return templates.TemplateResponse(request, "logs.html", {
         "request": request, "guild_id": guild_id, "config": config,
     })
 
@@ -565,7 +593,7 @@ async def logs_save_config(
 @app.get("/notes", response_class=HTMLResponse)
 async def notes_page(request: Request):
     notes = db.fetchall("SELECT title, content FROM notes ORDER BY title")
-    return templates.TemplateResponse("notes.html", {
+    return templates.TemplateResponse(request, "notes.html", {
         "request": request, "notes": notes,
     })
 
@@ -606,7 +634,7 @@ async def aimod_page(request: Request, guild_id: int):
     ignored = db.fetchall(
         "SELECT role_id FROM ai_moderation_ignored_roles WHERE guild_id = ?", (guild_id,)
     )
-    return templates.TemplateResponse("aimod.html", {
+    return templates.TemplateResponse(request, "aimod.html", {
         "request": request, "guild_id": guild_id,
         "config": config, "ignored_roles": [r["role_id"] for r in ignored],
     })
@@ -658,7 +686,7 @@ async def tickets_page(request: Request, guild_id: int):
         "SELECT id, user_id, channel_id, created_at, closed_at FROM tickets "
         "WHERE guild_id = ? AND status = 'closed' ORDER BY closed_at DESC LIMIT 30", (guild_id,)
     )
-    return templates.TemplateResponse("tickets.html", {
+    return templates.TemplateResponse(request, "tickets.html", {
         "request": request, "guild_id": guild_id,
         "config": config, "open_tickets": open_tickets, "closed_tickets": closed_tickets,
     })
@@ -707,7 +735,7 @@ async def webhooks_page(request: Request, guild_id: int):
             "enabled": bool(cfg_row["enabled"]),
             "events": events,
         }
-    return templates.TemplateResponse("webhooks.html", {
+    return templates.TemplateResponse(request, "webhooks.html", {
         "request": request, "guild_id": guild_id, "config": config,
     })
 
@@ -746,7 +774,7 @@ async def lockdown_page(request: Request, guild_id: int):
             "mass_join_threshold": cfg_row["mass_join_threshold"],
             "mass_join_window_seconds": cfg_row["mass_join_window_seconds"],
         }
-    return templates.TemplateResponse("lockdown.html", {
+    return templates.TemplateResponse(request, "lockdown.html", {
         "request": request, "guild_id": guild_id, "config": config,
     })
 
@@ -783,7 +811,7 @@ async def invitations_page(request: Request, guild_id: int):
     )
     total_invited = sum(i["invited"] for i in invites)
     total_left = sum(i["left"] for i in invites)
-    return templates.TemplateResponse("invitations.html", {
+    return templates.TemplateResponse(request, "invitations.html", {
         "request": request, "guild_id": guild_id,
         "invites": invites, "total_invited": total_invited,
         "total_left": total_left, "total_active": total_invited - total_left,
@@ -795,7 +823,7 @@ async def invitations_page(request: Request, guild_id: int):
 @app.get("/guild/{guild_id}/minecraft", response_class=HTMLResponse)
 async def minecraft_page(request: Request, guild_id: int):
     cfg = db.fetchone("SELECT * FROM minecraft_config WHERE guild_id = ?", (guild_id,))
-    return templates.TemplateResponse("minecraft.html", {
+    return templates.TemplateResponse(request, "minecraft.html", {
         "request": request, "guild_id": guild_id, "config": cfg,
     })
 
@@ -831,7 +859,7 @@ async def minecraft_save(
 @app.get("/guild/{guild_id}/steam", response_class=HTMLResponse)
 async def steam_page(request: Request, guild_id: int):
     cfg = db.fetchone("SELECT * FROM steam_config WHERE guild_id = ?", (guild_id,))
-    return templates.TemplateResponse("steam.html", {
+    return templates.TemplateResponse(request, "steam.html", {
         "request": request, "guild_id": guild_id, "config": cfg,
     })
 
@@ -856,7 +884,7 @@ async def work_income_page(request: Request, guild_id: int):
     work = db.fetchone("SELECT * FROM work_settings WHERE guild_id = ?", (guild_id,))
     income = db.fetchone("SELECT * FROM income_config WHERE guild_id = ?", (guild_id,))
     role_incomes = db.fetchall("SELECT * FROM role_income ORDER BY amount DESC")
-    return templates.TemplateResponse("work_income.html", {
+    return templates.TemplateResponse(request, "work_income.html", {
         "request": request, "guild_id": guild_id,
         "work": work, "income": income, "role_incomes": role_incomes,
     })
@@ -908,7 +936,7 @@ async def rss_page(request: Request, guild_id: int):
     notifications = db.fetchall(
         "SELECT id, show_name, season, number, airdate, user_id FROM notifications ORDER BY show_name, season, number"
     )
-    return templates.TemplateResponse("rss.html", {
+    return templates.TemplateResponse(request, "rss.html", {
         "request": request, "guild_id": guild_id, "notifications": notifications,
     })
 
@@ -918,7 +946,7 @@ async def rss_page(request: Request, guild_id: int):
 @app.get("/guild/{guild_id}/lang", response_class=HTMLResponse)
 async def lang_page(request: Request, guild_id: int):
     lang_config = db.fetchone("SELECT * FROM guild_lang WHERE guild_id = ?", (guild_id,))
-    return templates.TemplateResponse("lang.html", {
+    return templates.TemplateResponse(request, "lang.html", {
         "request": request, "guild_id": guild_id, "lang_config": lang_config,
     })
 
@@ -984,6 +1012,216 @@ async def api_stats():
     return stats
 
 
+def _json_safe(row):
+    return dict(row) if row else None
+
+
+# ── API JSON par module ──
+
+@app.get("/api/guild/{guild_id}/leveling")
+async def api_guild_leveling(guild_id: int):
+    row = db.fetchone(
+        "SELECT enabled, xp_per_message, cooldown_seconds, announce_channel_id "
+        "FROM xp_config WHERE guild_id = ?", (guild_id,)
+    )
+    levels = db.fetchall("SELECT user_id, xp FROM levels ORDER BY xp DESC LIMIT 50")
+    return {"config": _json_safe(row), "levels": [dict(lv) for lv in levels]}
+
+
+@app.get("/api/guild/{guild_id}/welcome")
+async def api_guild_welcome(guild_id: int):
+    row = db.fetchone(
+        "SELECT welcome_enabled, welcome_channel_id, welcome_message, "
+        "leave_enabled, leave_channel_id, leave_message "
+        "FROM guild_settings WHERE guild_id = ?", (guild_id,)
+    )
+    return {"config": _json_safe(row)}
+
+
+@app.get("/api/guild/{guild_id}/automod")
+async def api_guild_automod(guild_id: int):
+    row = db.fetchone(
+        "SELECT enabled, warn_on_match, delete_on_match, log_channel_id "
+        "FROM automod_config WHERE guild_id = ?", (guild_id,)
+    )
+    words = db.fetchall(
+        "SELECT word FROM automod_words WHERE guild_id = ? ORDER BY word", (guild_id,)
+    )
+    return {"config": _json_safe(row), "words": [w["word"] for w in words]}
+
+
+@app.get("/api/guild/{guild_id}/logs")
+async def api_guild_logs(guild_id: int):
+    row = db.fetchone("SELECT config_json FROM logs_config WHERE guild_id = ?", (guild_id,))
+    config = {}
+    if row:
+        try:
+            config = json.loads(row["config_json"])
+        except json.JSONDecodeError:
+            config = {}
+    return {"config": config}
+
+
+@app.get("/api/guild/{guild_id}/aimod")
+async def api_guild_aimod(guild_id: int):
+    row = db.fetchone(
+        "SELECT enabled, action, log_channel_id, threshold, cooldown_seconds "
+        "FROM ai_moderation_config WHERE guild_id = ?", (guild_id,)
+    )
+    ignored = db.fetchall(
+        "SELECT role_id FROM ai_moderation_ignored_roles WHERE guild_id = ?", (guild_id,)
+    )
+    return {
+        "config": _json_safe(row),
+        "ignored_roles": [r["role_id"] for r in ignored],
+    }
+
+
+@app.get("/api/guild/{guild_id}/tickets")
+async def api_guild_tickets(guild_id: int):
+    row = db.fetchone(
+        "SELECT enabled, category_id, log_channel_id, welcome_message, close_message, max_open_tickets "
+        "FROM ticket_config WHERE guild_id = ?", (guild_id,)
+    )
+    open_tickets = db.fetchall(
+        "SELECT id, user_id, channel_id, created_at FROM tickets "
+        "WHERE guild_id = ? AND status = 'open' ORDER BY created_at DESC", (guild_id,)
+    )
+    closed_tickets = db.fetchall(
+        "SELECT id, user_id, channel_id, created_at, closed_at FROM tickets "
+        "WHERE guild_id = ? AND status = 'closed' ORDER BY closed_at DESC LIMIT 30", (guild_id,)
+    )
+    return {
+        "config": _json_safe(row),
+        "open_tickets": [dict(t) for t in open_tickets],
+        "closed_tickets": [dict(t) for t in closed_tickets],
+    }
+
+
+@app.get("/api/guild/{guild_id}/webhooks")
+async def api_guild_webhooks(guild_id: int):
+    row = db.fetchone(
+        "SELECT webhook_url, enabled, events_json FROM webhook_config WHERE guild_id = ?", (guild_id,)
+    )
+    config = None
+    if row:
+        events = {}
+        if row["events_json"]:
+            try:
+                events = json.loads(row["events_json"])
+            except json.JSONDecodeError:
+                pass
+        config = {"webhook_url": row["webhook_url"], "enabled": bool(row["enabled"]), "events": events}
+    return {"config": config}
+
+
+@app.get("/api/guild/{guild_id}/lockdown")
+async def api_guild_lockdown(guild_id: int):
+    row = db.fetchone(
+        "SELECT lockdown_role_id, log_channel_id, auto_lockon_mass_join, "
+        "mass_join_threshold, mass_join_window_seconds "
+        "FROM lockdown_config WHERE guild_id = ?", (guild_id,)
+    )
+    return {"config": _json_safe(row)}
+
+
+@app.get("/api/guild/{guild_id}/invitations")
+async def api_guild_invitations(guild_id: int):
+    invites = db.fetchall(
+        "SELECT user_id, invited, left FROM invites WHERE guild_id = ? ORDER BY invited DESC",
+        (guild_id,),
+    )
+    total_invited = sum(i["invited"] for i in invites)
+    total_left = sum(i["left"] for i in invites)
+    return {
+        "invites": [dict(i) for i in invites],
+        "total_invited": total_invited,
+        "total_left": total_left,
+        "total_active": total_invited - total_left,
+    }
+
+
+@app.get("/api/guild/{guild_id}/minecraft")
+async def api_guild_minecraft(guild_id: int):
+    row = db.fetchone("SELECT * FROM minecraft_config WHERE guild_id = ?", (guild_id,))
+    return {"config": _json_safe(row)}
+
+
+@app.get("/api/guild/{guild_id}/steam")
+async def api_guild_steam(guild_id: int):
+    row = db.fetchone("SELECT * FROM steam_config WHERE guild_id = ?", (guild_id,))
+    return {"config": _json_safe(row)}
+
+
+@app.get("/api/guild/{guild_id}/work")
+async def api_guild_work(guild_id: int):
+    work = db.fetchone("SELECT * FROM work_settings WHERE guild_id = ?", (guild_id,))
+    return {"config": _json_safe(work)}
+
+
+@app.get("/api/guild/{guild_id}/income")
+async def api_guild_income(guild_id: int):
+    income = db.fetchone("SELECT * FROM income_config WHERE guild_id = ?", (guild_id,))
+    role_incomes = db.fetchall("SELECT * FROM role_income ORDER BY amount DESC")
+    return {
+        "config": _json_safe(income),
+        "role_income": [dict(r) for r in role_incomes],
+    }
+
+
+@app.get("/api/guild/{guild_id}/rss")
+async def api_guild_rss(guild_id: int):
+    notifications = db.fetchall(
+        "SELECT id, show_name, season, number, airdate, user_id FROM notifications "
+        "ORDER BY show_name, season, number"
+    )
+    return {"notifications": [dict(n) for n in notifications]}
+
+
+@app.get("/api/guild/{guild_id}/lang")
+async def api_guild_lang(guild_id: int):
+    row = db.fetchone("SELECT * FROM guild_lang WHERE guild_id = ?", (guild_id,))
+    return {"config": _json_safe(row)}
+
+
+@app.get("/api/transactions")
+async def api_transactions(guild_id: int = 0):
+    if guild_id:
+        txs = db.fetchall(
+            "SELECT * FROM transactions WHERE guild_id = ? ORDER BY created_at DESC LIMIT 100",
+            (guild_id,),
+        )
+    else:
+        txs = db.fetchall("SELECT * FROM transactions ORDER BY created_at DESC LIMIT 100")
+    return {"transactions": [dict(t) for t in txs]}
+
+
+@app.get("/api/reminders")
+async def api_reminders():
+    now = time.time()
+    pending = db.fetchall(
+        "SELECT * FROM reminders WHERE remind_at > ? ORDER BY remind_at LIMIT 100",
+        (now,),
+    )
+    return {"reminders": [dict(r) for r in pending]}
+
+
+@app.get("/api/giveaways")
+async def api_giveaways():
+    active = db.fetchall("SELECT * FROM giveaways WHERE ended = 0 ORDER BY ends_at")
+    ended = db.fetchall("SELECT * FROM giveaways WHERE ended = 1 ORDER BY ends_at DESC LIMIT 30")
+    return {
+        "active": [dict(g) for g in active],
+        "ended": [dict(g) for g in ended],
+    }
+
+
+@app.get("/api/notes")
+async def api_notes():
+    notes = db.fetchall("SELECT title, content FROM notes ORDER BY title")
+    return {"notes": [dict(n) for n in notes]}
+
+
 # ── Transactions (historique global) ──
 
 @app.get("/transactions", response_class=HTMLResponse)
@@ -995,7 +1233,7 @@ async def transactions_page(request: Request, guild_id: int = 0):
         )
     else:
         txs = db.fetchall("SELECT * FROM transactions ORDER BY created_at DESC LIMIT 100")
-    return templates.TemplateResponse("transactions.html", {
+    return templates.TemplateResponse(request, "transactions.html", {
         "request": request, "transactions": txs, "selected_guild": guild_id,
     })
 
@@ -1010,7 +1248,7 @@ async def reminders_page(request: Request):
         "SELECT * FROM reminders WHERE remind_at > ? ORDER BY remind_at LIMIT 100",
         (now,),
     )
-    return templates.TemplateResponse("reminders.html", {
+    return templates.TemplateResponse(request, "reminders.html", {
         "request": request, "reminders": pending,
     })
 
@@ -1025,7 +1263,7 @@ async def giveaways_page(request: Request):
     ended = db.fetchall(
         "SELECT * FROM giveaways WHERE ended = 1 ORDER BY ends_at DESC LIMIT 30"
     )
-    return templates.TemplateResponse("giveaways.html", {
+    return templates.TemplateResponse(request, "giveaways.html", {
         "request": request, "active": active, "ended": ended,
     })
 

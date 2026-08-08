@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}AutoMod - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.automod.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Auto-Moderation</h2>
-  <p>Serveur {{ guild_id }} - Filtre de mots bannis</p>
+  <h2>{{ t('automod.heading') }}</h2>
+  <p>{{ t('automod.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Configuration</h3></div>
+  <div class="card-header"><h3>{{ t('common.config') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/automod/config">
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">AutoMod active</div>
-        <div class="toggle-desc">Filtrer automatiquement les mots bannis</div>
+        <div class="toggle-label">{{ t('automod.enabled') }}</div>
+        <div class="toggle-desc">{{ t('automod.enabled_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="enabled" value="1" {% if config and config.enabled %}checked{% endif %}>
@@ -21,8 +21,8 @@
     </div>
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Warn sur detection</div>
-        <div class="toggle-desc">Donner un avertissement quand un mot banni est detecte</div>
+        <div class="toggle-label">{{ t('automod.warn_on') }}</div>
+        <div class="toggle-desc">{{ t('automod.warn_on_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="warn_on_match" value="1" {% if config and config.warn_on_match %}checked{% endif %}>
@@ -31,26 +31,26 @@
     </div>
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Supprimer le message</div>
-        <div class="toggle-desc">Supprimer automatiquement le message contenant le mot banni</div>
+        <div class="toggle-label">{{ t('automod.delete') }}</div>
+        <div class="toggle-desc">{{ t('automod.delete_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="delete_on_match" value="1" {% if config and config.delete_on_match %}checked{% endif %}>
         <span class="slider"></span>
       </label>
     </div>
-    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+    <button type="submit" class="btn btn-primary">{{ t('btn.save') }}</button>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Mots bannis</h3></div>
+  <div class="card-header"><h3>{{ t('automod.words') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/automod/addword" style="display:flex; gap:10px; align-items:end; margin-bottom:16px;">
     <div class="form-group" style="margin:0; flex:1;">
-      <label>Ajouter un mot</label>
-      <input type="text" name="word" required placeholder="Mot a bannir">
+      <label>{{ t('automod.add_word') }}</label>
+      <input type="text" name="word" required placeholder="{{ t('automod.word_ph') }}">
     </div>
-    <button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
   </form>
   {% if words %}
   <div class="word-list">
@@ -65,7 +65,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="empty"><p>Aucun mot banni.</p></div>
+  <div class="empty"><p>{{ t('automod.empty_words') }}</p></div>
   {% endif %}
 </div>
 {% endblock %}

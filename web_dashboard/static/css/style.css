@@ -16,6 +16,33 @@
   --shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 
+html[data-theme="light"] {
+  --bg-primary: #f5f6fa;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #eceef2;
+  --text-primary: #1a1d27;
+  --text-secondary: #5a5e6e;
+  --text-muted: #8b8fa3;
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --success: #28a745;
+  --warning: #b58900;
+  --danger: #c03537;
+  --border: #d4d8e0;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+html[data-theme="light"] tr:hover td {
+  background: rgba(88, 101, 242, 0.08);
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {

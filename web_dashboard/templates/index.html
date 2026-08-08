@@ -1,44 +1,44 @@
 {% extends "base.html" %}
-{% block title %}DDCBot - Accueil{% endblock %}
+{% block title %}{{ t('index.title') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <h2>DDCBot Dashboard</h2>
-  <p>Administration du bot Discord DDCBot</p>
+  <p>{{ t('index.subtitle') }}</p>
 </div>
 
 <div class="stats-grid">
   <div class="stat-card">
     <div class="value">{{ stats.guilds }}</div>
-    <div class="label">Serveurs</div>
+    <div class="label">{{ t('index.stat.servers') }}</div>
   </div>
   <div class="stat-card">
     <div class="value">{{ stats.balances }}</div>
-    <div class="label">Comptes economie</div>
+    <div class="label">{{ t('index.stat.econ_accounts') }}</div>
   </div>
   <div class="stat-card">
     <div class="value">{{ stats.levels }}</div>
-    <div class="label">Utilisateurs XP</div>
+    <div class="label">{{ t('index.stat.xp_users') }}</div>
   </div>
   <div class="stat-card">
     <div class="value">{{ stats.transactions }}</div>
-    <div class="label">Transactions</div>
+    <div class="label">{{ t('index.stat.transactions') }}</div>
   </div>
   <div class="stat-card">
     <div class="value">{{ stats.warnings }}</div>
-    <div class="label">Warnings</div>
+    <div class="label">{{ t('index.stat.warnings') }}</div>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Serveurs configures</h3></div>
+  <div class="card-header"><h3>{{ t('index.servers_configured') }}</h3></div>
   {% if guilds %}
   <div class="table-wrap">
     <table>
-      <tr><th>Guild ID</th><th>Actions</th></tr>
+      <tr><th>{{ t('index.col_guild_id') }}</th><th>{{ t('index.col_actions') }}</th></tr>
       {% for gid in guilds %}
       <tr>
         <td><code>{{ gid }}</code></td>
-        <td><a href="/guild/{{ gid }}" class="btn btn-primary btn-sm">Gerer</a></td>
+        <td><a href="/guild/{{ gid }}" class="btn btn-primary btn-sm">{{ t('index.btn_manage') }}</a></td>
       </tr>
       {% endfor %}
     </table>
@@ -46,21 +46,40 @@
   {% else %}
   <div class="empty">
     <div class="icon">&#128269;</div>
-    <p>Aucun serveur configure. Utilisez les commandes Discord pour initialiser.</p>
+    <p>{{ t('index.empty_servers') }}</p>
   </div>
   {% endif %}
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>API</h3></div>
+  <div class="card-header"><h3>{{ t('index.api_title') }}</h3></div>
   <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px;">
-    Endpoints JSON disponibles :
+    {{ t('index.api_desc') }}
   </p>
-  <ul style="color: var(--text-secondary); font-size: 0.85rem; padding-left: 20px;">
-    <li><code>GET /api/guilds</code> - Liste des serveurs</li>
-    <li><code>GET /api/guild/{id}/economy</code> - Donnees economie</li>
-    <li><code>GET /api/guild/{id}/moderation</code> - Donnees moderation</li>
-    <li><code>GET /api/stats</code> - Statistiques globales</li>
+  <ul style="color: var(--text-secondary); font-size: 0.85rem; padding-left: 20px; line-height: 1.8;">
+    <li><code>GET /api/guilds</code> - {{ t('api.guilds') }}</li>
+    <li><code>GET /api/stats</code> - {{ t('api.stats') }}</li>
+    <li><code>GET /api/guild/{id}/economy</code> - {{ t('api.economy') }}</li>
+    <li><code>GET /api/guild/{id}/moderation</code> - {{ t('api.moderation') }}</li>
+    <li><code>GET /api/guild/{id}/leveling</code> - {{ t('api.leveling') }}</li>
+    <li><code>GET /api/guild/{id}/welcome</code> - {{ t('api.welcome') }}</li>
+    <li><code>GET /api/guild/{id}/automod</code> - {{ t('api.automod') }}</li>
+    <li><code>GET /api/guild/{id}/logs</code> - {{ t('api.logs') }}</li>
+    <li><code>GET /api/guild/{id}/aimod</code> - {{ t('api.aimod') }}</li>
+    <li><code>GET /api/guild/{id}/tickets</code> - {{ t('api.tickets') }}</li>
+    <li><code>GET /api/guild/{id}/webhooks</code> - {{ t('api.webhooks') }}</li>
+    <li><code>GET /api/guild/{id}/lockdown</code> - {{ t('api.lockdown') }}</li>
+    <li><code>GET /api/guild/{id}/invitations</code> - {{ t('api.invitations') }}</li>
+    <li><code>GET /api/guild/{id}/minecraft</code> - {{ t('api.minecraft') }}</li>
+    <li><code>GET /api/guild/{id}/steam</code> - {{ t('api.steam') }}</li>
+    <li><code>GET /api/guild/{id}/work</code> - {{ t('api.work') }}</li>
+    <li><code>GET /api/guild/{id}/income</code> - {{ t('api.income') }}</li>
+    <li><code>GET /api/guild/{id}/rss</code> - {{ t('api.rss') }}</li>
+    <li><code>GET /api/guild/{id}/lang</code> - {{ t('api.lang') }}</li>
+    <li><code>GET /api/transactions</code> - {{ t('api.transactions') }}</li>
+    <li><code>GET /api/reminders</code> - {{ t('api.reminders') }}</li>
+    <li><code>GET /api/giveaways</code> - {{ t('api.giveaways') }}</li>
+    <li><code>GET /api/notes</code> - {{ t('api.notes') }}</li>
   </ul>
 </div>
 {% endblock %}

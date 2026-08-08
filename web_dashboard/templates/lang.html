@@ -1,32 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Langue - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.lang.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Langue / Internationalisation</h2>
-  <p>Serveur {{ guild_id }} - Configuration de la langue du bot</p>
+  <h2>{{ t('lang_page.heading') }}</h2>
+  <p>{{ t('lang_page.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Configuration</h3></div>
+  <div class="card-header"><h3>{{ t('common.config') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/lang/config">
     <div class="form-group">
-      <label>Langue du serveur</label>
+      <label>{{ t('lang_page.server_lang') }}</label>
       <select name="lang">
         <option value="fr" {% if lang_config and lang_config.lang == 'fr' %}selected{% endif %}>Francais</option>
         <option value="en" {% if lang_config and lang_config.lang == 'en' %}selected{% endif %}>English</option>
       </select>
     </div>
-    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+    <button type="submit" class="btn btn-primary">{{ t('btn.save') }}</button>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="card-header"><h3>{{ t('aimod.commands') }}</h3></div>
   <div class="table-wrap">
     <table>
-      <tr><th>Commande</th><th>Description</th></tr>
-      <tr><td><code>,lang fr/en</code></td><td>Change la langue personnelle</td></tr>
-      <tr><td><code>,guildlang fr/en</code></td><td>Change la langue du serveur (admin)</td></tr>
+      <tr><th>{{ t('col.command') }}</th><th>{{ t('col.description') }}</th></tr>
+      <tr><td><code>,lang fr/en</code></td><td>{{ t('lang_page.cmd_personal') }}</td></tr>
+      <tr><td><code>,guildlang fr/en</code></td><td>{{ t('lang_page.cmd_guild') }}</td></tr>
     </table>
   </div>
 </div>

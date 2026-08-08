@@ -19,4 +19,5 @@ ADMIN_COMMANDS = frozenset({
     "webhookset", "webhooktoggle", "webhookevent", "webhookconfig", "webhooksend",
     "lockdown", "unlockdown", "lockdownchannel", "unlockdownchannel", "lockdownconfig",
     "lockdownrole", "lockdownlog", "lockdownmassjoin", "lockdownauto",
+    "plugins", "plugins list", "plugins enable", "plugins disable", "plugins reload",
 })

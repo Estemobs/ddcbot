@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Transactions - DDCBot{% endblock %}
+{% block title %}{{ t('page.transactions.title') }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Transactions</h2>
-  <p>Historique des transactions economiques</p>
+  <h2>{{ t('transactions.heading') }}</h2>
+  <p>{{ t('transactions.subtitle') }}</p>
 </div>
 
 <div class="card">
   <div class="table-wrap">
     {% if transactions %}
     <table>
-      <tr><th>ID</th><th>Date</th><th>Guild</th><th>User</th><th>Montant</th><th>Type</th><th>Detail</th></tr>
+      <tr><th>ID</th><th>{{ t('economy.col_date') }}</th><th>{{ t('transactions.col_guild') }}</th><th>{{ t('economy.col_user') }}</th><th>{{ t('transactions.col_amount') }}</th><th>{{ t('economy.col_type') }}</th><th>{{ t('economy.col_detail') }}</th></tr>
       {% for tx in transactions %}
       <tr>
         <td>{{ tx.id }}</td>
@@ -26,7 +26,7 @@
       {% endfor %}
     </table>
     {% else %}
-    <div class="empty"><p>Aucune transaction.</p></div>
+    <div class="empty"><p>{{ t('transactions.empty') }}</p></div>
     {% endif %}
   </div>
 </div>

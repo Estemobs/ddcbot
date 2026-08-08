@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Giveaways - DDCBot{% endblock %}
+{% block title %}{{ t('page.giveaways.title') }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Giveaways</h2>
-  <p>Giveaways actifs et termines</p>
+  <h2>{{ t('nav.giveaways') }}</h2>
+  <p>{{ t('giveaways.subtitle') }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Giveaways actifs</h3></div>
+  <div class="card-header"><h3>{{ t('giveaways.active') }}</h3></div>
   {% if active %}
   <div class="table-wrap">
     <table>
-      <tr><th>ID</th><th>Serveur</th><th>Prix</th><th>Organisateur</th><th>Se termine le</th></tr>
+      <tr><th>ID</th><th>{{ t('giveaways.col_server') }}</th><th>{{ t('giveaways.col_prize') }}</th><th>{{ t('giveaways.col_host') }}</th><th>{{ t('giveaways.col_ends') }}</th></tr>
       {% for g in active %}
       <tr>
         <td>{{ g.id }}</td>
@@ -24,16 +24,16 @@
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>Aucun giveaway actif.</p></div>
+  <div class="empty"><p>{{ t('giveaways.empty_active') }}</p></div>
   {% endif %}
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Giveaways termines</h3></div>
+  <div class="card-header"><h3>{{ t('giveaways.ended') }}</h3></div>
   {% if ended %}
   <div class="table-wrap">
     <table>
-      <tr><th>ID</th><th>Serveur</th><th>Prix</th><th>Organisateur</th></tr>
+      <tr><th>ID</th><th>{{ t('giveaways.col_server') }}</th><th>{{ t('giveaways.col_prize') }}</th><th>{{ t('giveaways.col_host') }}</th></tr>
       {% for g in ended %}
       <tr>
         <td>{{ g.id }}</td>
@@ -45,7 +45,7 @@
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>Aucun giveaway termine.</p></div>
+  <div class="empty"><p>{{ t('giveaways.empty_ended') }}</p></div>
   {% endif %}
 </div>
 {% endblock %}

@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Notifications TV - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.rss.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Notifications Series/TV</h2>
-  <p>Serveur {{ guild_id }} - Suivi des series et emissions</p>
+  <h2>{{ t('rss.heading') }}</h2>
+  <p>{{ t('rss.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Notifications actives</h3></div>
+  <div class="card-header"><h3>{{ t('rss.active') }}</h3></div>
   {% if notifications %}
   <div class="table-wrap">
     <table>
-      <tr><th>ID</th><th>Serie</th><th>Saison</th><th>Episode</th><th>Date</th><th>Utilisateur</th></tr>
+      <tr><th>ID</th><th>{{ t('rss.col_show') }}</th><th>{{ t('rss.col_season') }}</th><th>{{ t('rss.col_episode') }}</th><th>{{ t('rss.col_date') }}</th><th>{{ t('rss.col_user') }}</th></tr>
       {% for notif in notifications %}
       <tr>
         <td>{{ notif.id }}</td>
@@ -25,18 +25,18 @@
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>Aucune notification active.</p></div>
+  <div class="empty"><p>{{ t('rss.empty') }}</p></div>
   {% endif %}
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Commandes Discord</h3></div>
+  <div class="card-header"><h3>{{ t('aimod.commands') }}</h3></div>
   <div class="table-wrap">
     <table>
-      <tr><th>Commande</th><th>Description</th></tr>
-      <tr><td><code>,subscribe NOM SAISON EPISODE DATE</code></td><td>Ajoute une notification pour un episode</td></tr>
-      <tr><td><code>,notifications</code></td><td>Liste les notifications actives</td></tr>
-      <tr><td><code>,delnotif ID</code></td><td>Supprime une notification</td></tr>
+      <tr><th>{{ t('col.command') }}</th><th>{{ t('col.description') }}</th></tr>
+      <tr><td><code>,subscribe NOM SAISON EPISODE DATE</code></td><td>{{ t('rss.cmd_subscribe') }}</td></tr>
+      <tr><td><code>,notifications</code></td><td>{{ t('rss.cmd_list') }}</td></tr>
+      <tr><td><code>,delnotif ID</code></td><td>{{ t('rss.cmd_delete') }}</td></tr>
     </table>
   </div>
 </div>

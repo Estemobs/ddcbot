@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Welcome/Leave - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.welcome.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Messages Welcome / Leave</h2>
-  <p>Serveur {{ guild_id }} - Messages de bienvenue et de depart</p>
+  <h2>{{ t('welcome.heading') }}</h2>
+  <p>{{ t('welcome.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Configuration</h3></div>
+  <div class="card-header"><h3>{{ t('common.config') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/welcome/config">
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Messages de bienvenue</div>
-        <div class="toggle-desc">Envoyer un message quand un membre rejoint</div>
+        <div class="toggle-label">{{ t('welcome.enabled') }}</div>
+        <div class="toggle-desc">{{ t('welcome.enabled_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="welcome_enabled" value="1" {% if settings and settings.welcome_enabled %}checked{% endif %}>
@@ -21,19 +21,19 @@
     </div>
     <div class="form-grid">
       <div class="form-group">
-        <label>Canal de bienvenue (ID)</label>
-        <input type="number" name="welcome_channel_id" value="{{ settings.welcome_channel_id if settings and settings.welcome_channel_id else '' }}" placeholder="ID du salon">
+        <label>{{ t('welcome.channel') }}</label>
+        <input type="number" name="welcome_channel_id" value="{{ settings.welcome_channel_id if settings and settings.welcome_channel_id else '' }}" placeholder="{{ t('welcome.channel_ph') }}">
       </div>
       <div class="form-group">
-        <label>Message de bienvenue</label>
-        <input type="text" name="welcome_message" value="{{ settings.welcome_message if settings else '' }}" placeholder="Bienvenue {user} sur {server} !">
+        <label>{{ t('welcome.message') }}</label>
+        <input type="text" name="welcome_message" value="{{ settings.welcome_message if settings else '' }}" placeholder="{{ t('welcome.message_ph') }}">
       </div>
     </div>
 
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Messages de depart</div>
-        <div class="toggle-desc">Envoyer un message quand un membre quitte</div>
+        <div class="toggle-label">{{ t('welcome.leave_enabled') }}</div>
+        <div class="toggle-desc">{{ t('welcome.leave_enabled_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="leave_enabled" value="1" {% if settings and settings.leave_enabled %}checked{% endif %}>
@@ -42,27 +42,27 @@
     </div>
     <div class="form-grid">
       <div class="form-group">
-        <label>Canal de depart (ID)</label>
-        <input type="number" name="leave_channel_id" value="{{ settings.leave_channel_id if settings and settings.leave_channel_id else '' }}" placeholder="ID du salon">
+        <label>{{ t('welcome.leave_channel') }}</label>
+        <input type="number" name="leave_channel_id" value="{{ settings.leave_channel_id if settings and settings.leave_channel_id else '' }}" placeholder="{{ t('welcome.channel_ph') }}">
       </div>
       <div class="form-group">
-        <label>Message de depart</label>
-        <input type="text" name="leave_message" value="{{ settings.leave_message if settings else '' }}" placeholder="Au revoir {user} !">
+        <label>{{ t('welcome.leave_message') }}</label>
+        <input type="text" name="leave_message" value="{{ settings.leave_message if settings else '' }}" placeholder="{{ t('welcome.leave_message_ph') }}">
       </div>
     </div>
 
-    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+    <button type="submit" class="btn btn-primary">{{ t('btn.save') }}</button>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Placeholders disponibles</h3></div>
+  <div class="card-header"><h3>{{ t('common.placeholders') }}</h3></div>
   <div class="table-wrap">
     <table>
-      <tr><th>Placeholder</th><th>Description</th></tr>
-      <tr><td><code>{user}</code></td><td>Mention du membre</td></tr>
-      <tr><td><code>{server}</code></td><td>Nom du serveur</td></tr>
-      <tr><td><code>{count}</code></td><td>Nombre de membres</td></tr>
+      <tr><th>{{ t('welcome.col_ph') }}</th><th>{{ t('welcome.col_desc') }}</th></tr>
+      <tr><td><code>{user}</code></td><td>{{ t('welcome.ph_user') }}</td></tr>
+      <tr><td><code>{server}</code></td><td>{{ t('welcome.ph_server') }}</td></tr>
+      <tr><td><code>{count}</code></td><td>{{ t('welcome.ph_count') }}</td></tr>
     </table>
   </div>
 </div>

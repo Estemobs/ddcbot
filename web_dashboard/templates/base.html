@@ -1,38 +1,68 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ current_lang() }}" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}DDCBot Dashboard{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  <script>
+    (function () {
+      var theme = localStorage.getItem('dash_theme');
+      if (theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+    function toggleTheme() {
+      var html = document.documentElement;
+      var next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('dash_theme', next);
+    }
+    function setLang(lang) {
+      document.cookie = 'dash_lang=' + lang + '; path=/; max-age=31536000';
+      location.reload();
+    }
+  </script>
 </head>
 <body>
   <aside class="sidebar">
     <div class="sidebar-brand">
       <h1>DDCBot</h1>
-      <small>Admin Dashboard</small>
+      <small>{{ t('brand.subtitle') }}</small>
+      <div class="sidebar-actions">
+        <button class="btn btn-secondary btn-sm" onclick="toggleTheme()" title="{{ t('nav.theme') }}">
+          <span class="icon">&#9681;</span>
+        </button>
+        {% if current_lang() == 'fr' %}
+        <button class="btn btn-secondary btn-sm" onclick="setLang('en')" title="English">EN</button>
+        {% else %}
+        <button class="btn btn-secondary btn-sm" onclick="setLang('fr')" title="Francais">FR</button>
+        {% endif %}
+      </div>
     </div>
     <nav>
       <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
-        <span class="icon">&#9632;</span> Accueil
+        <span class="icon">&#9632;</span> {{ t('nav.home') }}
       </a>
       <a href="/notes" class="{% if request.url.path == '/notes' %}active{% endif %}">
-        <span class="icon">&#9998;</span> Notes
+        <span class="icon">&#9998;</span> {{ t('nav.notes') }}
       </a>
       <a href="/transactions" class="{% if request.url.path == '/transactions' %}active{% endif %}">
-        <span class="icon">&#8644;</span> Transactions
+        <span class="icon">&#8644;</span> {{ t('nav.transactions') }}
       </a>
       <a href="/reminders" class="{% if request.url.path == '/reminders' %}active{% endif %}">
-        <span class="icon">&#9200;</span> Rappels
+        <span class="icon">&#9200;</span> {{ t('nav.reminders') }}
       </a>
       <a href="/giveaways" class="{% if request.url.path == '/giveaways' %}active{% endif %}">
-        <span class="icon">&#127873;</span> Giveaways
+        <span class="icon">&#127873;</span> {{ t('nav.giveaways') }}
       </a>
       <div class="divider"></div>
-      <div class="section-label">Serveurs</div>
-      {% for gid in guilds %}
+      <div class="section-label">{{ t('nav.section.servers') }}</div>
+      {% for gid in nav_guilds() %}
       <a href="/guild/{{ gid }}">
-        <span class="icon">&#9881;</span> Serveur {{ gid }}
+        <span class="icon">&#9881;</span> {{ t('nav.server', id=gid) }}
       </a>
       {% endfor %}
     </nav>

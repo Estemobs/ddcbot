@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Leveling - Serveur {{ guild_id }}{% endblock %}
+{% block title %}{{ t('page.leveling.title', id=guild_id) }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Leveling / XP</h2>
-  <p>Serveur {{ guild_id }} - Configuration du systeme d'XP</p>
+  <h2>{{ t('leveling.heading') }}</h2>
+  <p>{{ t('leveling.subtitle', id=guild_id) }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Configuration</h3></div>
+  <div class="card-header"><h3>{{ t('common.config') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/leveling/config">
     <div class="toggle-row">
       <div>
-        <div class="toggle-label">Activer le leveling</div>
-        <div class="toggle-desc">Les utilisateurs gagnent de l'XP en envoyant des messages</div>
+        <div class="toggle-label">{{ t('leveling.enabled') }}</div>
+        <div class="toggle-desc">{{ t('leveling.enabled_desc') }}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" name="enabled" value="1" {% if config and config.enabled %}checked{% endif %}>
@@ -21,48 +21,48 @@
     </div>
     <div class="form-grid">
       <div class="form-group">
-        <label>XP par message</label>
+        <label>{{ t('leveling.xp_per_msg') }}</label>
         <input type="number" name="xp_per_message" value="{{ config.xp_per_message if config else 15 }}" min="1">
       </div>
       <div class="form-group">
-        <label>Cooldown (secondes)</label>
+        <label>{{ t('leveling.cooldown') }}</label>
         <input type="number" name="cooldown_seconds" value="{{ config.cooldown_seconds if config else 60 }}" min="0">
       </div>
     </div>
-    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+    <button type="submit" class="btn btn-primary">{{ t('btn.save') }}</button>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Classement XP (Top 50)</h3></div>
+  <div class="card-header"><h3>{{ t('leveling.top50') }}</h3></div>
   {% if levels %}
   <div class="table-wrap">
     <table>
-      <tr><th>#</th><th>User ID</th><th>XP</th><th>Niveau</th></tr>
+      <tr><th>#</th><th>{{ t('economy.user_id') }}</th><th>XP</th><th>{{ t('leveling.col_niveau') }}</th></tr>
       {% for l in levels %}
       <tr>
         <td>{{ loop.index }}</td>
         <td><code>{{ l.user_id }}</code></td>
         <td>{{ l.xp }}</td>
-        <td><span class="tag tag-info">Niv. {{ l.xp // 100 + 1 }}</span></td>
+        <td><span class="tag tag-info">{{ t('leveling.niv', level=l.xp // 100 + 1) }}</span></td>
       </tr>
       {% endfor %}
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>Aucun utilisateur avec de l'XP.</p></div>
+  <div class="empty"><p>{{ t('leveling.empty_xp') }}</p></div>
   {% endif %}
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Reinitialiser un utilisateur</h3></div>
+  <div class="card-header"><h3>{{ t('leveling.reset_user') }}</h3></div>
   <form method="post" action="/guild/{{ guild_id }}/leveling/reset" style="display:flex; gap:10px; align-items:end;">
     <div class="form-group" style="margin:0;">
-      <label>User ID</label>
+      <label>{{ t('economy.user_id') }}</label>
       <input type="number" name="user_id" required>
     </div>
     <button type="submit" class="btn btn-danger btn-sm"
-      onclick="return confirm('Supprimer toute l\'XP de cet utilisateur ?')">Reset XP</button>
+      onclick="return confirm('{{ t('leveling.reset_confirm') }}')">{{ t('leveling.reset_xp') }}</button>
   </form>
 </div>
 {% endblock %}

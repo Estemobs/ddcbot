@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Rappels - DDCBot{% endblock %}
+{% block title %}{{ t('page.reminders.title') }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Rappels</h2>
-  <p>Rappels en attente</p>
+  <h2>{{ t('nav.reminders') }}</h2>
+  <p>{{ t('reminders.subtitle') }}</p>
 </div>
 
 <div class="card">
   <div class="table-wrap">
     {% if reminders %}
     <table>
-      <tr><th>ID</th><th>User</th><th>Salon</th><th>Message</th><th>Prevu pour</th></tr>
+      <tr><th>ID</th><th>{{ t('economy.col_user') }}</th><th>{{ t('reminders.col_channel') }}</th><th>{{ t('reminders.col_message') }}</th><th>{{ t('reminders.col_scheduled') }}</th></tr>
       {% for r in reminders %}
       <tr>
         <td>{{ r.id }}</td>
@@ -24,7 +24,7 @@
     {% else %}
     <div class="empty">
       <div class="icon">&#9200;</div>
-      <p>Aucun rappel en attente.</p>
+      <p>{{ t('reminders.empty') }}</p>
     </div>
     {% endif %}
   </div>

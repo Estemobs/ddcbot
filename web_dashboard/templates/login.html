@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ current_lang() }}" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Connexion - DDCBot Dashboard</title>
+  <title>{{ t('login.title') }}</title>
   <link rel="stylesheet" href="/static/css/style.css">
   <style>
     .login-wrap {
@@ -27,6 +27,11 @@
     .login-card p { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 24px; }
     .login-card input[type="password"] { margin-bottom: 16px; }
     .login-card .btn { width: 100%; justify-content: center; padding: 12px; }
+    .login-card .lang-switch { margin-top: 16px; }
+    .login-card .lang-switch a {
+      color: var(--text-secondary); font-size: 0.8rem;
+      text-decoration: underline; margin: 0 6px;
+    }
     .error-msg {
       background: rgba(237, 66, 69, 0.1);
       border: 1px solid var(--danger);
@@ -37,6 +42,16 @@
       margin-bottom: 16px;
     }
   </style>
+  <script>
+    (function () {
+      var theme = localStorage.getItem('dash_theme');
+      if (theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="login-wrap">
@@ -48,11 +63,18 @@
       {% endif %}
       <form method="post" action="/login">
         <div class="form-group">
-          <label>Token d'acces</label>
-          <input type="password" name="token" required placeholder="Entrez le token">
+          <label>{{ t('login.token') }}</label>
+          <input type="password" name="token" required placeholder="{{ t('login.token_ph') }}">
         </div>
-        <button type="submit" class="btn btn-primary">Connexion</button>
+        <button type="submit" class="btn btn-primary">{{ t('login.submit') }}</button>
       </form>
+      <div class="lang-switch">
+        {% if current_lang() == 'fr' %}
+        <a href="/login?lang=en">English</a>
+        {% else %}
+        <a href="/login?lang=fr">Francais</a>
+        {% endif %}
+      </div>
     </div>
   </div>
 </body>
