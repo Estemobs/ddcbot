@@ -7,6 +7,12 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# torch/torchvision CPU-only (index officiel PyTorch) : évite d'installer
+# le stack nvidia-CUDA entier (~multi-Go) inutile pour easyocr (gpu=False),
+# qui ne fait que bloat l'image et épuiser le disque.
+RUN pip install --no-cache-dir torch torchvision \
+    --index-url https://download.pytorch.org/whl/cpu
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
