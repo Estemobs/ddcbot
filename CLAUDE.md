@@ -12,6 +12,8 @@ Setup:
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+# optionnel : dépendances du dashboard web (image dédiée sinon)
+pip install -r requirements-dashboard.txt
 ```
 
 Run the bot (`main.py:load_token()` reads the `DDC_TOKEN` env var first, falling back to a `secrets.json` at repo root with `{"ddc_token": "..."}`; neither is committed):

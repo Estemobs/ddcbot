@@ -145,7 +145,6 @@ REQUIRED_MODULES = [
     "cv2",
     "PIL",
     "easyocr",
-    "curl_cffi",
 ]
 
 EXPECTED_TABLES = [
