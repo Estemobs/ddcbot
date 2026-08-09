@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["python", "-m", "web_dashboard.main"]
+CMD ["python", "-u", "-m", "web_dashboard.main"]

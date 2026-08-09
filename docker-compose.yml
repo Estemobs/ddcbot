@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - PYTHONUNBUFFERED=1
     volumes:
       - ${PROJECT_DIR}:/app
 
