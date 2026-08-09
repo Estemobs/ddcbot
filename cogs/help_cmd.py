@@ -70,6 +70,26 @@ class cmdhelp(commands.Cog):
 
         return categories
 
+    def _build_embeds_from_fields(
+        self,
+        fields: list,
+        title: str,
+        description: str | None = None,
+        color: int = 0x7289DA,
+        footer: str | None = None,
+    ):
+        """Découpe les fields en plusieurs embeds (limite de 25 fields par embed)."""
+        max_fields = 25
+        embeds = []
+        for i in range(0, len(fields), max_fields):
+            embed = discord.Embed(title=title, description=description, color=color)
+            for name, value in fields[i:i + max_fields]:
+                embed.add_field(name=name, value=value, inline=False)
+            if footer is not None:
+                embed.set_footer(text=footer)
+            embeds.append(embed)
+        return embeds
+
     @commands.command(name="help")
     async def help_command(self, ctx, *, categorie: str = None):
         """Affiche la liste des commandes disponibles."""
@@ -85,41 +105,34 @@ class cmdhelp(commands.Cog):
                 return
 
             cat = categories[key]
-            embed = discord.Embed(
+            # Chaque embed est limité à 25 fields par Discord → découpage si besoin.
+            for embed in self._build_embeds_from_fields(
+                fields=[(f"{prefix}{cmd_syntax}", description) for cmd_syntax, description in cat["commands"]],
                 title=f"{cat['emoji']} {cat['title']}",
-                color=0x7289DA
-            )
-            for cmd_syntax, description in cat["commands"]:
-                embed.add_field(
-                    name=f"{prefix}{cmd_syntax}",
-                    value=description,
-                    inline=False
-                )
-            embed.set_footer(text=f"Préfixe : {prefix}  •  Commit {BOT_VERSION}  •  ,help <catégorie> pour plus de détails")
-            await ctx.send(embed=embed)
+                color=0x7289DA,
+                footer=f"Préfixe : {prefix}  ·  Commit {BOT_VERSION}  ·  ,help <catégorie> pour plus de détails",
+            ):
+                await ctx.send(embed=embed)
             return
 
         # Vue générale
-        embed = discord.Embed(
+        fields = []
+        for key in sorted(categories.keys()):
+            cat = categories[key]
+            # formate chaque commande comme `,commande`
+            cmd_list = ", ".join(f"`{prefix}{s.split()[0].strip('`')}`" for s, _ in cat["commands"]) if cat["commands"] else "(aucune)"
+            fields.append((f"{cat['emoji']} {cat['title']} — `{prefix}help {key}`", cmd_list))
+        for embed in self._build_embeds_from_fields(
+            fields=fields,
             title="📖 Liste des commandes",
             description=(
                 f"Utilisez **`{prefix}help <catégorie>`** pour voir le détail d'une catégorie.\n"
                 f"Exemple : `{prefix}help jeux`"
             ),
-            color=0x7289DA
-        )
-        # Trier les catégories pour affichage stable
-        for key in sorted(categories.keys()):
-            cat = categories[key]
-            # formate chaque commande comme `,commande`
-            cmd_list = ", ".join(f"`{prefix}{s.split()[0].strip('`')}`" for s, _ in cat["commands"]) if cat["commands"] else "(aucune)"
-            embed.add_field(
-                name=f"{cat['emoji']} {cat['title']} — `{prefix}help {key}`",
-                value=cmd_list,
-                inline=False
-            )
-        embed.set_footer(text=f"Commit {BOT_VERSION}")
-        await ctx.send(embed=embed)
+            color=0x7289DA,
+            footer=f"Commit {BOT_VERSION}",
+        ):
+            await ctx.send(embed=embed)
 
 
 def setup(bot):
