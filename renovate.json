@@ -16,7 +16,7 @@
     },
     {
       "matchPackageNames": ["numpy"],
-      "allowedVersions": "<2.4"
+      "enabled": false
     }
   ]
 }
