@@ -136,8 +136,8 @@ class cmdpoll(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(manage_guild=True)
-    emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
     async def pollresults(self, ctx, message_id: int = None):
+        emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
         """Voir les résultats d'un sondage."""
         if message_id is None:
             # Try to find the latest poll in this channel
