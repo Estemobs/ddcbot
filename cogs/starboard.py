@@ -5,7 +5,6 @@ import time
 import discord
 from discord.ext import commands
 
-
 STARBOARD_EMOJI = "🌟"
 
 
@@ -44,8 +43,6 @@ class cmdstarboard(commands.Cog):
             "CREATE INDEX IF NOT EXISTS idx_starboard_entries_guild ON starboard_entries(guild_id)"
         )
 
-    # --- Configuration ---
-
     def set_starboard_channel(self, guild_id: int, channel_id: int, emoji: str = "🌟", min_stars: int = 5):
         self.db.execute(
             "INSERT INTO starboard_config (guild_id, channel_id, emoji, min_stars) "
@@ -80,8 +77,6 @@ class cmdstarboard(commands.Cog):
             "exclude_pinned=excluded.exclude_pinned",
             (guild_id, emoji, min_stars, include_bot_messages, exclude_pinned),
         )
-
-    # --- Starboard processing ---
 
     def is_starboard_message(self, message: discord.Message) -> bool:
         if message.guild is None:
@@ -128,8 +123,6 @@ class cmdstarboard(commands.Cog):
         )
         return row["stars"] if row else 0
 
-    # --- Forwarding logic ---
-
     async def forward_to_starboard(self, message: discord.Message, stars: int):
         guild_id = message.guild.id
         cfg = self.get_starboard_config(guild_id)
@@ -138,7 +131,6 @@ class cmdstarboard(commands.Cog):
 
         channel = message.guild.get_channel(cfg["channel_id"])
         if channel is None:
-            # Channel deleted, disable
             self.set_starboard_channel(guild_id, 0)
             return
 
@@ -147,7 +139,6 @@ class cmdstarboard(commands.Cog):
         include_bot = cfg["include_bot_messages"]
         exclude_pinned = cfg["exclude_pinned"]
 
-        # Filters
         if not include_bot and message.author.bot:
             return
         if exclude_pinned and message.pinned:
@@ -155,7 +146,6 @@ class cmdstarboard(commands.Cog):
         if stars < min_stars:
             return
 
-        # Check if already forwarded
         existing = self.get_starboard_message_config(guild_id, message.id)
         if existing and existing["forwarded_message_id"]:
             try:
@@ -163,7 +153,6 @@ class cmdstarboard(commands.Cog):
                     int(existing["forwarded_message_id"])
                 ).fetch_message(int(existing["forwarded_message_id"]))
                 if forwarded is None:
-                    # Delete old forward, create new one
                     await self._create_starboard_entry(message, channel, stars)
             except (discord.NotFound, discord.HTTPException):
                 await self._create_starboard_entry(message, channel, stars)
@@ -172,7 +161,6 @@ class cmdstarboard(commands.Cog):
         await self._create_starboard_entry(message, channel, stars)
 
     async def _create_starboard_entry(self, message: discord.Message, channel: discord.TextChannel, stars: int):
-        # Delete any existing forward for this message
         existing = self.get_starboard_message_config(message.guild.id, message.id)
         if existing and existing["forwarded_message_id"]:
             try:
@@ -186,23 +174,20 @@ class cmdstarboard(commands.Cog):
                 (message.guild.id, message.id),
             )
 
-        # Create new embed
         embed = discord.Embed(
             title=f"{STARBOARD_EMOJI} Starboard",
-            description=f"Message de **{message.author.mention}**",
+            description=f"Message de {message.author.mention}",
             color=discord.Color.gold(),
             timestamp=message.created_at,
         )
         embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
         if message.content:
-            embed.description += f"
-> {message.content[:1000]}"
+            embed.description += f"> {message.content[:1000]}"
         if message.attachments:
             for att in message.attachments[:1]:
                 embed.set_image(url=att.proxy_url)
         embed.set_footer(text=f"{stars}★ · {message.guild.name}")
 
-        # React with star emoji if not already
         try:
             await message.add_reaction(STARBOARD_EMOJI)
         except (discord.Forbidden, discord.HTTPException):
@@ -216,8 +201,6 @@ class cmdstarboard(commands.Cog):
             "stars=excluded.stars, forwarded_message_id=excluded.forwarded_message_id",
             (message.guild.id, message.id, message.id, stars, forwarded.id),
         )
-
-    # --- Reaction listener ---
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
@@ -248,7 +231,6 @@ class cmdstarboard(commands.Cog):
 
         self.remove_star_from_message(guild.id, payload.message_id)
 
-        # Recalculate stars and update
         message = await guild.get_channel(payload.channel_id).fetch_message(payload.message_id)
         if message is None:
             return
@@ -259,7 +241,6 @@ class cmdstarboard(commands.Cog):
             return
 
         if stars < cfg["min_stars"]:
-            # Remove from starboard
             existing = self.get_starboard_message_config(guild.id, payload.message_id)
             if existing and existing["forwarded_message_id"]:
                 try:
@@ -275,7 +256,6 @@ class cmdstarboard(commands.Cog):
                     (guild.id, payload.message_id),
                 )
         else:
-            # Update existing forward
             existing = self.get_starboard_message_config(guild.id, payload.message_id)
             if existing and existing["forwarded_message_id"]:
                 try:
@@ -283,11 +263,10 @@ class cmdstarboard(commands.Cog):
                     if channel:
                         old_msg = await channel.fetch_message(int(existing["forwarded_message_id"]))
                         if old_msg:
-                            # Update embed with new star count
                             old_footer = old_msg.embeds[0].footer.text if old_msg.embeds else ""
                             new_embed = discord.Embed(
                                 title=f"{STARBOARD_EMOJI} Starboard",
-                                description=f"Message de **{message.author.mention}**",
+                                description=f"Message de {message.author.mention}",
                                 color=discord.Color.gold(),
                                 timestamp=message.created_at,
                             )
@@ -296,22 +275,15 @@ class cmdstarboard(commands.Cog):
                                 icon_url=message.author.display_avatar.url,
                             )
                             if message.content:
-                                new_embed.description += f"
-> {message.content[:1000]}"
-                            new_embed.set_footer(
-                                text=f"{stars}★ · {message.guild.name}"
-                            )
-                            # Preserve other fields
+                                new_embed.description += f"> {message.content[:1000]}"
+                            new_embed.set_footer(text=f"{stars}★ · {message.guild.name}")
                             await old_msg.edit(embed=new_embed)
                 except (discord.NotFound, discord.HTTPException):
                     pass
 
-    # --- Commandes ---
-
     @commands.command()
     @commands.has_permissions(manage_guild=True)
     async def starboard(self, ctx, *, arg: str = None):
-        """Configurer le système starboard"""
         if arg is None:
             cfg = self.get_starboard_config(ctx.guild.id)
             if cfg is None:
@@ -381,12 +353,9 @@ class cmdstarboard(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_guild=True)
     async def starboardclear(self, ctx):
-        """Supprimer tous les entries starboard pour ce serveur"""
         self.db.execute("DELETE FROM starboard_entries WHERE guild_id = ?", (ctx.guild.id,))
         self.db.execute("DELETE FROM starboard_config WHERE guild_id = ?", (ctx.guild.id,))
         await ctx.send("✅ Configuration starboard réinitialisée.")
-
-    # --- Boucle de maintenance ---
 
     async def _process_loop(self):
         await self.bot.wait_until_ready()
@@ -398,7 +367,6 @@ class cmdstarboard(commands.Cog):
             await asyncio.sleep(15)
 
     async def _process_starboard_queue(self):
-        # Nettoyer les entries sans message source
         rows = self.db.fetchall("SELECT id, guild_id, message_id FROM starboard_entries")
         for row in rows:
             try:

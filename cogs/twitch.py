@@ -183,11 +183,10 @@ class cmdtwitch(commands.Cog):
                 try:
                     user = await self.bot.fetch_user(int(row["user_id"]))
                     message = (
-                        f"🔴 **{user_login}** est en direct !
-"
-                        f"**{stream_title}**
-"
-                        f"{stream_game + ' - ' if stream_game else ''}"
+                        f"🔴 **{user_login}** est en direct !\n",
+                        f"**{stream_title}**\n",
+                        f"{stream_game + " - " if stream_game else ""}"\n",
+                    )
                         f"📺 [Regarder sur Twitch]({stream_url})"
                     )
                     await user.send(message)
