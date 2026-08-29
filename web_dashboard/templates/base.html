@@ -27,47 +27,59 @@
   </script>
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="sidebar-brand">
+  <!-- Header/hero -->
+  <header class="hero">
+    <div class="brand">
       <h1>DDCBot</h1>
-      <small>{{ t('brand.subtitle') }}</small>
-      <div class="sidebar-actions">
-        <button class="btn btn-secondary btn-sm" onclick="toggleTheme()" title="{{ t('nav.theme') }}">
-          <span class="icon">&#9681;</span>
-        </button>
-        {% if current_lang() == 'fr' %}
-        <button class="btn btn-secondary btn-sm" onclick="setLang('en')" title="English">EN</button>
-        {% else %}
-        <button class="btn btn-secondary btn-sm" onclick="setLang('fr')" title="Francais">FR</button>
-        {% endif %}
-      </div>
+      <p>Administration du bot Discord</p>
     </div>
-    <nav>
+    <div class="badge">
+      <span>{{ nav_guilds() | length }} serveurs</span>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav class="nav-top">
+    <div class="flex">
       <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
-        <span class="icon">&#9632;</span> {{ t('nav.home') }}
+        <span>&#9632;</span> Accueil
       </a>
       <a href="/notes" class="{% if request.url.path == '/notes' %}active{% endif %}">
-        <span class="icon">&#9998;</span> {{ t('nav.notes') }}
+        <span>&#9998;</span> Notes
       </a>
       <a href="/transactions" class="{% if request.url.path == '/transactions' %}active{% endif %}">
-        <span class="icon">&#8644;</span> {{ t('nav.transactions') }}
+        <span>&#8644;</span> Transactions
       </a>
       <a href="/reminders" class="{% if request.url.path == '/reminders' %}active{% endif %}">
-        <span class="icon">&#9200;</span> {{ t('nav.reminders') }}
+        <span>&#9200;</span> Rappels
       </a>
       <a href="/giveaways" class="{% if request.url.path == '/giveaways' %}active{% endif %}">
-        <span class="icon">&#127873;</span> {{ t('nav.giveaways') }}
+        <span>&#127873;</span> Giveaways
       </a>
-      <div class="divider"></div>
-      <div class="section-label">{{ t('nav.section.servers') }}</div>
-      {% for gid in nav_guilds() %}
-      <a href="/guild/{{ gid }}">
-        <span class="icon">&#9881;</span> {{ t('nav.server', id=gid) }}
-      </a>
-      {% endfor %}
-    </nav>
-  </aside>
-  <main class="main">
+    </div>
+
+    <div class="flex justify-end items-center">
+      <button class="theme-toggle" onclick="toggleTheme()" title="Thème">
+        <span class="sun">☀️</span>
+        <span class="moon">🌙</span>
+      </button>
+      
+      <div class="lang-dropdown">
+        <button class="lang-dropdown-btn" onclick="event.stopPropagation();">
+          <span>{{ current_lang() }}</span>
+          <svg width="8" height="4" viewBox="0 0 8 4" fill="none">
+            <path d="M2 2l3.5 3.5" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </button>
+        <div class="lang-dropdown-list" id="lang-list">
+          <a href="?lang=fr" class="lang-dropdown-item {% if current_lang() == 'fr' %}open{% endif %}">Français</a>
+          <a href="?lang=en" class="lang-dropdown-item {% if current_lang() == 'en' %}open{% endif %}">English</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="dashboard">
     {% block content %}{% endblock %}
   </main>
 </body>

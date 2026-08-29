@@ -1,77 +1,93 @@
 {% extends "base.html" %}
 {% block title %}{{ t('guild.title', id=guild_id) }}{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h2>Serveur {{ guild_id }}</h2>
-  <p>{{ t('guild.overview') }}</p>
-</div>
 
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="value">{{ warnings }}</div>
-    <div class="label">{{ t('guild.warnings') }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="value">{{ transactions }}</div>
-    <div class="label">{{ t('guild.transactions') }}</div>
+<!-- Header -->
+<div class="hero-small">
+  <div class="flex justify-between items-start">
+    <div>
+      <h2>{{ t('guild.title', id=guild_id) }}</h2>
+      <p class="text-muted">{{ t('guild.overview') }}</p>
+    </div>
+    <div class="status-pill">
+      <span class="status-info">Serveur actif</span>
+    </div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header"><h3>{{ t('guild.modules') }} <span class="tag tag-info">{{ info | length }} {{ t('guild.modules_count') }}</span></h3></div>
-  <div class="table-wrap">
-    <table>
-      <tr><th>{{ t('guild.col_module') }}</th><th>{{ t('guild.col_status') }}</th><th>{{ t('guild.col_config') }}</th></tr>
-      {% for name, active in info.items() %}
-      <tr>
-        <td>{{ t(name) }}</td>
-        <td>
-          {% if active %}
-          <span class="tag tag-success">{{ t('guild.status_ok') }}</span>
-          {% else %}
-          <span class="tag tag-danger">{{ t('guild.status_ko') }}</span>
-          {% endif %}
-        </td>
-        <td>
-          {% set slug = name|lower|replace('/','-') %}
-          {% if name == "Economie" %}
-          <a href="/guild/{{ guild_id }}/economy" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Moderation" %}
-          <a href="/guild/{{ guild_id }}/moderation" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Leveling" %}
-          <a href="/guild/{{ guild_id }}/leveling" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Welcome/Leave" %}
-          <a href="/guild/{{ guild_id }}/welcome" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "AutoMod" %}
-          <a href="/guild/{{ guild_id }}/automod" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Logs" %}
-          <a href="/guild/{{ guild_id }}/logs" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "AI-Moderation" %}
-          <a href="/guild/{{ guild_id }}/aimod" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Tickets" %}
-          <a href="/guild/{{ guild_id }}/tickets" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Webhooks" %}
-          <a href="/guild/{{ guild_id }}/webhooks" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Lockdown" %}
-          <a href="/guild/{{ guild_id }}/lockdown" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Invitations" %}
-          <a href="/guild/{{ guild_id }}/invitations" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Steam" %}
-          <a href="/guild/{{ guild_id }}/steam" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Revenus" %}
-          <a href="/guild/{{ guild_id }}/work" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% elif name == "Langue" %}
-          <a href="/guild/{{ guild_id }}/lang" class="btn btn-secondary btn-sm">{{ t('index.btn_manage') }}</a>
-          {% else %}
-          <span style="color: var(--text-muted);">-</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-      {% if not info %}
-      <tr><td colspan="3" class="empty">{{ t('guild.no_modules') }}</td></tr>
-      {% endif %}
-    </table>
+<!-- Stats -->
+<section class="stats">
+  <div class="stat-card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+      </svg>
+    </div>
+    <div>
+      <div class="value">{{ warnings }}</div>
+      <div class="label">{{ t('guild.warnings') }}</div>
+    </div>
   </div>
-</div>
+
+  <div class="stat-card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <polyline points="22 12 18 12 15 15 9 3 6 12 2 12"/>
+      </svg>
+    </div>
+    <div>
+      <div class="value">{{ transactions }}</div>
+      <div class="label">{{ t('guild.transactions') }}</div>
+    </div>
+  </div>
+</section>
+
+<!-- Modules -->
+<section class="modules">
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ t('guild.modules') }} <span class="count">{{ info | length }}</span></div>
+    </div>
+    <div class="table">
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Statut</th>
+          <th>Configuration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name, active in info.items() %}
+        <tr>
+          <td class="module-name">{{ t(name) }}</td>
+          <td>
+            <span class="status {% if active %}success{% else %}pending{% endif %}">
+              {% if active %}
+                {{ t('guild.status_ok') }}
+              {% else %}
+                {{ t('guild.status_ko') }}
+              {% endif %}
+            </span>
+          </td>
+          <td>
+            <a href="/guild/{{ guild_id }}/{{ name|lower|replace('/','-') }}" class="btn primary small">
+              {{ t('index.btn_manage') }}
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not info %}
+        <tr>
+          <td colspan="3" class="empty-state">
+            <div class="icon">&#128269;</div>
+            <p>Aucun module configuré</p>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </div>
+  </div>
+</section>
+
 {% endblock %}

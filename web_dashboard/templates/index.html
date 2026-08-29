@@ -1,88 +1,145 @@
 {% extends "base.html" %}
 {% block title %}{{ t('index.title') }}{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h2>DDCBot Dashboard</h2>
-  <p>{{ t('index.subtitle') }}</p>
-</div>
 
-<div class="stats-grid">
+<!-- Stats section -->
+<section class="stats">
   <div class="stat-card">
-    <div class="value">{{ stats.guilds }}</div>
-    <div class="label">{{ t('index.stat.servers') }}</div>
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <line x1="12" y1="2" x2="12" y2="22"/>
+      </svg>
+    </div>
+    <div>
+      <div class="value">{{ stats.guilds }}</div>
+      <div class="label">{{ t('index.stat.servers') }}</div>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="value">{{ stats.balances }}</div>
-    <div class="label">{{ t('index.stat.econ_accounts') }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="value">{{ stats.levels }}</div>
-    <div class="label">{{ t('index.stat.xp_users') }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="value">{{ stats.transactions }}</div>
-    <div class="label">{{ t('index.stat.transactions') }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="value">{{ stats.warnings }}</div>
-    <div class="label">{{ t('index.stat.warnings') }}</div>
-  </div>
-</div>
 
+  <div class="stat-card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 2v20M2 12h20"/>
+      </svg>
+    </div>
+    <div>
+      <div class="value">{{ stats.balances }}</div>
+      <div class="label">{{ t('index.stat.econ_accounts') }}</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8M12 20V8L4 8"/>
+      </svg>
+    </div>
+    <div>
+      <div class="value">{{ stats.levels }}</div>
+      <div class="label">{{ t('index.stat.xp_users') }}</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <polyline points="22 12 18 12 15 15 9 3 6 12 2 12"/>
+      </svg>
+    </div>
+    <div>
+      <div class="value">{{ stats.transactions }}</div>
+      <div class="label">{{ t('index.stat.transactions') }}</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/>
+      </svg>
+    </div>
+    <div>
+      <div class="value">{{ stats.warnings }}</div>
+      <div class="label">{{ t('index.stat.warnings') }}</div>
+    </div>
+  </div>
+</section>
+
+<!-- Modules/servers section -->
 {% if guilds %}
-<div class="card">
-  <div class="card-header"><h3>{{ t('index.servers_configured') }} <span class="tag tag-info">{{ guilds | length }}</span></h3></div>
-  <div class="table-wrap">
-    <table>
-      <tr><th>{{ t('index.col_guild_id') }}</th><th>{{ t('index.col_actions') }}</th></tr>
-      {% for gid in guilds %}
-      <tr>
-        <td><code>{{ gid }}</code></td>
-        <td><a href="/guild/{{ gid }}" class="btn btn-primary btn-sm">{{ t('index.btn_manage') }}</a></td>
-      </tr>
-      {% endfor %}
-    </table>
+<section class="modules">
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ t('index.servers_configured') }}</h2>
+      <span class="count">{{ guilds | length }} serveurs</span>
+    </div>
+    <div class="table">
+      <thead>
+        <tr>
+          <th>Guild ID</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for gid in guilds %}
+        <tr>
+          <td class="module-name"><code>{{ gid }}</code></td>
+          <td>
+            <a href="/guild/{{ gid }}" class="btn primary">Gérer</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </div>
   </div>
-</div>
+</section>
 {% else %}
-<div class="empty">
+<section class="empty-state">
   <div class="icon">&#128269;</div>
-  <p>{{ t('index.empty_servers') }}</p>
-  <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.9rem;">
-    <a href="/" class="btn btn-secondary btn-sm">{{ t('index.btn_welcome') }}</a>
-  </p>
-</div>
+  <h2>{{ t('index.empty_servers') }}</h2>
+  <p>Configurez votre premier serveur via le menu latéral</p>
+  <a href="/" class="btn primary">Retour à l'accueil</a>
+</section>
 {% endif %}
 
-<div class="card">
-  <div class="card-header"><h3>{{ t('index.api_title') }}</h3></div>
-  <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px;">
-    {{ t('index.api_desc') }}
-  </p>
-  <ul style="color: var(--text-secondary); font-size: 0.85rem; padding-left: 20px; line-height: 1.8;">
-    <li><code>GET /api/guilds</code> - {{ t('api.guilds') }}</li>
-    <li><code>GET /api/stats</code> - {{ t('api.stats') }}</li>
-    <li><code>GET /api/guild/{id}/economy</code> - {{ t('api.economy') }}</li>
-    <li><code>GET /api/guild/{id}/moderation</code> - {{ t('api.moderation') }}</li>
-    <li><code>GET /api/guild/{id}/leveling</code> - {{ t('api.leveling') }}</li>
-    <li><code>GET /api/guild/{id}/welcome</code> - {{ t('api.welcome') }}</li>
-    <li><code>GET /api/guild/{id}/automod</code> - {{ t('api.automod') }}</li>
-    <li><code>GET /api/guild/{id}/logs</code> - {{ t('api.logs') }}</li>
-    <li><code>GET /api/guild/{id}/aimod</code> - {{ t('api.aimod') }}</li>
-    <li><code>GET /api/guild/{id}/tickets</code> - {{ t('api.tickets') }}</li>
-    <li><code>GET /api/guild/{id}/webhooks</code> - {{ t('api.webhooks') }}</li>
-    <li><code>GET /api/guild/{id}/lockdown</code> - {{ t('api.lockdown') }}</li>
-    <li><code>GET /api/guild/{id}/invitations</code> - {{ t('api.invitations') }}</li>
-    <li><code>GET /api/guild/{id}/minecraft</code> - {{ t('api.minecraft') }}</li>
-    <li><code>GET /api/guild/{id}/steam</code> - {{ t('api.steam') }}</li>
-    <li><code>GET /api/guild/{id}/work</code> - {{ t('api.work') }}</li>
-    <li><code>GET /api/guild/{id}/income</code> - {{ t('api.income') }}</li>
-    <li><code>GET /api/guild/{id}/rss</code> - {{ t('api.rss') }}</li>
-    <li><code>GET /api/guild/{id}/lang</code> - {{ t('api.lang') }}</li>
-    <li><code>GET /api/transactions</code> - {{ t('api.transactions') }}</li>
-    <li><code>GET /api/reminders</code> - {{ t('api.reminders') }}</li>
-    <li><code>GET /api/giveaways</code> - {{ t('api.giveaways') }}</li>
-    <li><code>GET /api/notes</code> - {{ t('api.notes') }}</li>
-  </ul>
-</div>
+<!-- API section -->
+<section class="api">
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ t('index.api_title') }}</h2>
+      <span class="count">30+ endpoints JSON</span>
+    </div>
+    <div>
+      <ul>
+        <li><code>GET /api/guilds</code> - Liste serveurs</li>
+        <li><code>GET /api/stats</code> - Statistiques globales</li>
+        <li><code>GET /api/guild/{id}/economy</code> - Économie</li>
+        <li><code>GET /api/guild/{id}/moderation</code> - Modération</li>
+        <li><code>GET /api/guild/{id}/leveling</code> - Leveling</li>
+        <li><code>GET /api/guild/{id}/welcome</code> - Bienvenue/Adieu</li>
+        <li><code>GET /api/guild/{id}/automod</code> - AutoMod</li>
+        <li><code>GET /api/guild/{id}/logs</code> - Logs</li>
+        <li><code>GET /api/guild/{id}/aimod</code> - AI-Moderation</li>
+        <li><code>GET /api/guild/{id}/tickets</code> - Tickets</li>
+        <li><code>GET /api/guild/{id}/webhooks</code> - Webhooks</li>
+        <li><code>GET /api/guild/{id}/lockdown</code> - Lockdown</li>
+        <li><code>GET /api/guild/{id}/invitations</code> - Invitations</li>
+        <li><code>GET /api/guild/{id}/minecraft</code> - Minecraft</li>
+        <li><code>GET /api/guild/{id}/steam</code> - Steam</li>
+        <li><code>GET /api/guild/{id}/work</code> - Work/Income</li>
+        <li><code>GET /api/guild/{id}/income</code> - Revenus</li>
+        <li><code>GET /api/guild/{id}/rss</code> - RSS/TV</li>
+        <li><code>GET /api/guild/{id}/lang</code> - Langue</li>
+        <li><code>GET /api/transactions</code> - Transactions</li>
+        <li><code>GET /api/reminders</code> - Rappels</li>
+        <li><code>GET /api/giveaways</code> - Giveaways</li>
+        <li><code>GET /api/notes</code> - Notes</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 {% endblock %}
