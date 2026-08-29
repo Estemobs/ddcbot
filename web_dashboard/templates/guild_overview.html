@@ -42,13 +42,13 @@
       </div>
       <div class="actions-grid">
         {% for key, info in feature_info.items() %}
-        {% if info.has_config %}
-        <a href="/guild/{{ guild_id }}{% if '/' in key %}{{ key }}{% else %}/{{ key }}{% endif %}" class="action-btn">
+        {% if info.has_config or info.has_data %}
+        <a href="/guild/{{ guild_id }}/{{ key }}" class="action-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           <span>{{ info.label }}</span>
         </a>
         {% elif info.has_data %}
-        <a href="/guild/{{ guild_id }}{% if '/' in key %}{{ key }}{% else %}/{{ key }}{% endif %}" class="action-btn secondary">
+        <a href="/guild/{{ guild_id }}/{{ key }}" class="action-btn secondary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 5l7 7-7 7"/></svg>
           <span>{{ info.label }}</span>
         </a>
