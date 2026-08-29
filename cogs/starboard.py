@@ -291,17 +291,12 @@ class cmdstarboard(commands.Cog):
                     "Aucune configuration starboard pour ce serveur. Utilisez `,starboard #channel` pour en définir un."
                 )
             return await ctx.send(
-                f"Configuration starboard :
-"
-                f"- Canal : <#{cfg['channel_id']}>
-"
-                f"- Emoji : {cfg['emoji']}
-"
-                f"- Seuil : {cfg['min_stars']}★
-"
-                f"- Inclure messages bots : {'Oui' if cfg['include_bot_messages'] else 'Non'}
-"
-                f"- Exclure messages épinglés : {'Oui' if cfg['exclude_pinned'] else 'Non'}"
+                f"Configuration starboard :\n"
+                f"- Canal : <#{cfg['channel_id']}>\n"
+                f"- Emoji : {cfg['emoji']}\n"
+                f"- Seuil : {cfg['min_stars']}★\n"
+                f"- Inclure messages bots : {'Oui' if cfg['include_bot_messages'] else 'Non'}\n"
+                f"- Exclure messages épinglés : {'Oui' if cfg['exclude_pinned'] else 'Non'}\n"
             )
 
         args = arg.split()
