@@ -179,6 +179,10 @@ def get_guilds():
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     guilds = get_guilds()
+    selected_guild = request.query_params.get("guild_id", None)
+    if selected_guild and selected_guild not in guilds:
+        selected_guild = None
+    
     stats = {
         "guilds": len(guilds),
         "balances": 0,
@@ -206,51 +210,86 @@ async def index(request: Request):
         stats["warnings"] = row["c"]
     except Exception:
         pass
+    
+    # If a guild is selected, show its overview; otherwise show homepage
+    if selected_guild:
+        return templates.TemplateResponse(request, "guild_overview.html", {
+            "request": request, "guilds": guilds, "selected_guild": selected_guild,
+            "stats": stats
+        })
+    
     return templates.TemplateResponse(request, "index.html", {
         "request": request, "guilds": guilds, "stats": stats
     })
 
 
-# ── Vue d\'ensemble d\'un serveur ──
+# ── Vue d'ensemble d'un serveur ──
 
 @app.get("/guild/{guild_id}", response_class=HTMLResponse)
 async def guild_overview(request: Request, guild_id: int):
-    info = {}
-    for table, col, label in [
-        ("economy_config", "guild_id", "Economie"),
-        ("moderation_config", "guild_id", "Moderation"),
-        ("xp_config", "guild_id", "Leveling"),
-        ("guild_settings", "guild_id", "Welcome/Leave"),
-        ("automod_config", "guild_id", "AutoMod"),
-        ("logs_config", "guild_id", "Logs"),
-        ("minecraft_config", "guild_id", "Minecraft"),
-        ("work_settings", "guild_id", "Travail"),
-        ("game_panel_config", "guild_id", "Jeux"),
-        ("ai_moderation_config", "guild_id", "AI-Moderation"),
-        ("ticket_config", "guild_id", "Tickets"),
-        ("webhook_config", "guild_id", "Webhooks"),
-        ("lockdown_config", "guild_id", "Lockdown"),
-        ("invites", "guild_id", "Invitations"),
-        ("steam_config", "guild_id", "Steam"),
-        ("income_config", "guild_id", "Revenus"),
-        ("guild_lang", "guild_id", "Langue"),
-    ]:
+    features = [
+        ("economy", "Economie", "/guild/{guild_id}/economy", "/guild/{guild_id}/economy/config"),
+        ("moderation", "Modération", "/guild/{guild_id}/moderation", "/guild/{guild_id}/moderation/config"),
+        ("leveling", "Leveling", "/guild/{guild_id}/leveling", "/guild/{guild_id}/leveling/config"),
+        ("welcome", "Bienvenue/Adieu", "/guild/{guild_id}/welcome", "/guild/{guild_id}/welcome/config"),
+        ("automod", "AutoMod", "/guild/{guild_id}/automod", "/guild/{guild_id}/automod/config"),
+        ("logs", "Logs", "/guild/{guild_id}/logs", "/guild/{guild_id}/logs/config"),
+        ("tickets", "Tickets", "/guild/{guild_id}/tickets", "/guild/{guild_id}/tickets/config"),
+        ("webhooks", "Webhooks", "/guild/{guild_id}/webhooks", "/guild/{guild_id}/webhooks/config"),
+        ("lockdown", "Lockdown", "/guild/{guild_id}/lockdown", "/guild/{guild_id}/lockdown/config"),
+        ("invitations", "Invitations", "/guild/{guild_id}/invitations", None),
+        ("minecraft", "Minecraft", "/guild/{guild_id}/minecraft", "/guild/{guild_id}/minecraft/config"),
+        ("steam", "Steam", "/guild/{guild_id}/steam", "/guild/{guild_id}/steam/config"),
+        ("work", "Work/Income", "/guild/{guild_id}/work", "/guild/{guild_id}/work/config"),
+        ("rss", "RSS/TV", "/guild/{guild_id}/rss", "/guild/{guild_id}/rss/config"),
+        ("lang", "Langue", "/guild/{guild_id}/lang", "/guild/{guild_id}/lang/config"),
+        ("ai_moderation", "AI-Moderation", "/guild/{guild_id}/aimod", "/guild/{guild_id}/aimod/config"),
+        ("notes", "Notes", "/guild/{guild_id}/notes", "/guild/{guild_id}/notes/config"),
+        ("transactions", "Transactions", "/guild/{guild_id}/transactions", None),
+        ("reminders", "Rappels", "/guild/{guild_id}/reminders", "/guild/{guild_id}/reminders/config"),
+        ("giveaways", "Giveaways", "/guild/{guild_id}/giveaways", "/guild/{guild_id}/giveaway/config"),
+    ]
+    
+    feature_info = {}
+    for key, label, page_url, config_url in features:
         try:
-            row = db.fetchone(f"SELECT COUNT(*) as c FROM {table} WHERE {col} = ?", (guild_id,))
-            info[label] = row["c"] > 0
+            if config_url:
+                cfg_row = db.fetchone(f"SELECT config_json FROM {key}_config WHERE guild_id = ?", (guild_id,))
+                config = {}
+                if cfg_row:
+                    try:
+                        config = json.loads(cfg_row["config_json"])
+                    except json.JSONDecodeError:
+                        pass
+                feature_info[key] = {"label": label, "config": config, "has_config": True}
+            else:
+                try:
+                    row = db.fetchone(f"SELECT COUNT(*) as c FROM {key} WHERE guild_id = ?", (guild_id,))
+                    feature_info[key] = {"label": label, "has_data": row["c"] > 0, "has_config": False}
+                except Exception:
+                    feature_info[key] = {"label": label, "has_data": False, "has_config": False}
         except Exception:
-            info[label] = False
-
-    warn_row = db.fetchone(
-        "SELECT COALESCE(SUM(count), 0) as c FROM warn_counts WHERE guild_id = ?", (guild_id,)
-    ) if True else {"c": 0}
-    eco_row = db.fetchone(
-        "SELECT COUNT(*) as c FROM transactions WHERE guild_id = ?", (guild_id,)
-    ) if True else {"c": 0}
-
-    return templates.TemplateResponse(request, "guild.html", {
-        "request": request, "guild_id": guild_id, "info": info,
-        "warnings": warn_row["c"], "transactions": eco_row["c"],
+            feature_info[key] = {"label": label, "has_data": False, "has_config": False}
+    
+    try:
+        warn_row = db.fetchone(
+            "SELECT COALESCE(SUM(count), 0) as c FROM warn_counts WHERE guild_id = ?", (guild_id,)
+        )
+        warnings = warn_row["c"]
+    except Exception:
+        warnings = 0
+    
+    try:
+        eco_row = db.fetchone(
+            "SELECT COUNT(*) as c FROM transactions WHERE guild_id = ?", (guild_id,)
+        )
+        transactions = eco_row["c"]
+    except Exception:
+        transactions = 0
+    
+    return templates.TemplateResponse(request, "guild_overview.html", {
+        "request": request, "guild_id": guild_id, "feature_info": feature_info,
+        "warnings": warnings, "transactions": transactions,
     })
 
 
@@ -1340,7 +1379,74 @@ async def giveaway_end(guild_id: int):
     return {"status": "ended"}
 
 
-# ── Giveaways HTML page ──
+# ── Notes Config ──
+
+@app.get("/guild/{guild_id}/notes", response_class=HTMLResponse)
+async def notes_page(request: Request, guild_id: int):
+    cfg = db.fetchone("SELECT * FROM notes_config WHERE guild_id = ?", (guild_id,))
+    all_notes = db.fetchall("SELECT * FROM notes WHERE guild_id = ORDER BY created_at DESC", (guild_id,))
+    return templates.TemplateResponse(request, "notes.html", {
+        "request": request, "guild_id": guild_id,
+        "config": dict(cfg) if cfg else None, "notes": all_notes,
+    })
+
+
+@app.post("/guild/{guild_id}/notes/add")
+async def notes_add(request: Request, guild_id: int):
+    form = await request.form()
+    note_text = form.get("note_text", "")
+    if note_text.strip():
+        db.execute(
+            "INSERT INTO notes (guild_id, user_id, note_text) VALUES (?, ?, ?)",
+            (guild_id, None, note_text[:500]),
+        )
+    return RedirectResponse(f"/guild/{guild_id}/notes", status_code=303)
+
+
+@app.post("/guild/{guild_id}/notes/delete")
+async def notes_delete(guild_id: int, note_id: int):
+    db.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+    return RedirectResponse(f"/guild/{guild_id}/notes", status_code=303)
+
+
+# ── Reminders Config ──
+
+@app.get("/guild/{guild_id}/reminders", response_class=HTMLResponse)
+async def reminders_page(request: Request, guild_id: int):
+    cfg = db.fetchone("SELECT * FROM reminders_config WHERE guild_id = ?", (guild_id,))
+    all_reminders = db.fetchall(
+        "SELECT * FROM reminders WHERE guild_id = ? ORDER BY created_at DESC LIMIT 50", (guild_id,)
+    )
+    return templates.TemplateResponse(request, "reminders.html", {
+        "request": request, "guild_id": guild_id,
+        "config": dict(cfg) if cfg else None, "reminders": all_reminders,
+    })
+
+
+@app.post("/guild/{guild_id}/reminders/add")
+async def reminders_add(
+    request: Request, guild_id: int, trigger: str = Form(...), message: str = Form(...),
+):
+    """Add a reminder."""
+    db.execute(
+        "INSERT INTO reminders (guild_id, user_id, trigger, message) VALUES (?, ?, ?, ?)",
+        (guild_id, None, trigger, message),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/reminders", status_code=303)
+
+
+# ── Transactions View ──
+
+@app.get("/guild/{guild_id}/transactions", response_class=HTMLResponse)
+async def transactions_page(request: Request, guild_id: int):
+    recent_tx = db.fetchall(
+        "SELECT * FROM transactions WHERE guild_id = ? ORDER BY created_at DESC LIMIT 50", (guild_id,)
+    )
+    return templates.TemplateResponse(request, "transactions.html", {
+        "request": request, "guild_id": guild_id,
+        "transactions": recent_tx,
+    })
+
 
 @app.get("/giveaways", response_class=HTMLResponse)
 async def giveaways_page(request: Request):

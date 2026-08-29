@@ -44,6 +44,9 @@
       <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
         <span>&#9632;</span> Accueil
       </a>
+      <a href="/guilds" class="{% if request.url.path.startswith('/guild/') %}active{% endif %}">
+        <span>&#128241;</span> Serveurs
+      </a>
       <a href="/notes" class="{% if request.url.path == '/notes' %}active{% endif %}">
         <span>&#9998;</span> Notes
       </a>

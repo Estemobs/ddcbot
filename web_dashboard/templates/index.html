@@ -55,19 +55,27 @@
   </div>
 </section>
 
-<!-- Servers section -->
+<!-- Serveurs section -->
 <div class="card">
   <div class="card-header">
     <h2>{{ t('index.servers_configured') }}</h2>
     <span class="count">{{ stats.guilds }} serveurs</span>
   </div>
-  <div class="empty">
-    {% if stats.guilds > 0 %}
-    <p>Cliquez sur un serveur pour le configurer</p>
-    {% else %}
-    <p>Aucun serveur configuré</p>
-    {% endif %}
+  {% if stats.guilds > 0 %}
+  <div class="server-selector">
+    <select id="server-selector" onchange="window.location='/guild/' + this.value">
+      <option value="">-- Sélectionner un serveur --</option>
+      {% for guild_id in guilds %}
+      <option value="{{ guild_id }}" {% if selected_guild and selected_guild == guild_id|string %}selected{% endif %}>Serveur {{ guild_id }}</option>
+      {% endfor %}
+    </select>
   </div>
+  {% endif %}
+  {% if not selected_guild %}
+  <div class="empty">
+    <p>Aucun serveur sélectionné - cliquez ci-dessus pour en choisir un</p>
+  </div>
+  {% endif %}
 </div>
 
 <!-- API section -->
