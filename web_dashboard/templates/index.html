@@ -9,19 +9,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <circle cx="12" cy="12" r="10"/>
         <line x1="2" y1="12" x2="22" y2="12"/>
-        <line x1="12" y1="2" x2="12" y2="22"/>
-      </svg>
-    </div>
-    <div>
-      <div class="value">{{ stats.guilds }}</div>
-      <div class="label">{{ t('index.stat.servers') }}</div>
-    </div>
-  </div>
-
-  <div class="stat-card">
-    <div class="icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M12 2v20M2 12h20"/>
       </svg>
     </div>
     <div>
@@ -33,7 +20,7 @@
   <div class="stat-card">
     <div class="icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8M12 20V8L4 8"/>
+        <path d="M12 2v20M2 12h20"/>
       </svg>
     </div>
     <div>
@@ -68,42 +55,20 @@
   </div>
 </section>
 
-<!-- Modules/servers section -->
-{% if guilds %}
-<section class="modules">
-  <div class="card">
-    <div class="card-header">
-      <h2>{{ t('index.servers_configured') }}</h2>
-      <span class="count">{{ guilds | length }} serveurs</span>
-    </div>
-    <div class="table">
-      <thead>
-        <tr>
-          <th>Guild ID</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for gid in guilds %}
-        <tr>
-          <td class="module-name"><code>{{ gid }}</code></td>
-          <td>
-            <a href="/guild/{{ gid }}" class="btn primary">Gérer</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </div>
+<!-- Servers section -->
+<div class="card">
+  <div class="card-header">
+    <h2>{{ t('index.servers_configured') }}</h2>
+    <span class="count">{{ stats.guilds }} serveurs</span>
   </div>
-</section>
-{% else %}
-<section class="empty-state">
-  <div class="icon">&#128269;</div>
-  <h2>{{ t('index.empty_servers') }}</h2>
-  <p>Configurez votre premier serveur via le menu latéral</p>
-  <a href="/" class="btn primary">Retour à l'accueil</a>
-</section>
-{% endif %}
+  <div class="empty">
+    {% if stats.guilds > 0 %}
+    <p>Cliquez sur un serveur pour le configurer</p>
+    {% else %}
+    <p>Aucun serveur configuré</p>
+    {% endif %}
+  </div>
+</div>
 
 <!-- API section -->
 <section class="api">

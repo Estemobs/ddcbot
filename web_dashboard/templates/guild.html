@@ -2,7 +2,7 @@
 {% block title %}{{ t('guild.title', id=guild_id) }}{% endblock %}
 {% block content %}
 
-<!-- Header -->
+<!-- Hero section -->
 <div class="hero-small">
   <div class="flex justify-between items-start">
     <div>
@@ -25,7 +25,7 @@
       </svg>
     </div>
     <div>
-      <div class="value">{{ warnings }}</div>
+      <div class="value">{{ stats.warnings }}</div>
       <div class="label">{{ t('guild.warnings') }}</div>
     </div>
   </div>
@@ -37,7 +37,7 @@
       </svg>
     </div>
     <div>
-      <div class="value">{{ transactions }}</div>
+      <div class="value">{{ stats.transactions }}</div>
       <div class="label">{{ t('guild.transactions') }}</div>
     </div>
   </div>
@@ -47,7 +47,7 @@
 <section class="modules">
   <div class="card">
     <div class="card-header">
-      <h2>{{ t('guild.modules') }} <span class="count">{{ info | length }}</span></div>
+      <h2>{{ t('guild.modules') }} <span class="count">{{ info | length if info else 0 }}</span></h2>
     </div>
     <div class="table">
       <thead>
