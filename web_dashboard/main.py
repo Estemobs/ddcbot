@@ -1283,6 +1283,65 @@ async def reminders_page(request: Request):
 
 # ── Giveaways ──
 
+@app.post("/guild/{guild_id}/giveaway/config")
+async def giveaway_config(
+    guild_id: int,
+    duration: int = Form(...),
+    prize: str = Form(...),
+):
+    """Configure and start a giveaway via web dashboard."""
+    ends_at = time.time() + duration
+    # Use the animations cog's create_giveaway method logic
+    db.execute(
+        "INSERT INTO giveaways (guild_id, channel_id, message_id, prize, ends_at, host_id) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (guild_id, None, None, prize, int(ends_at), None),
+    )
+    # Get the last inserted giveaway
+    row = db.fetchone("SELECT id, prize, ends_at FROM giveaways WHERE id = last_insert_rowid()")
+    return {"giveaway_id": row["id"], "prize": row["prize"], "ends_at": row["ends_at"]}
+
+
+@app.get("/guild/{guild_id}/giveaway", response_class=HTMLResponse)
+async def giveaway_page(request: Request, guild_id: int):
+    cfg = db.fetchone("SELECT * FROM giveaways WHERE guild_id = ? AND ended = 0 ORDER BY ends_at LIMIT 1", (guild_id,))
+    active = db.fetchall("SELECT * FROM giveaways WHERE guild_id = ? AND ended = 0", (guild_id,))
+    ended = db.fetchall("SELECT * FROM giveaways WHERE guild_id = ? AND ended = 1 ORDER BY ends_at DESC LIMIT 30", (guild_id,))
+    return templates.TemplateResponse(request, "giveaways.html", {
+        "request": request, "guild_id": guild_id,
+        "cfg": dict(cfg) if cfg else None, "active": active, "ended": ended,
+    })
+
+@app.post("/guild/{guild_id}/giveaway/start")
+async def giveaway_start(
+    guild_id: int, duration: int = Form(...), prize: str = Form(...),
+    channel_id: int = Form(0),
+):
+    """Start a giveaway via web dashboard."""
+    ends_at = time.time() + duration
+    # Create giveaway entry
+    db.execute(
+        "INSERT INTO giveaways (guild_id, channel_id, message_id, prize, ends_at, host_id) "
+        "VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET "
+        "channel_id=excluded.channel_id, prize=excluded.prize, "
+        "ends_at=excluded.ends_at, host_id=excluded.host_id",
+        (guild_id, channel_id or None, None, prize, int(ends_at), None),
+    )
+    # Get the created giveaway
+    row = db.fetchone("SELECT id, prize, ends_at FROM giveaways WHERE guild_id = ? ORDER BY id DESC LIMIT 1", (guild_id,))
+    return {"giveaway_id": row["id"], "prize": row["prize"], "ends_at": row["ends_at"]}
+
+
+@app.post("/guild/{guild_id}/giveaway/end")
+async def giveaway_end(guild_id: int):
+    """End a giveaway via web dashboard."""
+    db.execute("UPDATE giveaways SET ended = 1 WHERE guild_id = ? AND ended = 0", (guild_id,))
+    return {"status": "ended"}
+
+
+# ── Giveaways HTML page ──
+
 @app.get("/giveaways", response_class=HTMLResponse)
 async def giveaways_page(request: Request):
     active = db.fetchall(

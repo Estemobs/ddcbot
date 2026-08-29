@@ -57,6 +57,13 @@ EXPECTED_COMMANDS = {
     "config_quete",
     "clearinventory",
     "gamepanel",
+    "poll",
+    "pollresults",
+    "pollclose",
+    "cmdadd",
+    "cmdlist",
+    "cmdrm",
+    "cmdedit",
     "gstart",
     "gend",
     "gcancel",
@@ -108,6 +115,8 @@ EXPECTED_COMMANDS = {
     "steamid",
     "aimod",
     "aimodconfig",
+    "twitchconfig",
+    "twitch",
     "aimodaction",
     "aimodthreshold",
     "aimodignore",
@@ -132,7 +141,10 @@ EXPECTED_COMMANDS = {
     "lockdownrole",
     "lockdownlog",
     "lockdownmassjoin",
+    "starboard_config",
     "lockdownauto",
+    "starboard_config",
+    "starboard_entries",
     "plugins",
 }
 
@@ -186,6 +198,8 @@ EXPECTED_TABLES = [
     "ticket_counter",
     "webhook_config",
     "lockdown_config",
+    "starboard_config",
+    "starboard_entries",
     "plugins",
 ]
 

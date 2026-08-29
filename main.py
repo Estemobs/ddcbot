@@ -16,7 +16,10 @@ from cogs.income import cmdincome
 from cogs.economie import cmdeco
 from cogs.work import cmdwork
 from cogs.jeu import cmdjeu
+from cogs.custom import cmdcustom
+from cogs.poll import cmdpoll
 from cogs.help_cmd import cmdhelp
+from cogs.starboard import cmdstarboard
 from cogs.ai_assistant import cmdai
 from cogs.diagnostics import cmddiagnostics
 from cogs.logs_cmd import cmdlogs
@@ -31,6 +34,7 @@ from cogs.minecraft import cmdminecraft
 from cogs.invitations import cmdinvitations
 from cogs.steam import cmdsteam
 from cogs.ai_moderation import cmdaimoderation
+from cogs.twitch import cmdtwitch
 from cogs.tickets import cmdtickets
 from cogs.webhooks import cmdwebhooks
 from cogs.lockdown import cmdlockdown
@@ -215,6 +219,8 @@ async def main():
     await bot.add_cog(cmdeco(bot, db))
     await bot.add_cog(cmdwork(bot, db))
     await bot.add_cog(cmdjeu(bot, db))
+    await bot.add_cog(cmdcustom(bot, db))
+    await bot.add_cog(cmdpoll(bot, db))
     await bot.add_cog(cmdhelp(bot))
     await bot.add_cog(cmdai(bot))
     await bot.add_cog(cmdlogs(bot, db))
@@ -230,9 +236,11 @@ async def main():
     await bot.add_cog(cmdinvitations(bot, db))
     await bot.add_cog(cmdsteam(bot, db))
     await bot.add_cog(cmdaimoderation(bot, db))
+await bot.add_cog(cmdtwitch(bot, db))
     await bot.add_cog(cmdtickets(bot, db))
     await bot.add_cog(cmdwebhooks(bot, db))
     await bot.add_cog(cmdlockdown(bot, db))
+await bot.add_cog(cmdstarboard(bot, db))
     await bot.add_cog(cmdplugins(bot, db))
     await plugin_loader.load_plugins(bot, db)
     await bot.start(token)
