@@ -2,7 +2,9 @@ import asyncio
 import discord
 import json
 import os
+import sqlite3
 import traceback
+from datetime import datetime
 from discord.ext import commands
 from data.db import Database
 from admin import ADMIN_COMMANDS
@@ -121,9 +123,24 @@ async def on_command_error(ctx, error):
     )
     is_expected = isinstance(original, expected_user_errors)
 
+    command_name = ctx.command.qualified_name if ctx.command else "inconnue"
+    user_id = ctx.author.id if ctx.author else None
+    guild_id = ctx.guild.id if ctx.guild else None
+
+    # Stockage de l'erreur en base de données
+    try:
+        tb_str = ''.join(traceback.format_exception(type(original), original, original.__traceback__))
+        db.execute(
+            "INSERT INTO error_logs (guild_id, user_id, command, error_type, error_message, traceback, occurred_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (guild_id, user_id, command_name, "user_error" if is_expected else "unexpected_error",
+             str(original), tb_str, datetime.utcnow().timestamp()),
+        )
+    except Exception:
+        pass
+
     logs_cog = bot.get_cog("cmdlogs")
     channels = logs_cog.get_channels(ctx.guild, "user_errors" if is_expected else "unexpected_errors") if logs_cog else []
-    command_name = ctx.command.qualified_name if ctx.command else "inconnue"
     for channel in channels:
         if is_expected:
             await channel.send(

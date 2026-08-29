@@ -1062,6 +1062,34 @@ async def api_guild_logs(guild_id: int):
     return {"config": config}
 
 
+@app.get("/api/guild/{guild_id}/error-logs")
+async def api_guild_error_logs(guild_id: int, limit: int = 50):
+    rows = db.fetchall(
+        "SELECT id, guild_id, user_id, command, error_type, error_message, traceback, occurred_at "
+        "FROM error_logs WHERE guild_id = ? ORDER BY occurred_at DESC LIMIT ?",
+        (guild_id, limit),
+    )
+    result = []
+    for row in rows:
+        result.append({
+            "id": row["id"],
+            "guild_id": row["guild_id"],
+            "user_id": row["user_id"],
+            "command": row["command"],
+            "error_type": row["error_type"],
+            "error_message": row["error_message"],
+            "traceback": row["traceback"][:200] if row["traceback"] else "",
+            "occurred_at": row["occurred_at"],
+        })
+    return {"error_logs": result}
+
+
+@app.delete("/api/guild/{guild_id}/error-logs/{log_id}")
+async def api_delete_error_log(guild_id: int, log_id: int):
+    db.execute("DELETE FROM error_logs WHERE guild_id = ? AND id = ?", (guild_id, log_id))
+    return {"deleted": True}
+
+
 @app.get("/api/guild/{guild_id}/aimod")
 async def api_guild_aimod(guild_id: int):
     row = db.fetchone(

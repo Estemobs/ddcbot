@@ -178,6 +178,13 @@ STRINGS = {
     "logs.user_errors_desc": {"fr": "Arguments invalides, permissions manquantes, cooldowns...", "en": "Invalid arguments, missing permissions, cooldowns..."},
     "logs.unexpected": {"fr": "Erreurs inattendues", "en": "Unexpected errors"},
     "logs.unexpected_desc": {"fr": "Bugs, exceptions, traces d'execution", "en": "Bugs, exceptions, stack traces"},
+    "page.error_logs.title": {"fr": "Erreurs du Bot", "en": "Bot Errors"},
+    "page.error_logs.subtitle": {"fr": "Journalisation des erreurs du bot", "en": "Bot error logging"},
+    "page.error_logs.loading": {"fr": "Chargement...", "en": "Loading..."},
+    "page.error_logs.total_errors": {"fr": "Total erreurs", "en": "Total errors"},
+    "page.error_logs.user_errors": {"fr": "Erreurs utilisateur", "en": "User errors"},
+    "page.error_logs.unexpected_errors": {"fr": "Erreurs inattendues", "en": "Unexpected errors"},
+    "page.error_logs.no_errors": {"fr": "Aucune erreur enregistrée", "en": "No errors recorded"},
 
     # Notes
     "notes.subtitle": {"fr": "Notes globales du bot", "en": "Global bot notes"},

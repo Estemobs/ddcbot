@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ t('page.error_logs.title', id=guild_id) }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ t('page.error_logs.title', id=guild_id) }}</h2>
+  <p>{{ t('page.error_logs.subtitle') }}</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>{{ t('common.stats') }}</h3></div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="value" id="total-errors">{{ t('page.error_logs.loading') }}</div>
+      <div class="label">{{ t('page.error_logs.total_errors') }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="value" id="user-errors">{{ t('page.error_logs.loading') }}</div>
+      <div class="label">{{ t('page.error_logs.user_errors') }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="value" id="unexpected-errors">{{ t('page.error_logs.loading') }}</div>
+      <div class="label">{{ t('page.error_logs.unexpected_errors') }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 24px;">
+  <div class="card-header"><h3>{{ t('page.error_logs.recent_errors') }}</h3></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t('col.command') }}</th>
+          <th>{{ t('col.user') }}</th>
+          <th>{{ t('page.error_logs.type') }}</th>
+          <th>{{ t('page.error_logs.date') }}</th>
+          <th style="text-align:right">{{ t('col.actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in error_logs %}
+        <tr>
+          <td>{{ entry.command or 'N/A' }}</td>
+          <td>{{ entry.user_id or 'Console' }}</td>
+          <td>
+            <span class="tag {% if entry.error_type == 'unexpected_error' %}tag-danger{% else %}tag-warning{% endif %}">
+              {{ t('logs.' ~ entry.error_type) }}
+            </span>
+          </td>
+          <td>{{ entry.occurred_at }}</td>
+          <td style="text-align:right">
+            <button class="btn btn-sm btn-danger" onclick="deleteError({{ entry.id }})">{{ t('btn.delete') }}</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="empty">{{ t('page.error_logs.no_errors') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  fetch('/api/guild/{{ guild_id }}/error-logs')
+    .then(response => response.json())
+    .then(data => {
+      const tds = document.querySelectorAll('tbody tr');
+      const total = data.error_logs.length;
+      const userErrors = data.error_logs.filter(e => e.error_type === 'user_error').length;
+      const unexpectedErrors = data.error_logs.filter(e => e.error_type === 'unexpected_error').length;
+
+      document.getElementById('total-errors').textContent = total;
+      document.getElementById('user-errors').textContent = userErrors;
+      document.getElementById('unexpected-errors').textContent = unexpectedErrors;
+
+      const tbody = document.querySelector('tbody');
+      tbody.innerHTML = '';
+      if (total === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">{{ t(\"page.error_logs.no_errors\") }}</td></tr>';
+        return;
+      }
+      data.error_logs.forEach(entry => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = \`<td>\${entry.command || 'N/A'}</td>
+          <td>\${entry.user_id || 'Console'}</td>
+          <td><span class="tag \${entry.error_type === 'unexpected_error' ? 'tag-danger' : 'tag-warning'}\">
+            \${'\${t(\"logs.\" ~ entry.error_type)}</span></td>
+          <td>\${entry.occurred_at}</td>
+          <td style="text-align:right"><button class="btn btn-sm btn-danger" onclick="deleteError(\${entry.id})">\${t(\"btn.delete\")}</button></td>\`;
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(err => console.error('Erreur chargement logs d\'erreur:', err));
+});
+
+function deleteError(id) {
+  if(confirm('Supprimer cet entrée de logs ?')) {
+    fetch('/api/guild/{{ guild_id }}/error-logs/' + id, { method: 'DELETE' })
+      .then(() => location.reload());
+  }
+}
+</script>
+{% endblock %}
