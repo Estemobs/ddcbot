@@ -49,7 +49,9 @@
           </td>
           <td>{{ entry.occurred_at }}</td>
           <td style="text-align:right">
-            <button class="btn btn-sm btn-danger" onclick="deleteError({{ entry.id }})">{{ t('btn.delete') }}</button>
+            <button class="btn btn-sm btn-copylog" onclick="copyErrorDetails({{ entry.id }}, '{entry.error_message or ""}', '{entry.traceback or ""}')" title="{{ t('copier') }}">
+              <span class="icon">&#128241;</span>
+            </button>
           </td>
         </tr>
         {% else %}
@@ -62,12 +64,33 @@
   </div>
 </div>
 
+<div class="card" style="margin-top: 24px; max-height: 400px; overflow: hidden;">
+  <div class="card-header">
+    <h3>{{ t('page.error_logs.error_details') }}</h3>
+  </div>
+  <div class="card-body" id="error-details-area" style="display: none; padding: 16px;">
+    <div class="form-group">
+      <label>{{ t('page.error_logs.error_message') }}</label>
+      <textarea id="error-message-input" rows="3" readonly style="width: 100%; padding: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 0.85rem; resize: vertical;"></textarea>
+    </div>
+    <div class="form-group">
+      <label>{{ t('page.error_logs.traceback') }}</label>
+      <textarea id="traceback-input" rows="6" readonly style="width: 100%; padding: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 0.75rem; font-family: monospace; resize: vertical; overflow: auto;"></textarea>
+    </div>
+    <div class="form-group">
+      <button class="btn btn-primary" onclick="copyAllErrorDetails()" style="width: 100%; padding: 10px;">
+        {{ t('copier_tout') }}
+      </button>
+      <span style="margin-left: 12px; font-size: 0.8rem; color: var(--text-secondary);" id="copy-status"></span>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   fetch('/api/guild/{{ guild_id }}/error-logs')
     .then(response => response.json())
     .then(data => {
-      const tds = document.querySelectorAll('tbody tr');
       const total = data.error_logs.length;
       const userErrors = data.error_logs.filter(e => e.error_type === 'user_error').length;
       const unexpectedErrors = data.error_logs.filter(e => e.error_type === 'unexpected_error').length;
@@ -84,23 +107,80 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       data.error_logs.forEach(entry => {
         const tr = document.createElement('tr');
+        const safeMsg = (entry.error_message || '').replace(/"/g, '"').replace(/\n/g, '<br>');
+        const safeTb = (entry.traceback || '').replace(/"/g, '"').replace(/\n/g, '<br>');
         tr.innerHTML = \`<td>\${entry.command || 'N/A'}</td>
           <td>\${entry.user_id || 'Console'}</td>
           <td><span class="tag \${entry.error_type === 'unexpected_error' ? 'tag-danger' : 'tag-warning'}\">
             \${'\${t(\"logs.\" ~ entry.error_type)}</span></td>
           <td>\${entry.occurred_at}</td>
-          <td style="text-align:right"><button class="btn btn-sm btn-danger" onclick="deleteError(\${entry.id})">\${t(\"btn.delete\")}</button></td>\`;
+          <td style="text-align:right"><button class="btn btn-sm btn-copylog" onclick="copyErrorDetails(\${entry.id}, \${JSON.stringify(entry.error_message || '')}, \${JSON.stringify(entry.traceback || '')}" title="{{ t('copier') }}"><span class="icon">&#128241;</span></button></td>\`;
         tbody.appendChild(tr);
       });
     })
     .catch(err => console.error('Erreur chargement logs d\'erreur:', err));
 });
 
-function deleteError(id) {
-  if(confirm('Supprimer cet entrée de logs ?')) {
-    fetch('/api/guild/{{ guild_id }}/error-logs/' + id, { method: 'DELETE' })
-      .then(() => location.reload());
-  }
+function copyErrorDetails(id, errorMessage, traceback) {
+  const fullDetails = 'Erreur ID: ' + id + '\nCommande: N/A\nMessage d\'erreur: ' + errorMessage + '\\nTraceback:\\n' + traceback;
+  navigator.clipboard.writeText(fullDetails).then(function() {
+    showCopyStatus('Copie reussie !');
+  }, function(err) {
+    fallbackCopyTextToClipboard(fullDetails);
+  });
 }
+
+function fallbackCopyTextToClipboard(text) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.top = '0';
+  textArea.style.left = '0';
+  textArea.style.position = 'fixed';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand('copy');
+  } catch (err) {
+    console.error('Impossible de copier:', err);
+  }
+  document.body.removeChild(textArea);
+  showCopyStatus('Copie reussie !');
+}
+
+function copyAllErrorDetails() {
+  const msg = document.getElementById('error-message-input').value;
+  const tb = document.getElementById('traceback-input').value;
+  const full = msg + '\\n\\nTraceback:\\n' + tb;
+  navigator.clipboard.writeText(full).then(function() {
+    showCopyStatus('Copie reussie !');
+  }, function(err) {
+    fallbackCopyTextToClipboard(full);
+  });
+}
+
+function showCopyStatus(msg) {
+  const span = document.getElementById('copy-status');
+  span.textContent = msg;
+  span.style.color = 'var(--success)';
+  setTimeout(() => {
+    span.textContent = '';
+    span.style.color = 'var(--text-secondary)';
+  }, 3000);
+}
+
+// Initialize detail area with first error if available
+document.addEventListener('DOMContentLoaded', function() {
+  fetch('/api/guild/{{ guild_id }}/error-logs')
+    .then(r => r.json())
+    .then(data => {
+      if (data.error_logs.length > 0) {
+        const first = data.error_logs[0];
+        document.getElementById('error-message-input').value = first.error_message || '';
+        document.getElementById('traceback-input').value = first.traceback || '';
+        document.getElementById('error-details-area').style.display = 'block';
+      }
+    });
+});
 </script>
 {% endblock %}

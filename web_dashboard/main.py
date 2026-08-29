@@ -1078,7 +1078,7 @@ async def api_guild_error_logs(guild_id: int, limit: int = 50):
             "command": row["command"],
             "error_type": row["error_type"],
             "error_message": row["error_message"],
-            "traceback": row["traceback"][:200] if row["traceback"] else "",
+            "traceback": row["traceback"] if row["traceback"] else "",
             "occurred_at": row["occurred_at"],
         })
     return {"error_logs": result}
