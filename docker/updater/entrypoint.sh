@@ -20,7 +20,9 @@ while true; do
         git merge --ff-only "origin/${BRANCH}"
         docker compose build ddcbot
         docker compose up -d ddcbot
-        echo "[updater] bot redémarré sur ${REMOTE_REV:0:7}"
+        docker compose build dashboard
+        docker compose up -d dashboard
+        echo "[updater] bot et dashboard redémarrés sur ${REMOTE_REV:0:7}"
     fi
 
     sleep "${INTERVAL}"
