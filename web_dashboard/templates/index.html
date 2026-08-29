@@ -31,7 +31,7 @@
 
 {% if guilds %}
 <div class="card">
-  <div class="card-header"><h3>{{ t('index.servers_configured') }}</h3></div>
+  <div class="card-header"><h3>{{ t('index.servers_configured') }} <span class="tag tag-info">{{ guilds | length }}</span></h3></div>
   <div class="table-wrap">
     <table>
       <tr><th>{{ t('index.col_guild_id') }}</th><th>{{ t('index.col_actions') }}</th></tr>
@@ -48,10 +48,8 @@
 <div class="empty">
   <div class="icon">&#128269;</div>
   <p>{{ t('index.empty_servers') }}</p>
-  <p style="margin-top: 8px; color: var(--muted); font-size: 0.9rem;">
-    <a href="/guild/{{ nav_guilds() | first if nav_guilds() else 0 }}" class="btn btn-secondary btn-sm">
-      {{ t('index.btn_configure_first') }}
-    </a>
+  <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.9rem;">
+    <a href="/" class="btn btn-secondary btn-sm">{{ t('index.btn_welcome') }}</a>
   </p>
 </div>
 {% endif %}
