@@ -68,6 +68,9 @@
         </td>
       </tr>
       {% endfor %}
+      {% if not info %}
+      <tr><td colspan="3" class="empty">{{ t('guild.no_modules') }}</td></tr>
+      {% endif %}
     </table>
   </div>
 </div>
