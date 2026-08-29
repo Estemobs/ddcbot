@@ -25,60 +25,6 @@
       location.reload();
     }
   </script>
-  <style>
-    :root {
-      --primary: #4f46e5;
-      --primary-light: #a5f3fc;
-      --success: #10b981;
-      --success-light: #d1fae5;
-      --danger: #ef4444;
-      --danger-light: #fee2e2;
-      --warning: #f59e0b;
-      --warning-light: #fffbeb;
-      --info: #6366f1;
-      --info-light: #e4e6f1;
-      --muted: #6b7280;
-      --card-bg: rgba(17,24,39,0.8);
-      --border: rgba(107,114,128,0.2);
-    }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--primary-light); min-height: 100vh; margin: 0; }
-    .dark { --card-bg: rgba(17,24,39,0.9); --border: rgba(107,114,128,0.3); }
-    a { text-decoration: none; color: inherit; }
-    .icon { font-size: 1.2em; }
-    .sidebar { width: 240px; background: var(--card-bg); padding: 20px; height: 100vh; position: fixed; left: 0; top: 0; border-right: 1px solid var(--border); }
-    .sidebar-brand { padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-    .sidebar-brand h1 { font-size: 1.5rem; color: var(--primary); margin-bottom: 4px; }
-    .sidebar-brand small { color: var(--muted); font-size: 0.8rem; }
-    .sidebar-actions { margin-top: 20px; display: flex; gap: 10px; }
-    .btn { padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
-    .btn-secondary { background: transparent; color: var(--muted); border-color: var(--border); }
-    .btn-secondary:hover { background: var(--border); color: var(--primary); }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { opacity: 0.9; }
-    .nav a { display: block; padding: 8px 12px; margin: 4px 0; border-radius: 6px; color: var(--muted); }
-    .nav a:hover { background: var(--primary-light); color: var(--primary); }
-    .nav a.active { background: var(--primary); color: white; }
-    .main { margin-left: 240px; padding: 24px; }
-    .page-header { text-align: center; margin-bottom: 24px; }
-    .page-header h2 { font-size: 2rem; margin-bottom: 4px; }
-    .page-header p { color: var(--muted); font-size: 1rem; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: var(--card-bg); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid var(--border); }
-    .stat-card .value { font-size: 2.5rem; font-weight: bold; color: var(--primary); }
-    .stat-card .label { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
-    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
-    .card-header { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
-    th { background: var(--primary-light); color: var(--primary); font-size: 0.75rem; }
-    .tag { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-    .tag-success { background: var(--success-light); color: var(--success); }
-    .tag-danger { background: var(--danger-light); color: var(--danger); }
-    .empty { text-align: center; padding: 40px; color: var(--muted); }
-    .section-label { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: block; }
-  </style>
 </head>
 <body>
   <aside class="sidebar">
