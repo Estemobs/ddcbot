@@ -1,48 +1,76 @@
 {% extends "base.html" %}
 {% block title %}{{ t('page.reminders.title') }}{% endblock %}
+{% block crumb %}{{ t('module.reminders') }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>{{ t('nav.reminders') }}</h2>
-  <p>{{ t('reminders.subtitle', id=guild_id) }}</p>
+  <h2>{{ t('module.reminders') }}</h2>
+  <p>{{ t('reminders.subtitle') }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>{{ t('reminders.add') }}</h3></div>
-  <form method="post" action="/guild/{{ guild_id }}/reminders/add" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
-    <div class="form-group" style="margin:0;">
-      <label>{{ t('reminders.trigger') }}</label>
-      <input type="text" name="trigger" required placeholder="{{ t('reminders.trigger_ph') }}">
-    </div>
-    <div class="form-group" style="margin:0; flex:1;">
-      <label>{{ t('reminders.message') }}</label>
-      <textarea name="message" rows="2" required placeholder="{{ t('reminders.message_ph') }}"></textarea>
-    </div>
-    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
-  </form>
-</div>
-
-<div class="card">
-  <div class="card-header"><h3>{{ t('reminders.all') }}</h3></div>
+  <div class="card-header">
+    <h3>{{ t('reminders.pending') }}</h3>
+    <span class="tag tag-hint">{{ t('reminders.readonly_hint') }}</span>
+  </div>
   <div class="table-wrap">
     {% if reminders %}
     <table>
-      <tr><th>ID</th><th>{{ t('economy.col_user') }}</th><th>{{ t('reminders.col_channel') }}</th><th>{{ t('reminders.col_message') }}</th><th>{{ t('reminders.col_scheduled') }}</th></tr>
+      <tr>
+        <th>ID</th><th>{{ t('economy.col_user') }}</th><th>{{ t('reminders.col_channel') }}</th>
+        <th>{{ t('reminders.col_message') }}</th><th>{{ t('reminders.col_scheduled') }}</th><th></th>
+      </tr>
       {% for r in reminders %}
       <tr>
         <td>{{ r.id }}</td>
         <td><code>{{ r.user_id }}</code></td>
         <td><code>{{ r.channel_id or '-' }}</code></td>
-        <td>{{ r.message[:80] }}{% if r.message|length > 80 %}...{% endif %}</td>
-        <td>{{ r.remind_at|int }}</td>
+        <td>{{ r.message[:80] }}{% if r.message|length > 80 %}…{% endif %}</td>
+        <td><time datetime="{{ r.remind_at|int }}" class="ts">{{ r.remind_at|int }}</time></td>
+        <td>
+          <form method="post" action="/guild/{{ guild_id }}/reminders/delete" style="display:inline;">
+            <input type="hidden" name="reminder_id" value="{{ r.id }}">
+            <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </table>
     {% else %}
     <div class="empty">
-      <div class="icon">&#9200;</div>
+      <svg class="i"><use href="#i-clock"/></svg>
       <p>{{ t('reminders.empty') }}</p>
     </div>
     {% endif %}
   </div>
 </div>
+
+{% if past %}
+<div class="card">
+  <div class="card-header"><h3>{{ t('reminders.past') }}</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>ID</th><th>{{ t('economy.col_user') }}</th><th>{{ t('reminders.col_message') }}</th>
+        <th>{{ t('reminders.col_scheduled') }}</th>
+      </tr>
+      {% for r in past %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td><code>{{ r.user_id }}</code></td>
+        <td>{{ r.message[:80] }}{% if r.message|length > 80 %}…{% endif %}</td>
+        <td><time datetime="{{ r.remind_at|int }}" class="ts">{{ r.remind_at|int }}</time></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  // Les horodatages sont stockes en epoch : rendu dans le fuseau du navigateur.
+  document.querySelectorAll('time.ts').forEach(function (el) {
+    var ts = parseInt(el.getAttribute('datetime'), 10);
+    if (!isNaN(ts)) el.textContent = new Date(ts * 1000).toLocaleString();
+  });
+</script>
 {% endblock %}

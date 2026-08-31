@@ -83,15 +83,57 @@ async def admin_role_gate(ctx):
     member_role_ids = {role.id for role in member.roles}
     return any(role_id in member_role_ids for role_id in allowed_roles)
 
+
+def sync_guild_meta(guild):
+    """Enregistre nom/icone/effectif d'un serveur dans guild_meta.
+
+    Le dashboard web lit la meme base mais n'a pas de connexion Discord : sans
+    cette synchro il ne peut afficher que les identifiants numeriques.
+    """
+    db.execute(
+        "INSERT INTO guild_meta (guild_id, name, icon_url, member_count, updated_at) "
+        "VALUES (?, ?, ?, ?, unixepoch()) "
+        "ON CONFLICT(guild_id) DO UPDATE SET "
+        "name = excluded.name, icon_url = excluded.icon_url, "
+        "member_count = excluded.member_count, updated_at = excluded.updated_at",
+        (
+            guild.id,
+            guild.name or "",
+            guild.icon.url if guild.icon else None,
+            guild.member_count or 0,
+        ),
+    )
+
+
 @bot.event
 async def on_ready():
     print("Le bot est en ligne")
     print(f"[DEBUG] Commandes chargees: {len(bot.commands)}")
     await bot.change_presence(activity=discord.Game(name=",help"))
+    for guild in bot.guilds:
+        try:
+            sync_guild_meta(guild)
+        except Exception as exc:
+            print(f"[DEBUG] Synchronisation guild_meta impossible pour {guild.id}: {exc}")
     try:
         await bot.tree.sync()
     except Exception as exc:
         print(f"[DEBUG] Synchronisation slash impossible: {exc}")
+
+
+@bot.event
+async def on_guild_join(guild):
+    sync_guild_meta(guild)
+
+
+@bot.event
+async def on_guild_update(before, after):
+    sync_guild_meta(after)
+
+
+@bot.event
+async def on_guild_remove(guild):
+    db.execute("DELETE FROM guild_meta WHERE guild_id = ?", (guild.id,))
 
 
 @bot.event

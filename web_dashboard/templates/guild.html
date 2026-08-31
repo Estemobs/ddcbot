@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}{{ t('guild.title', id=guild_id) }}{% endblock %}
+{% block title %}{{ gi.name or t('guild.title', id=guild_id) }}{% endblock %}
 {% block crumb %}{{ t('nav.overview') }}{% endblock %}
 {% block content %}
 
 <div class="page-header" style="display:flex;align-items:center;gap:16px">
-  <div class="guild-avatar" style="width:54px;height:54px;border-radius:16px">
-    <svg class="i" style="width:24px;height:24px"><use href="#i-server"/></svg>
-  </div>
+  {{ guild_badge(gi, 54) }}
   <div>
-    <h2>{{ t('nav.server', id=guild_id) }}</h2>
-    <p>{{ t('guild.overview') }}</p>
+    <h2>{{ gi.name or t('nav.server', id=guild_id) }}</h2>
+    <p>
+      {% if gi.member_count %}{{ t('guild.members', count=gi.member_count) }} · {% endif %}ID {{ guild_id }}
+    </p>
   </div>
 </div>
 

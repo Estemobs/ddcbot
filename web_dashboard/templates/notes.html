@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 {% block title %}{{ t('page.notes.title') }}{% endblock %}
+{% block crumb %}{{ t('module.notes') }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>{{ t('nav.notes') }}</h2>
+  <h2>{{ t('module.notes') }}</h2>
   <p>{{ t('notes.subtitle') }}</p>
 </div>
 
 <div class="card">
   <div class="card-header"><h3>{{ t('notes.add') }}</h3></div>
-  <form method="post" action="/notes/add" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+  <form method="post" action="/guild/{{ guild_id }}/notes/add"
+        style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
     <div class="form-group" style="margin:0;">
       <label>{{ t('notes.title') }}</label>
       <input type="text" name="title" required placeholder="{{ t('notes.title_ph') }}">
@@ -22,18 +24,27 @@
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>{{ t('notes.all') }}</h3></div>
+  <div class="card-header">
+    <h3>{{ t('notes.all') }}</h3>
+    <span class="tag tag-info">{{ notes|length }}</span>
+  </div>
   {% if notes %}
   <div class="table-wrap">
     <table>
       <tr><th>{{ t('notes.title') }}</th><th>{{ t('notes.content') }}</th><th></th></tr>
       {% for note in notes %}
       <tr>
-        <td><strong>{{ note.title }}</strong></td>
+        <td>
+          <strong>{{ note.title }}</strong>
+          {% if note.guild_id == 0 %}
+          <span class="tag tag-muted" title="{{ t('notes.legacy_hint') }}">{{ t('notes.legacy') }}</span>
+          {% endif %}
+        </td>
         <td>{{ note.content }}</td>
         <td>
-          <form method="post" action="/notes/delete" style="display:inline;">
+          <form method="post" action="/guild/{{ guild_id }}/notes/delete" style="display:inline;">
             <input type="hidden" name="title" value="{{ note.title }}">
+            <input type="hidden" name="scope" value="{{ note.guild_id }}">
             <button type="submit" class="btn btn-danger btn-sm"
               onclick="return confirm('{{ t('notes.confirm_delete') }}')">{{ t('btn.delete') }}</button>
           </form>
@@ -44,7 +55,7 @@
   </div>
   {% else %}
   <div class="empty">
-    <div class="icon">&#128221;</div>
+    <svg class="i"><use href="#i-note"/></svg>
     <p>{{ t('notes.empty') }}</p>
   </div>
   {% endif %}

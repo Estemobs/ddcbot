@@ -1,4 +1,15 @@
 {% set gid = current_guild() %}
+{% set gi = guild_info(gid) if gid else None %}
+{% macro guild_badge(info, size) -%}
+  {%- if info.icon_url -%}
+  <img class="guild-avatar" src="{{ info.icon_url }}" alt="" loading="lazy"
+       style="width:{{ size }}px;height:{{ size }}px">
+  {%- else -%}
+  <span class="guild-avatar" style="width:{{ size }}px;height:{{ size }}px">
+    <svg class="i" style="width:{{ (size * 0.5)|int }}px;height:{{ (size * 0.5)|int }}px"><use href="#i-server"/></svg>
+  </span>
+  {%- endif -%}
+{%- endmacro %}
 <!DOCTYPE html>
 <html lang="{{ current_lang() }}" data-theme="dark">
 <head>
@@ -33,17 +44,9 @@
 
   <nav>
     <div class="section-label">{{ t('nav.section.general') }}</div>
-    {% for item in [
-        ('/', 'home', 'nav.home'),
-        ('/notes', 'note', 'nav.notes'),
-        ('/transactions', 'swap', 'nav.transactions'),
-        ('/reminders', 'clock', 'nav.reminders'),
-        ('/giveaways', 'gift', 'nav.giveaways')
-    ] %}
-    <a href="{{ item[0] }}" class="{% if request.url.path == item[0] %}active{% endif %}">
-      <svg class="i"><use href="#i-{{ item[1] }}"/></svg> {{ t(item[2]) }}
+    <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+      <svg class="i"><use href="#i-home"/></svg> {{ t('nav.home') }}
     </a>
-    {% endfor %}
 
     <div class="divider"></div>
 
@@ -52,7 +55,10 @@
       <svg class="i" style="width:14px;height:14px"><use href="#i-arrow-left"/></svg>
       {{ t('nav.all_servers') }}
     </a>
-    <div class="section-label" title="{{ gid }}">{{ t('nav.server_short', id=(gid|string)[-4:]) }}</div>
+    <div class="sidebar-guild" title="{{ gid }}">
+      {{ guild_badge(gi, 28) }}
+      <span class="sidebar-guild-name">{{ gi.name or t('nav.server', id=gid) }}</span>
+    </div>
     <a href="/guild/{{ gid }}" class="{% if request.url.path == '/guild/' ~ gid %}active{% endif %}">
       <svg class="i"><use href="#i-grid"/></svg> {{ t('nav.overview') }}
     </a>
@@ -65,8 +71,9 @@
     {% else %}
     <div class="section-label">{{ t('nav.section.servers') }}</div>
     {% for g in nav_guilds() %}
+    {% set g_info = guild_info(g) %}
     <a href="/guild/{{ g }}" title="{{ g }}">
-      <svg class="i"><use href="#i-server"/></svg> {{ t('nav.server_short', id=(g|string)[-4:]) }}
+      {{ guild_badge(g_info, 20) }} {{ g_info.name or t('nav.server_short', id=(g|string)[-4:]) }}
     </a>
     {% else %}
     <div class="section-label" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--text-muted)">
@@ -97,7 +104,7 @@
     <a href="/" class="hide-sm">DDCBot</a>
     {% if gid %}
     <span class="sep hide-sm">/</span>
-    <a href="/guild/{{ gid }}" class="hide-sm">{{ t('nav.server', id=gid) }}</a>
+    <a href="/guild/{{ gid }}" class="hide-sm">{{ gi.name or t('nav.server', id=gid) }}</a>
     {% endif %}
     <span class="sep hide-sm">/</span>
     {# Par defaut : le titre de la page, sans le suffixe " - Serveur X" deja affiche avant #}

@@ -44,6 +44,10 @@ STRINGS = {
     "module.minecraft": {"fr": "Minecraft", "en": "Minecraft"},
     "module.steam": {"fr": "Steam", "en": "Steam"},
     "module.lang": {"fr": "Langue", "en": "Language"},
+    "module.notes": {"fr": "Notes", "en": "Notes"},
+    "module.transactions": {"fr": "Transactions", "en": "Transactions"},
+    "module.reminders": {"fr": "Rappels", "en": "Reminders"},
+    "module.giveaways": {"fr": "Giveaways", "en": "Giveaways"},
 
     "module.desc.economy": {"fr": "Monnaie, transferts, soldes", "en": "Currency, transfers, balances"},
     "module.desc.work": {"fr": "Jobs et revenus passifs", "en": "Jobs and passive income"},
@@ -61,6 +65,10 @@ STRINGS = {
     "module.desc.minecraft": {"fr": "Console serveur (RCON/tmux)", "en": "Server console (RCON/tmux)"},
     "module.desc.steam": {"fr": "Cle API et profils Steam", "en": "Steam API key and profiles"},
     "module.desc.lang": {"fr": "Langue du bot sur ce serveur", "en": "Bot language on this server"},
+    "module.desc.notes": {"fr": "Notes et tags du serveur", "en": "Server notes and tags"},
+    "module.desc.transactions": {"fr": "Historique economique du serveur", "en": "Server economy history"},
+    "module.desc.reminders": {"fr": "Rappels programmes sur ce serveur", "en": "Reminders scheduled on this server"},
+    "module.desc.giveaways": {"fr": "Giveaways en cours et termines", "en": "Running and finished giveaways"},
 
     # Accueil (index)
     "index.title": {"fr": "DDCBot - Accueil", "en": "DDCBot - Home"},
@@ -92,6 +100,7 @@ STRINGS = {
     "guild.col_config": {"fr": "Configuration", "en": "Configuration"},
     "guild.status_ok": {"fr": "Configure", "en": "Configured"},
     "guild.status_ko": {"fr": "Non configure", "en": "Not configured"},
+    "guild.members": {"fr": "{count} membres", "en": "{count} members"},
     "guild.active_modules": {"fr": "Modules actifs", "en": "Active modules"},
     "guild.modules_hint": {"fr": "Cliquez pour configurer", "en": "Click to configure"},
 
@@ -492,6 +501,25 @@ STRINGS = {
     "col.description": {"fr": "Description", "en": "Description"},
     "common.config": {"fr": "Configuration", "en": "Configuration"},
     "common.placeholders": {"fr": "Placeholders disponibles", "en": "Available placeholders"},
+
+    # Ajouts : modules notes/transactions/rappels/giveaways passes par serveur
+    "notes.legacy": {"fr": "heritee", "en": "legacy"},
+    "notes.legacy_hint": {
+        "fr": "Note creee avant le passage des notes par serveur : visible sur tous les serveurs.",
+        "en": "Note created before notes became per-server: visible on every server.",
+    },
+    "transactions.recent": {"fr": "Transactions recentes", "en": "Recent transactions"},
+    "reminders.pending": {"fr": "Rappels a venir", "en": "Upcoming reminders"},
+    "reminders.past": {"fr": "Rappels passes", "en": "Past reminders"},
+    "reminders.readonly_hint": {
+        "fr": "Creation via ,rmd sur Discord",
+        "en": "Created with ,rmd on Discord",
+    },
+    "giveaways.readonly_hint": {
+        "fr": "Creation via ,gstart sur Discord",
+        "en": "Created with ,gstart on Discord",
+    },
+    "giveaways.end": {"fr": "Terminer", "en": "End"},
 }
 
 SUPPORTED_LANGS = ("fr", "en")

@@ -68,6 +68,10 @@ GUILD_MODULES = [
     {"slug": "minecraft", "key": "module.minecraft", "icon": "cube", "table": "minecraft_config"},
     {"slug": "steam", "key": "module.steam", "icon": "gamepad", "table": "steam_config"},
     {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
+    {"slug": "notes", "key": "module.notes", "icon": "note", "table": "notes"},
+    {"slug": "transactions", "key": "module.transactions", "icon": "swap", "table": "transactions"},
+    {"slug": "reminders", "key": "module.reminders", "icon": "clock", "table": "reminders"},
+    {"slug": "giveaways", "key": "module.giveaways", "icon": "gift", "table": "giveaways"},
 ]
 
 templates.env.globals["guild_modules"] = GUILD_MODULES
@@ -219,6 +223,7 @@ def get_guilds():
         ("lockdown_config", "guild_id"),
         ("invites", "guild_id"),
         ("steam_config", "guild_id"),
+        ("guild_meta", "guild_id"),
     ]
     guild_ids = set()
     for table, col in tables_to_check:
@@ -231,15 +236,42 @@ def get_guilds():
     return sorted(guild_ids)
 
 
+def guild_info(guild_id):
+    """Nom/icone d'un serveur depuis guild_meta, avec repli sur l'identifiant.
+
+    Le bot alimente guild_meta (voir main.py sync_guild_meta) ; tant qu'il n'a
+    pas tourne depuis la migration, `name` reste None et les gabarits affichent
+    l'identifiant numerique.
+    """
+    row = None
+    try:
+        row = db.fetchone(
+            "SELECT name, icon_url, member_count FROM guild_meta WHERE guild_id = ?",
+            (guild_id,),
+        )
+    except Exception:
+        pass
+    return {
+        "id": guild_id,
+        "name": (row["name"] or None) if row else None,
+        "icon_url": row["icon_url"] if row else None,
+        "member_count": row["member_count"] if row else 0,
+    }
+
+
+templates.env.globals["guild_info"] = guild_info
+
+
 # ── Pages principales ──
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     guilds = get_guilds()
-    selected_guild = request.query_params.get("guild_id", None)
-    if selected_guild and selected_guild not in guilds:
-        selected_guild = None
-    
+    # Ancien lien ?guild_id=... : renvoie vers la page du serveur.
+    selected_guild = request.query_params.get("guild_id")
+    if selected_guild and selected_guild.isdigit() and int(selected_guild) in guilds:
+        return RedirectResponse(f"/guild/{int(selected_guild)}", status_code=303)
+
     stats = {
         "guilds": len(guilds),
         "balances": 0,
@@ -267,14 +299,7 @@ async def index(request: Request):
         stats["warnings"] = row["c"]
     except Exception:
         pass
-    
-    # If a guild is selected, show its overview; otherwise show homepage
-    if selected_guild:
-        return templates.TemplateResponse(request, "guild_overview.html", {
-            "request": request, "guilds": guilds, "selected_guild": selected_guild,
-            "stats": stats
-        })
-    
+
     return templates.TemplateResponse(request, "index.html", {
         "request": request, "guilds": guilds, "stats": stats
     })
@@ -655,32 +680,6 @@ async def logs_save_config(
         (guild_id, json.dumps(cfg)),
     )
     return RedirectResponse(f"/guild/{guild_id}/logs", status_code=303)
-
-
-# ── Notes ──
-
-@app.get("/notes", response_class=HTMLResponse)
-async def notes_page(request: Request):
-    notes = db.fetchall("SELECT title, content FROM notes ORDER BY title")
-    return templates.TemplateResponse(request, "notes.html", {
-        "request": request, "notes": notes,
-    })
-
-
-@app.post("/notes/add")
-async def notes_add(title: str = Form(...), content: str = Form(...)):
-    db.execute(
-        "INSERT INTO notes (title, content) VALUES (?, ?) "
-        "ON CONFLICT(title) DO UPDATE SET content = excluded.content",
-        (title.strip(), content),
-    )
-    return RedirectResponse("/notes", status_code=303)
-
-
-@app.post("/notes/delete")
-async def notes_delete(title: str = Form(...)):
-    db.execute("DELETE FROM notes WHERE title = ?", (title,))
-    return RedirectResponse("/notes", status_code=303)
 
 
 # ── AI-Moderation ──
@@ -1314,181 +1313,115 @@ async def api_giveaways():
 
 
 @app.get("/api/notes")
-async def api_notes():
-    notes = db.fetchall("SELECT title, content FROM notes ORDER BY title")
-    return {"notes": [dict(n) for n in notes]}
-
-
-# ── Transactions (historique global) ──
-
-@app.get("/transactions", response_class=HTMLResponse)
-async def transactions_page(request: Request, guild_id: int = 0):
+async def api_notes(guild_id: int = 0):
     if guild_id:
-        txs = db.fetchall(
-            "SELECT * FROM transactions WHERE guild_id = ? ORDER BY created_at DESC LIMIT 100",
+        notes = db.fetchall(
+            "SELECT guild_id, title, content FROM notes WHERE guild_id IN (?, 0) "
+            "ORDER BY guild_id DESC, title",
             (guild_id,),
         )
     else:
-        txs = db.fetchall("SELECT * FROM transactions ORDER BY created_at DESC LIMIT 100")
-    return templates.TemplateResponse(request, "transactions.html", {
-        "request": request, "transactions": txs, "selected_guild": guild_id,
-    })
+        notes = db.fetchall("SELECT guild_id, title, content FROM notes ORDER BY guild_id, title")
+    return {"notes": [dict(n) for n in notes]}
 
 
-# ── Reminders ──
-
-@app.get("/reminders", response_class=HTMLResponse)
-async def reminders_page(request: Request):
-    import time
-    now = time.time()
-    pending = db.fetchall(
-        "SELECT * FROM reminders WHERE remind_at > ? ORDER BY remind_at LIMIT 100",
-        (now,),
-    )
-    return templates.TemplateResponse(request, "reminders.html", {
-        "request": request, "reminders": pending,
-    })
-
-
-# ── Giveaways ──
-
-@app.post("/guild/{guild_id}/giveaway/config")
-async def giveaway_config(
-    guild_id: int,
-    duration: int = Form(...),
-    prize: str = Form(...),
-):
-    """Configure and start a giveaway via web dashboard."""
-    ends_at = time.time() + duration
-    # Use the animations cog's create_giveaway method logic
-    db.execute(
-        "INSERT INTO giveaways (guild_id, channel_id, message_id, prize, ends_at, host_id) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (guild_id, None, None, prize, int(ends_at), None),
-    )
-    # Get the last inserted giveaway
-    row = db.fetchone("SELECT id, prize, ends_at FROM giveaways WHERE id = last_insert_rowid()")
-    return {"giveaway_id": row["id"], "prize": row["prize"], "ends_at": row["ends_at"]}
-
-
-@app.get("/guild/{guild_id}/giveaway", response_class=HTMLResponse)
-async def giveaway_page(request: Request, guild_id: int):
-    cfg = db.fetchone("SELECT * FROM giveaways WHERE guild_id = ? AND ended = 0 ORDER BY ends_at LIMIT 1", (guild_id,))
-    active = db.fetchall("SELECT * FROM giveaways WHERE guild_id = ? AND ended = 0", (guild_id,))
-    ended = db.fetchall("SELECT * FROM giveaways WHERE guild_id = ? AND ended = 1 ORDER BY ends_at DESC LIMIT 30", (guild_id,))
-    return templates.TemplateResponse(request, "giveaways.html", {
-        "request": request, "guild_id": guild_id,
-        "cfg": dict(cfg) if cfg else None, "active": active, "ended": ended,
-    })
-
-@app.post("/guild/{guild_id}/giveaway/start")
-async def giveaway_start(
-    guild_id: int, duration: int = Form(...), prize: str = Form(...),
-    channel_id: int = Form(0),
-):
-    """Start a giveaway via web dashboard."""
-    ends_at = time.time() + duration
-    # Create giveaway entry
-    db.execute(
-        "INSERT INTO giveaways (guild_id, channel_id, message_id, prize, ends_at, host_id) "
-        "VALUES (?, ?, ?, ?, ?, ?) "
-        "ON CONFLICT(guild_id) DO UPDATE SET "
-        "channel_id=excluded.channel_id, prize=excluded.prize, "
-        "ends_at=excluded.ends_at, host_id=excluded.host_id",
-        (guild_id, channel_id or None, None, prize, int(ends_at), None),
-    )
-    # Get the created giveaway
-    row = db.fetchone("SELECT id, prize, ends_at FROM giveaways WHERE guild_id = ? ORDER BY id DESC LIMIT 1", (guild_id,))
-    return {"giveaway_id": row["id"], "prize": row["prize"], "ends_at": row["ends_at"]}
-
-
-@app.post("/guild/{guild_id}/giveaway/end")
-async def giveaway_end(guild_id: int):
-    """End a giveaway via web dashboard."""
-    db.execute("UPDATE giveaways SET ended = 1 WHERE guild_id = ? AND ended = 0", (guild_id,))
-    return {"status": "ended"}
-
-
-# ── Notes Config ──
+# ── Notes (par serveur) ──
+# Les notes sont scopees par serveur depuis la migration 0010. Les notes creees
+# avant portent guild_id = 0 : elles restent visibles partout, signalees comme
+# heritees, et peuvent etre supprimees depuis n'importe quel serveur.
 
 @app.get("/guild/{guild_id}/notes", response_class=HTMLResponse)
-async def notes_page(request: Request, guild_id: int):
-    cfg = db.fetchone("SELECT * FROM notes_config WHERE guild_id = ?", (guild_id,))
-    all_notes = db.fetchall("SELECT * FROM notes WHERE guild_id = ORDER BY created_at DESC", (guild_id,))
+async def guild_notes_page(request: Request, guild_id: int):
+    notes = db.fetchall(
+        "SELECT guild_id, title, content FROM notes WHERE guild_id IN (?, 0) "
+        "ORDER BY guild_id DESC, title",
+        (guild_id,),
+    )
     return templates.TemplateResponse(request, "notes.html", {
-        "request": request, "guild_id": guild_id,
-        "config": dict(cfg) if cfg else None, "notes": all_notes,
+        "request": request, "guild_id": guild_id, "notes": notes,
     })
 
 
 @app.post("/guild/{guild_id}/notes/add")
-async def notes_add(request: Request, guild_id: int):
-    form = await request.form()
-    note_text = form.get("note_text", "")
-    if note_text.strip():
-        db.execute(
-            "INSERT INTO notes (guild_id, user_id, note_text) VALUES (?, ?, ?)",
-            (guild_id, None, note_text[:500]),
-        )
+async def guild_notes_add(guild_id: int, title: str = Form(...), content: str = Form(...)):
+    db.execute(
+        "INSERT INTO notes (guild_id, title, content) VALUES (?, ?, ?) "
+        "ON CONFLICT(guild_id, title) DO UPDATE SET content = excluded.content",
+        (guild_id, title.strip(), content),
+    )
     return RedirectResponse(f"/guild/{guild_id}/notes", status_code=303)
 
 
 @app.post("/guild/{guild_id}/notes/delete")
-async def notes_delete(guild_id: int, note_id: int):
-    db.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+async def guild_notes_delete(guild_id: int, title: str = Form(...), scope: int = Form(0)):
+    db.execute("DELETE FROM notes WHERE guild_id = ? AND title = ?", (scope, title))
     return RedirectResponse(f"/guild/{guild_id}/notes", status_code=303)
 
 
-# ── Reminders Config ──
+# ── Transactions (par serveur) ──
 
-@app.get("/guild/{guild_id}/reminders", response_class=HTMLResponse)
-async def reminders_page(request: Request, guild_id: int):
-    cfg = db.fetchone("SELECT * FROM reminders_config WHERE guild_id = ?", (guild_id,))
-    all_reminders = db.fetchall(
-        "SELECT * FROM reminders WHERE guild_id = ? ORDER BY created_at DESC LIMIT 50", (guild_id,)
+@app.get("/guild/{guild_id}/transactions", response_class=HTMLResponse)
+async def guild_transactions_page(request: Request, guild_id: int):
+    txs = db.fetchall(
+        "SELECT * FROM transactions WHERE guild_id = ? ORDER BY created_at DESC LIMIT 100",
+        (guild_id,),
     )
-    return templates.TemplateResponse(request, "reminders.html", {
-        "request": request, "guild_id": guild_id,
-        "config": dict(cfg) if cfg else None, "reminders": all_reminders,
+    return templates.TemplateResponse(request, "transactions.html", {
+        "request": request, "guild_id": guild_id, "transactions": txs,
     })
 
 
-@app.post("/guild/{guild_id}/reminders/add")
-async def reminders_add(
-    request: Request, guild_id: int, trigger: str = Form(...), message: str = Form(...),
-):
-    """Add a reminder."""
-    db.execute(
-        "INSERT INTO reminders (guild_id, user_id, trigger, message) VALUES (?, ?, ?, ?)",
-        (guild_id, None, trigger, message),
+# ── Rappels (par serveur) ──
+# Consultation seule : un rappel a besoin d'un salon et d'un auteur Discord,
+# c'est ,rmd cote bot qui les cree. Le dashboard liste et supprime.
+
+@app.get("/guild/{guild_id}/reminders", response_class=HTMLResponse)
+async def guild_reminders_page(request: Request, guild_id: int):
+    now = time.time()
+    pending = db.fetchall(
+        "SELECT * FROM reminders WHERE guild_id = ? AND remind_at > ? ORDER BY remind_at LIMIT 100",
+        (guild_id, now),
     )
+    past = db.fetchall(
+        "SELECT * FROM reminders WHERE guild_id = ? AND remind_at <= ? "
+        "ORDER BY remind_at DESC LIMIT 30",
+        (guild_id, now),
+    )
+    return templates.TemplateResponse(request, "reminders.html", {
+        "request": request, "guild_id": guild_id, "reminders": pending, "past": past,
+    })
+
+
+@app.post("/guild/{guild_id}/reminders/delete")
+async def guild_reminders_delete(guild_id: int, reminder_id: int = Form(...)):
+    db.execute("DELETE FROM reminders WHERE id = ? AND guild_id = ?", (reminder_id, guild_id))
     return RedirectResponse(f"/guild/{guild_id}/reminders", status_code=303)
 
 
-# ── Transactions View ──
+# ── Giveaways (par serveur) ──
+# Consultation seule : un giveaway vit sur un message Discord (reactions), il ne
+# peut pas etre cree depuis le web sans salon ni message.
 
-@app.get("/guild/{guild_id}/transactions", response_class=HTMLResponse)
-async def transactions_page(request: Request, guild_id: int):
-    recent_tx = db.fetchall(
-        "SELECT * FROM transactions WHERE guild_id = ? ORDER BY created_at DESC LIMIT 50", (guild_id,)
-    )
-    return templates.TemplateResponse(request, "transactions.html", {
-        "request": request, "guild_id": guild_id,
-        "transactions": recent_tx,
-    })
-
-
-@app.get("/giveaways", response_class=HTMLResponse)
-async def giveaways_page(request: Request):
+@app.get("/guild/{guild_id}/giveaways", response_class=HTMLResponse)
+async def guild_giveaways_page(request: Request, guild_id: int):
     active = db.fetchall(
-        "SELECT * FROM giveaways WHERE ended = 0 ORDER BY ends_at"
+        "SELECT * FROM giveaways WHERE guild_id = ? AND ended = 0 ORDER BY ends_at", (guild_id,)
     )
     ended = db.fetchall(
-        "SELECT * FROM giveaways WHERE ended = 1 ORDER BY ends_at DESC LIMIT 30"
+        "SELECT * FROM giveaways WHERE guild_id = ? AND ended = 1 ORDER BY ends_at DESC LIMIT 30",
+        (guild_id,),
     )
     return templates.TemplateResponse(request, "giveaways.html", {
-        "request": request, "active": active, "ended": ended,
+        "request": request, "guild_id": guild_id, "active": active, "ended": ended,
     })
+
+
+@app.post("/guild/{guild_id}/giveaways/end")
+async def guild_giveaway_end(guild_id: int, giveaway_id: int = Form(...)):
+    db.execute(
+        "UPDATE giveaways SET ended = 1 WHERE id = ? AND guild_id = ?", (giveaway_id, guild_id)
+    )
+    return RedirectResponse(f"/guild/{guild_id}/giveaways", status_code=303)
 
 
 if __name__ == "__main__":

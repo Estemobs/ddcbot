@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ t('page.transactions.title') }}{% endblock %}
+{% block crumb %}{{ t('module.transactions') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <h2>{{ t('transactions.heading') }}</h2>
@@ -7,15 +8,22 @@
 </div>
 
 <div class="card">
+  <div class="card-header">
+    <h3>{{ t('transactions.recent') }}</h3>
+    <span class="tag tag-info">{{ transactions|length }}</span>
+  </div>
   <div class="table-wrap">
     {% if transactions %}
     <table>
-      <tr><th>ID</th><th>{{ t('economy.col_date') }}</th><th>{{ t('transactions.col_guild') }}</th><th>{{ t('economy.col_user') }}</th><th>{{ t('transactions.col_amount') }}</th><th>{{ t('economy.col_type') }}</th><th>{{ t('economy.col_detail') }}</th></tr>
+      <tr>
+        <th>ID</th><th>{{ t('economy.col_date') }}</th><th>{{ t('economy.col_user') }}</th>
+        <th>{{ t('transactions.col_amount') }}</th><th>{{ t('economy.col_type') }}</th>
+        <th>{{ t('economy.col_detail') }}</th>
+      </tr>
       {% for tx in transactions %}
       <tr>
         <td>{{ tx.id }}</td>
         <td>{{ tx.created_at }}</td>
-        <td><code>{{ tx.guild_id or '-' }}</code></td>
         <td><code>{{ tx.user_id }}</code></td>
         <td style="color: {{ 'var(--success)' if tx.amount > 0 else 'var(--danger)' }}">
           {{ '+' if tx.amount > 0 else '' }}{{ "%.2f"|format(tx.amount) }}
@@ -26,7 +34,10 @@
       {% endfor %}
     </table>
     {% else %}
-    <div class="empty"><p>{{ t('transactions.empty') }}</p></div>
+    <div class="empty">
+      <svg class="i"><use href="#i-swap"/></svg>
+      <p>{{ t('transactions.empty') }}</p>
+    </div>
     {% endif %}
   </div>
 </div>

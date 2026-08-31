@@ -100,7 +100,7 @@ class TestDashboardSixNewPages(unittest.TestCase):
 
     def test_all_pages_return_200(self):
         for path in [
-            "/", "/notes", "/transactions", "/reminders", "/giveaways",
+            "/",
             f"/guild/{GUILD}", f"/guild/{GUILD}/economy",
             f"/guild/{GUILD}/moderation", f"/guild/{GUILD}/leveling",
             f"/guild/{GUILD}/welcome", f"/guild/{GUILD}/automod",
@@ -109,7 +109,9 @@ class TestDashboardSixNewPages(unittest.TestCase):
             f"/guild/{GUILD}/lockdown", f"/guild/{GUILD}/invitations",
             f"/guild/{GUILD}/minecraft", f"/guild/{GUILD}/steam",
             f"/guild/{GUILD}/work", f"/guild/{GUILD}/rss",
-            f"/guild/{GUILD}/lang",
+            f"/guild/{GUILD}/lang", f"/guild/{GUILD}/notes",
+            f"/guild/{GUILD}/transactions", f"/guild/{GUILD}/reminders",
+            f"/guild/{GUILD}/giveaways",
         ]:
             with self.subTest(path=path):
                 resp = self.client.get(path)
@@ -221,14 +223,108 @@ class TestDashboardConfigPosts(unittest.TestCase):
         self.assertEqual(row["max_amount"], 200)
 
     def test_notes_add_delete(self):
-        resp = self.client.post("/notes/add", data={"title": "TitreTest", "content": "Contenu"})
+        resp = self.client.post(
+            f"/guild/{GUILD}/notes/add", data={"title": "TitreTest", "content": "Contenu"}
+        )
         self.assertEqual(resp.status_code, 303)
-        row = dashboard.db.fetchone("SELECT * FROM notes WHERE title = 'TitreTest'")
+        row = dashboard.db.fetchone(
+            "SELECT * FROM notes WHERE guild_id = ? AND title = 'TitreTest'", (GUILD,)
+        )
         self.assertIsNotNone(row)
-        resp = self.client.post("/notes/delete", data={"title": "TitreTest"})
+        resp = self.client.post(
+            f"/guild/{GUILD}/notes/delete", data={"title": "TitreTest", "scope": str(GUILD)}
+        )
         self.assertEqual(resp.status_code, 303)
-        row = dashboard.db.fetchone("SELECT * FROM notes WHERE title = 'TitreTest'")
+        row = dashboard.db.fetchone(
+            "SELECT * FROM notes WHERE guild_id = ? AND title = 'TitreTest'", (GUILD,)
+        )
         self.assertIsNone(row)
+
+
+class TestGuildIdentity(unittest.TestCase):
+    """Nom et logo des serveurs, alimentes par le bot dans guild_meta."""
+
+    def setUp(self):
+        self._old_db = dashboard.db
+        dashboard.db = _fresh_db()
+        dashboard.db.execute(
+            "INSERT INTO economy_config (guild_id) VALUES (?)", (GUILD,)
+        )
+        self.client = TestClient(dashboard.app, follow_redirects=False)
+
+    def tearDown(self):
+        dashboard.db = self._old_db
+
+    def _set_meta(self, name, icon_url, members):
+        dashboard.db.execute(
+            "INSERT INTO guild_meta (guild_id, name, icon_url, member_count) VALUES (?, ?, ?, ?)",
+            (GUILD, name, icon_url, members),
+        )
+
+    def test_falls_back_to_id_without_meta(self):
+        resp = self.client.get(f"/guild/{GUILD}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(str(GUILD), resp.text)
+
+    def test_shows_name_icon_and_member_count(self):
+        self._set_meta("Mon Serveur", "https://cdn.example/icon.png", 42)
+        resp = self.client.get(f"/guild/{GUILD}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("Mon Serveur", resp.text)
+        self.assertIn("https://cdn.example/icon.png", resp.text)
+        self.assertIn("42 membres", resp.text)
+
+    def test_name_shown_on_home_page(self):
+        self._set_meta("Mon Serveur", None, 0)
+        resp = self.client.get("/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("Mon Serveur", resp.text)
+
+    def test_guild_known_from_meta_alone(self):
+        dashboard.db.execute(
+            "INSERT INTO guild_meta (guild_id, name) VALUES (?, ?)", (777, "Sans Config")
+        )
+        self.assertIn(777, dashboard.get_guilds())
+
+
+class TestPerGuildNotes(unittest.TestCase):
+    """Les notes heritees (guild_id 0) restent visibles depuis chaque serveur."""
+
+    def setUp(self):
+        self._old_db = dashboard.db
+        dashboard.db = _fresh_db()
+        dashboard.db.execute("INSERT INTO economy_config (guild_id) VALUES (?)", (GUILD,))
+        dashboard.db.execute(
+            "INSERT INTO notes (guild_id, title, content) VALUES (0, 'ancienne', 'globale')"
+        )
+        dashboard.db.execute(
+            "INSERT INTO notes (guild_id, title, content) VALUES (?, 'locale', 'du serveur')",
+            (GUILD,),
+        )
+        self.client = TestClient(dashboard.app, follow_redirects=False)
+
+    def tearDown(self):
+        dashboard.db = self._old_db
+
+    def test_page_lists_guild_and_legacy_notes(self):
+        resp = self.client.get(f"/guild/{GUILD}/notes")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("locale", resp.text)
+        self.assertIn("ancienne", resp.text)
+
+    def test_delete_targets_the_requested_scope(self):
+        resp = self.client.post(
+            f"/guild/{GUILD}/notes/delete", data={"title": "locale", "scope": str(GUILD)}
+        )
+        self.assertEqual(resp.status_code, 303)
+        self.assertIsNotNone(
+            dashboard.db.fetchone("SELECT 1 FROM notes WHERE guild_id = 0 AND title = 'ancienne'")
+        )
+        self.assertIsNone(
+            dashboard.db.fetchone(
+                "SELECT 1 FROM notes WHERE guild_id = ? AND title = 'locale'", (GUILD,)
+            )
+        )
 
 
 class TestDashboardAuth(unittest.TestCase):

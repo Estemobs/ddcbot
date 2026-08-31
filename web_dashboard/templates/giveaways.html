@@ -1,30 +1,45 @@
 {% extends "base.html" %}
 {% block title %}{{ t('page.giveaways.title') }}{% endblock %}
+{% block crumb %}{{ t('module.giveaways') }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>{{ t('nav.giveaways') }}</h2>
+  <h2>{{ t('module.giveaways') }}</h2>
   <p>{{ t('giveaways.subtitle') }}</p>
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>{{ t('giveaways.active') }}</h3></div>
+  <div class="card-header">
+    <h3>{{ t('giveaways.active') }}</h3>
+    <span class="tag tag-hint">{{ t('giveaways.readonly_hint') }}</span>
+  </div>
   {% if active %}
   <div class="table-wrap">
     <table>
-      <tr><th>ID</th><th>{{ t('giveaways.col_server') }}</th><th>{{ t('giveaways.col_prize') }}</th><th>{{ t('giveaways.col_host') }}</th><th>{{ t('giveaways.col_ends') }}</th></tr>
+      <tr>
+        <th>ID</th><th>{{ t('giveaways.col_prize') }}</th><th>{{ t('giveaways.col_host') }}</th>
+        <th>{{ t('giveaways.col_ends') }}</th><th></th>
+      </tr>
       {% for g in active %}
       <tr>
         <td>{{ g.id }}</td>
-        <td><code>{{ g.guild_id }}</code></td>
         <td>{{ g.prize }}</td>
         <td><code>{{ g.host_id }}</code></td>
-        <td>{{ g.ends_at|int }}</td>
+        <td><time datetime="{{ g.ends_at|int }}" class="ts">{{ g.ends_at|int }}</time></td>
+        <td>
+          <form method="post" action="/guild/{{ guild_id }}/giveaways/end" style="display:inline;">
+            <input type="hidden" name="giveaway_id" value="{{ g.id }}">
+            <button type="submit" class="btn btn-danger btn-sm">{{ t('giveaways.end') }}</button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </table>
   </div>
   {% else %}
-  <div class="empty"><p>{{ t('giveaways.empty_active') }}</p></div>
+  <div class="empty">
+    <svg class="i"><use href="#i-gift"/></svg>
+    <p>{{ t('giveaways.empty_active') }}</p>
+  </div>
   {% endif %}
 </div>
 
@@ -33,13 +48,13 @@
   {% if ended %}
   <div class="table-wrap">
     <table>
-      <tr><th>ID</th><th>{{ t('giveaways.col_server') }}</th><th>{{ t('giveaways.col_prize') }}</th><th>{{ t('giveaways.col_host') }}</th></tr>
+      <tr><th>ID</th><th>{{ t('giveaways.col_prize') }}</th><th>{{ t('giveaways.col_host') }}</th><th>{{ t('giveaways.col_ends') }}</th></tr>
       {% for g in ended %}
       <tr>
         <td>{{ g.id }}</td>
-        <td><code>{{ g.guild_id }}</code></td>
         <td>{{ g.prize }}</td>
         <td><code>{{ g.host_id }}</code></td>
+        <td><time datetime="{{ g.ends_at|int }}" class="ts">{{ g.ends_at|int }}</time></td>
       </tr>
       {% endfor %}
     </table>
@@ -48,4 +63,11 @@
   <div class="empty"><p>{{ t('giveaways.empty_ended') }}</p></div>
   {% endif %}
 </div>
+
+<script>
+  document.querySelectorAll('time.ts').forEach(function (el) {
+    var ts = parseInt(el.getAttribute('datetime'), 10);
+    if (!isNaN(ts)) el.textContent = new Date(ts * 1000).toLocaleString();
+  });
+</script>
 {% endblock %}

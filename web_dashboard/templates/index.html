@@ -53,12 +53,15 @@
   {% if guilds %}
   <div class="tile-grid">
     {% for g in guilds %}
+    {% set g_info = guild_info(g) %}
     <a class="tile" href="/guild/{{ g }}">
       <div class="tile-top">
-        <div class="guild-avatar"><svg class="i" style="width:20px;height:20px"><use href="#i-server"/></svg></div>
+        {{ guild_badge(g_info, 44) }}
         <div style="min-width:0">
-          <h4>{{ t('nav.server_short', id=(g|string)[-4:]) }}</h4>
-          <div class="tile-sub">ID {{ g }}</div>
+          <h4>{{ g_info.name or t('nav.server_short', id=(g|string)[-4:]) }}</h4>
+          <div class="tile-sub">
+            {% if g_info.member_count %}{{ t('guild.members', count=g_info.member_count) }} · {% endif %}ID {{ g }}
+          </div>
         </div>
       </div>
       <div class="tile-foot">

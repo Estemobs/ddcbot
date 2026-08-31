@@ -201,6 +201,7 @@ EXPECTED_TABLES = [
     "starboard_config",
     "starboard_entries",
     "plugins",
+    "guild_meta",
 ]
 
 
