@@ -302,71 +302,6 @@ def _count(query: str, params=()) -> int:
 
 @app.get("/guild/{guild_id}", response_class=HTMLResponse)
 async def guild_overview(request: Request, guild_id: int):
-<<<<<<< serveur
-    features = [
-        ("economy", "Economie", "/guild/{guild_id}/economy", "/guild/{guild_id}/economy/config"),
-        ("moderation", "Modération", "/guild/{guild_id}/moderation", "/guild/{guild_id}/moderation/config"),
-        ("leveling", "Leveling", "/guild/{guild_id}/leveling", "/guild/{guild_id}/leveling/config"),
-        ("welcome", "Bienvenue/Adieu", "/guild/{guild_id}/welcome", "/guild/{guild_id}/welcome/config"),
-        ("automod", "AutoMod", "/guild/{guild_id}/automod", "/guild/{guild_id}/automod/config"),
-        ("logs", "Logs", "/guild/{guild_id}/logs", "/guild/{guild_id}/logs/config"),
-        ("tickets", "Tickets", "/guild/{guild_id}/tickets", "/guild/{guild_id}/tickets/config"),
-        ("webhooks", "Webhooks", "/guild/{guild_id}/webhooks", "/guild/{guild_id}/webhooks/config"),
-        ("lockdown", "Lockdown", "/guild/{guild_id}/lockdown", "/guild/{guild_id}/lockdown/config"),
-        ("invitations", "Invitations", "/guild/{guild_id}/invitations", None),
-        ("minecraft", "Minecraft", "/guild/{guild_id}/minecraft", "/guild/{guild_id}/minecraft/config"),
-        ("steam", "Steam", "/guild/{guild_id}/steam", "/guild/{guild_id}/steam/config"),
-        ("work", "Work/Income", "/guild/{guild_id}/work", "/guild/{guild_id}/work/config"),
-        ("rss", "RSS/TV", "/guild/{guild_id}/rss", "/guild/{guild_id}/rss/config"),
-        ("lang", "Langue", "/guild/{guild_id}/lang", "/guild/{guild_id}/lang/config"),
-        ("ai_moderation", "AI-Moderation", "/guild/{guild_id}/aimod", "/guild/{guild_id}/aimod/config"),
-        ("notes", "Notes", "/guild/{guild_id}/notes", "/guild/{guild_id}/notes/config"),
-        ("transactions", "Transactions", "/guild/{guild_id}/transactions", None),
-        ("reminders", "Rappels", "/guild/{guild_id}/reminders", "/guild/{guild_id}/reminders/config"),
-        ("giveaways", "Giveaways", "/guild/{guild_id}/giveaways", "/guild/{guild_id}/giveaway/config"),
-    ]
-    
-    feature_info = {}
-    for key, label, page_url, config_url in features:
-        try:
-            if config_url:
-                cfg_row = db.fetchone(f"SELECT config_json FROM {key}_config WHERE guild_id = ?", (guild_id,))
-                config = {}
-                if cfg_row:
-                    try:
-                        config = json.loads(cfg_row["config_json"])
-                    except json.JSONDecodeError:
-                        pass
-                feature_info[key] = {"label": label, "config": config, "has_config": True}
-            else:
-                try:
-                    row = db.fetchone(f"SELECT COUNT(*) as c FROM {key} WHERE guild_id = ?", (guild_id,))
-                    feature_info[key] = {"label": label, "has_data": row["c"] > 0, "has_config": False}
-                except Exception:
-                    feature_info[key] = {"label": label, "has_data": False, "has_config": False}
-        except Exception:
-            feature_info[key] = {"label": label, "has_data": False, "has_config": False}
-    
-    try:
-        warn_row = db.fetchone(
-            "SELECT COALESCE(SUM(count), 0) as c FROM warn_counts WHERE guild_id = ?", (guild_id,)
-        )
-        warnings = warn_row["c"]
-    except Exception:
-        warnings = 0
-    
-    try:
-        eco_row = db.fetchone(
-            "SELECT COUNT(*) as c FROM transactions WHERE guild_id = ?", (guild_id,)
-        )
-        transactions = eco_row["c"]
-    except Exception:
-        transactions = 0
-    
-    return templates.TemplateResponse(request, "guild_overview.html", {
-        "request": request, "guild_id": guild_id, "feature_info": feature_info,
-        "warnings": warnings, "transactions": transactions,
-=======
     modules = [
         dict(mod, active=_module_is_configured(mod["table"], guild_id))
         for mod in GUILD_MODULES
@@ -385,7 +320,6 @@ async def guild_overview(request: Request, guild_id: int):
     return templates.TemplateResponse(request, "guild.html", {
         "request": request, "guild_id": guild_id, "modules": modules, "stats": stats,
         "warnings": stats["warnings"], "transactions": stats["transactions"],
->>>>>>> moi
     })
 
 
