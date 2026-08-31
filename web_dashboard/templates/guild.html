@@ -1,93 +1,60 @@
 {% extends "base.html" %}
 {% block title %}{{ t('guild.title', id=guild_id) }}{% endblock %}
+{% block crumb %}{{ t('nav.overview') }}{% endblock %}
 {% block content %}
 
-<!-- Hero section -->
-<div class="hero-small">
-  <div class="flex justify-between items-start">
-    <div>
-      <h2>{{ t('guild.title', id=guild_id) }}</h2>
-      <p class="text-muted">{{ t('guild.overview') }}</p>
-    </div>
-    <div class="status-pill">
-      <span class="status-info">Serveur actif</span>
-    </div>
+<div class="page-header" style="display:flex;align-items:center;gap:16px">
+  <div class="guild-avatar" style="width:54px;height:54px;border-radius:16px">
+    <svg class="i" style="width:24px;height:24px"><use href="#i-server"/></svg>
+  </div>
+  <div>
+    <h2>{{ t('nav.server', id=guild_id) }}</h2>
+    <p>{{ t('guild.overview') }}</p>
   </div>
 </div>
 
-<!-- Stats -->
-<section class="stats">
+<div class="stats-grid">
   <div class="stat-card">
-    <div class="icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="2" y1="12" x2="22" y2="12"/>
-      </svg>
-    </div>
-    <div>
-      <div class="value">{{ warnings }}</div>
-      <div class="label">{{ t('guild.warnings') }}</div>
-    </div>
+    <div class="value">{{ stats.active_modules }}<span style="font-size:1rem;color:var(--text-muted);font-weight:600">/{{ stats.total_modules }}</span></div>
+    <div class="label">{{ t('guild.active_modules') }}</div>
   </div>
-
   <div class="stat-card">
-    <div class="icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <polyline points="22 12 18 12 15 15 9 3 6 12 2 12"/>
-      </svg>
-    </div>
-    <div>
-      <div class="value">{{ transactions }}</div>
-      <div class="label">{{ t('guild.transactions') }}</div>
-    </div>
+    <div class="value">{{ stats.warnings }}</div>
+    <div class="label">{{ t('guild.warnings') }}</div>
   </div>
-</section>
+  <div class="stat-card">
+    <div class="value">{{ stats.transactions }}</div>
+    <div class="label">{{ t('guild.transactions') }}</div>
+  </div>
+</div>
 
-<!-- Modules -->
-<section class="modules">
-  <div class="card">
-    <div class="card-header">
-      <h2>{{ t('guild.modules') }} <span class="count">{{ info | length if info else 0 }}</span></h2>
-    </div>
-    <div class="table">
-      <thead>
-        <tr>
-          <th>Module</th>
-          <th>Statut</th>
-          <th>Configuration</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for name, active in info.items() %}
-        <tr>
-          <td class="module-name">{{ t(name) }}</td>
-          <td>
-            <span class="status {% if active %}success{% else %}pending{% endif %}">
-              {% if active %}
-                {{ t('guild.status_ok') }}
-              {% else %}
-                {{ t('guild.status_ko') }}
-              {% endif %}
-            </span>
-          </td>
-          <td>
-            <a href="/guild/{{ guild_id }}/{{ name|lower|replace('/','-') }}" class="btn primary small">
-              {{ t('index.btn_manage') }}
-            </a>
-          </td>
-        </tr>
-        {% endfor %}
-        {% if not info %}
-        <tr>
-          <td colspan="3" class="empty-state">
-            <div class="icon">&#128269;</div>
-            <p>Aucun module configuré</p>
-          </td>
-        </tr>
+<div class="card">
+  <div class="card-header">
+    <h3><svg class="i"><use href="#i-grid"/></svg> {{ t('guild.modules') }}</h3>
+    <span class="tag tag-hint">{{ t('guild.modules_hint') }}</span>
+  </div>
+  <div class="tile-grid">
+    {% for mod in modules %}
+    <a class="tile" href="/guild/{{ guild_id }}/{{ mod.slug }}">
+      <div class="tile-top">
+        <div class="tile-icon"><svg class="i"><use href="#i-{{ mod.icon }}"/></svg></div>
+        <div style="min-width:0">
+          <h4>{{ t(mod.key) }}</h4>
+          <div class="tile-sub">{{ t('module.desc.' ~ mod.slug) }}</div>
+        </div>
+      </div>
+      <div class="tile-foot">
+        {% if mod.active %}
+        <span class="tag tag-success">{{ t('guild.status_ok') }}</span>
+        {% else %}
+        <span class="tag tag-muted">{{ t('guild.status_ko') }}</span>
         {% endif %}
-      </tbody>
-    </div>
+        <span class="go">{{ t('index.btn_manage') }}
+          <svg class="i" style="width:14px;height:14px"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+    </a>
+    {% endfor %}
   </div>
-</section>
-
+</div>
 {% endblock %}

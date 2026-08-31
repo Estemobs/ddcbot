@@ -1,10 +1,13 @@
+{% set gid = current_guild() %}
 <!DOCTYPE html>
 <html lang="{{ current_lang() }}" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
   <title>{% block title %}DDCBot Dashboard{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%235865f2'/><text x='50' y='68' font-size='52' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'>D</text></svg>">
   <script>
     (function () {
       var theme = localStorage.getItem('dash_theme');
@@ -14,76 +17,132 @@
         document.documentElement.setAttribute('data-theme', 'light');
       }
     })();
-    function toggleTheme() {
-      var html = document.documentElement;
-      var next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      localStorage.setItem('dash_theme', next);
-    }
-    function setLang(lang) {
-      document.cookie = 'dash_lang=' + lang + '; path=/; max-age=31536000';
-      location.reload();
-    }
   </script>
 </head>
 <body>
-  <!-- Header/hero -->
-  <header class="hero">
-    <div class="brand">
+{% include "_icons.html" %}
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">DDC</div>
+    <div class="brand-text">
       <h1>DDCBot</h1>
-      <p>Administration du bot Discord</p>
+      <small>{{ t('brand.subtitle') }}</small>
     </div>
-    <div class="badge">
-      <span>{{ nav_guilds() | length }} serveurs</span>
-    </div>
-  </header>
+  </div>
 
-  <!-- Navigation -->
-  <nav class="nav-top">
-    <div class="flex">
-      <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
-        <span>&#9632;</span> Accueil
-      </a>
-      <a href="/guilds" class="{% if request.url.path.startswith('/guild/') %}active{% endif %}">
-        <span>&#128241;</span> Serveurs
-      </a>
-      <a href="/notes" class="{% if request.url.path == '/notes' %}active{% endif %}">
-        <span>&#9998;</span> Notes
-      </a>
-      <a href="/transactions" class="{% if request.url.path == '/transactions' %}active{% endif %}">
-        <span>&#8644;</span> Transactions
-      </a>
-      <a href="/reminders" class="{% if request.url.path == '/reminders' %}active{% endif %}">
-        <span>&#9200;</span> Rappels
-      </a>
-      <a href="/giveaways" class="{% if request.url.path == '/giveaways' %}active{% endif %}">
-        <span>&#127873;</span> Giveaways
-      </a>
-    </div>
+  <nav>
+    <div class="section-label">{{ t('nav.section.general') }}</div>
+    {% for item in [
+        ('/', 'home', 'nav.home'),
+        ('/notes', 'note', 'nav.notes'),
+        ('/transactions', 'swap', 'nav.transactions'),
+        ('/reminders', 'clock', 'nav.reminders'),
+        ('/giveaways', 'gift', 'nav.giveaways')
+    ] %}
+    <a href="{{ item[0] }}" class="{% if request.url.path == item[0] %}active{% endif %}">
+      <svg class="i"><use href="#i-{{ item[1] }}"/></svg> {{ t(item[2]) }}
+    </a>
+    {% endfor %}
 
-    <div class="flex justify-end items-center">
-      <button class="theme-toggle" onclick="toggleTheme()" title="Thème">
-        <span class="sun">☀️</span>
-        <span class="moon">🌙</span>
-      </button>
-      
-      <div class="lang-dropdown">
-        <button class="lang-dropdown-btn" onclick="event.stopPropagation();">
-          <span>{{ current_lang() }}</span>
-          <svg width="8" height="4" viewBox="0 0 8 4" fill="none">
-            <path d="M2 2l3.5 3.5" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-        </button>
-        <div class="lang-dropdown-list" id="lang-list">
-          <a href="?lang=fr" class="lang-dropdown-item {% if current_lang() == 'fr' %}open{% endif %}">Français</a>
-          <a href="?lang=en" class="lang-dropdown-item {% if current_lang() == 'en' %}open{% endif %}">English</a>
-        </div>
-      </div>
+    <div class="divider"></div>
+
+    {% if gid %}
+    <a class="sidebar-back" href="/">
+      <svg class="i" style="width:14px;height:14px"><use href="#i-arrow-left"/></svg>
+      {{ t('nav.all_servers') }}
+    </a>
+    <div class="section-label" title="{{ gid }}">{{ t('nav.server_short', id=(gid|string)[-4:]) }}</div>
+    <a href="/guild/{{ gid }}" class="{% if request.url.path == '/guild/' ~ gid %}active{% endif %}">
+      <svg class="i"><use href="#i-grid"/></svg> {{ t('nav.overview') }}
+    </a>
+    {% for mod in guild_modules %}
+    <a href="/guild/{{ gid }}/{{ mod.slug }}"
+       class="{% if request.url.path == '/guild/' ~ gid ~ '/' ~ mod.slug %}active{% endif %}">
+      <svg class="i"><use href="#i-{{ mod.icon }}"/></svg> {{ t(mod.key) }}
+    </a>
+    {% endfor %}
+    {% else %}
+    <div class="section-label">{{ t('nav.section.servers') }}</div>
+    {% for g in nav_guilds() %}
+    <a href="/guild/{{ g }}" title="{{ g }}">
+      <svg class="i"><use href="#i-server"/></svg> {{ t('nav.server_short', id=(g|string)[-4:]) }}
+    </a>
+    {% else %}
+    <div class="section-label" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--text-muted)">
+      {{ t('nav.no_server') }}
     </div>
+    {% endfor %}
+    {% endif %}
   </nav>
 
-  <main class="dashboard">
-    {% block content %}{% endblock %}
-  </main>
+  <div class="sidebar-footer">
+    <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" title="{{ t('nav.theme') }}">
+      <svg class="i"><use href="#i-theme"/></svg> {{ t('nav.theme') }}
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="setLang('{{ 'en' if current_lang() == 'fr' else 'fr' }}')"
+            title="{{ t('nav.language') }}">
+      <svg class="i"><use href="#i-globe"/></svg> {{ 'EN' if current_lang() == 'fr' else 'FR' }}
+    </button>
+  </div>
+</aside>
+
+<div class="sidebar-overlay" id="nav-overlay" onclick="closeNav()"></div>
+
+<header class="topbar">
+  <button class="burger" onclick="toggleNav()" aria-label="Menu">
+    <svg class="i"><use href="#i-menu"/></svg>
+  </button>
+  <div class="crumbs">
+    <a href="/" class="hide-sm">DDCBot</a>
+    {% if gid %}
+    <span class="sep hide-sm">/</span>
+    <a href="/guild/{{ gid }}" class="hide-sm">{{ t('nav.server', id=gid) }}</a>
+    {% endif %}
+    <span class="sep hide-sm">/</span>
+    {# Par defaut : le titre de la page, sans le suffixe " - Serveur X" deja affiche avant #}
+    <span class="current">{% block crumb %}{{ (self.title()|string|trim).split(' - ')[0] }}{% endblock %}</span>
+  </div>
+  <div class="topbar-actions">
+    {% if auth_enabled() %}
+    <a href="/logout" class="btn btn-ghost btn-sm" title="{{ t('nav.logout') }}">
+      <svg class="i"><use href="#i-logout"/></svg> {{ t('nav.logout') }}
+    </a>
+    {% endif %}
+  </div>
+</header>
+
+<main class="main">
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+  function toggleTheme() {
+    var html = document.documentElement;
+    var next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('dash_theme', next);
+  }
+  function setLang(lang) {
+    document.cookie = 'dash_lang=' + lang + '; path=/; max-age=31536000';
+    location.reload();
+  }
+  function toggleNav() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('nav-overlay').classList.toggle('open');
+  }
+  function closeNav() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('nav-overlay').classList.remove('open');
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeNav();
+  });
+  // Garde le lien actif visible dans une nav longue.
+  (function () {
+    var active = document.querySelector('.sidebar nav a.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  })();
+</script>
 </body>
 </html>

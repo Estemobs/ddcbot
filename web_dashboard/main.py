@@ -8,6 +8,7 @@ configurations par serveur.
 import hashlib
 import json
 import os
+import re
 import secrets
 import sys
 import time
@@ -47,6 +48,52 @@ def nav_guilds(ctx):
 
 
 templates.env.globals["nav_guilds"] = nav_guilds
+
+# Modules configurables par serveur. Source de verite unique : la nav laterale,
+# la grille de la page serveur et le calcul des statuts s'en servent tous.
+GUILD_MODULES = [
+    {"slug": "economy", "key": "module.economy", "icon": "coins", "table": "economy_config"},
+    {"slug": "work", "key": "module.work", "icon": "briefcase", "table": "work_settings"},
+    {"slug": "leveling", "key": "module.leveling", "icon": "chart", "table": "xp_config"},
+    {"slug": "moderation", "key": "module.moderation", "icon": "shield", "table": "moderation_config"},
+    {"slug": "automod", "key": "module.automod", "icon": "filter", "table": "automod_config"},
+    {"slug": "aimod", "key": "module.aimod", "icon": "sparkles", "table": "ai_moderation_config"},
+    {"slug": "lockdown", "key": "module.lockdown", "icon": "lock", "table": "lockdown_config"},
+    {"slug": "welcome", "key": "module.welcome", "icon": "wave", "table": "guild_settings"},
+    {"slug": "invitations", "key": "module.invitations", "icon": "users", "table": "invites"},
+    {"slug": "tickets", "key": "module.tickets", "icon": "ticket", "table": "ticket_config"},
+    {"slug": "logs", "key": "module.logs", "icon": "list", "table": "logs_config"},
+    {"slug": "webhooks", "key": "module.webhooks", "icon": "link", "table": "webhook_config"},
+    {"slug": "rss", "key": "module.rss", "icon": "tv", "table": None},
+    {"slug": "minecraft", "key": "module.minecraft", "icon": "cube", "table": "minecraft_config"},
+    {"slug": "steam", "key": "module.steam", "icon": "gamepad", "table": "steam_config"},
+    {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
+]
+
+templates.env.globals["guild_modules"] = GUILD_MODULES
+
+_GUILD_PATH_RE = re.compile(r"^/guild/(\d+)")
+
+
+@pass_context
+def current_guild(ctx):
+    """Guild id de la page courante (nav contextuelle), ou None."""
+    request = ctx.get("request")
+    if request is None:
+        return None
+    match = _GUILD_PATH_RE.match(request.url.path)
+    return int(match.group(1)) if match else None
+
+
+templates.env.globals["current_guild"] = current_guild
+
+
+@pass_context
+def auth_enabled(ctx):
+    return bool(DASHBOARD_TOKEN)
+
+
+templates.env.globals["auth_enabled"] = auth_enabled
 
 DB_PATH = os.environ.get("DDC_DB_PATH", os.path.join(BASE_DIR, "..", "data", "ddcbot.sqlite3"))
 db = Database(path=DB_PATH)
@@ -142,6 +189,16 @@ async def login_submit(request: Request, token: str = Form(...)):
     })
 
 
+@app.get("/logout")
+async def logout(request: Request):
+    session_id = request.cookies.get("ddc_session")
+    if session_id:
+        _sessions.pop(session_id, None)
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie("ddc_session")
+    return response
+
+
 def get_guilds():
     tables_to_check = [
         ("economy_config", "guild_id"),
@@ -225,8 +282,27 @@ async def index(request: Request):
 
 # ── Vue d'ensemble d'un serveur ──
 
+def _module_is_configured(table: str, guild_id: int) -> bool:
+    if not table:
+        return False
+    try:
+        row = db.fetchone(f"SELECT COUNT(*) as c FROM {table} WHERE guild_id = ?", (guild_id,))
+        return row["c"] > 0
+    except Exception:
+        return False
+
+
+def _count(query: str, params=()) -> int:
+    try:
+        row = db.fetchone(query, params)
+        return row["c"] if row else 0
+    except Exception:
+        return 0
+
+
 @app.get("/guild/{guild_id}", response_class=HTMLResponse)
 async def guild_overview(request: Request, guild_id: int):
+<<<<<<< serveur
     features = [
         ("economy", "Economie", "/guild/{guild_id}/economy", "/guild/{guild_id}/economy/config"),
         ("moderation", "Modération", "/guild/{guild_id}/moderation", "/guild/{guild_id}/moderation/config"),
@@ -290,6 +366,26 @@ async def guild_overview(request: Request, guild_id: int):
     return templates.TemplateResponse(request, "guild_overview.html", {
         "request": request, "guild_id": guild_id, "feature_info": feature_info,
         "warnings": warnings, "transactions": transactions,
+=======
+    modules = [
+        dict(mod, active=_module_is_configured(mod["table"], guild_id))
+        for mod in GUILD_MODULES
+    ]
+    stats = {
+        "active_modules": sum(1 for mod in modules if mod["active"]),
+        "total_modules": len(modules),
+        "warnings": _count(
+            "SELECT COALESCE(SUM(count), 0) as c FROM warn_counts WHERE guild_id = ?", (guild_id,)
+        ),
+        "transactions": _count(
+            "SELECT COUNT(*) as c FROM transactions WHERE guild_id = ?", (guild_id,)
+        ),
+    }
+
+    return templates.TemplateResponse(request, "guild.html", {
+        "request": request, "guild_id": guild_id, "modules": modules, "stats": stats,
+        "warnings": stats["warnings"], "transactions": stats["transactions"],
+>>>>>>> moi
     })
 
 
