@@ -97,7 +97,6 @@ class cmdsteam(commands.Cog):
     # --- commandes ---
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def steamconfig(self, ctx, api_key: str):
         """Enregistre la clé API Steam pour ce serveur (admin)."""
         self.set_api_key(ctx.guild.id, api_key)

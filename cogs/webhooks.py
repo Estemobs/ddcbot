@@ -121,7 +121,6 @@ class cmdwebhooks(commands.Cog):
             await self.send_webhook(guild.id, embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def webhookset(self, ctx, url: str = None):
         """Definit l'URL du webhook pour les notifications."""
         if url is None:
@@ -131,7 +130,6 @@ class cmdwebhooks(commands.Cog):
         await ctx.send("✅ Webhook configure.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def webhooktoggle(self, ctx, state: str = None):
         """Active/desactive les webhooks (on/off)."""
         if state is None or state.lower() not in ("on", "off"):
@@ -141,7 +139,6 @@ class cmdwebhooks(commands.Cog):
         await ctx.send(f"✅ Webhooks {'actives' if state.lower() == 'on' else 'desactives'}.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def webhookevent(self, ctx, event: str = None, state: str = None):
         """Active/desactive un evenement webhook (on/off)."""
         if event is None or event not in DEFAULT_WEBHOOK_EVENTS:
@@ -157,7 +154,6 @@ class cmdwebhooks(commands.Cog):
         await ctx.send(f"✅ Evenement `{event}` {'active' if state.lower() == 'on' else 'desactive'}.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def webhookconfig(self, ctx):
         """Affiche la configuration des webhooks."""
         cfg = self.get_config(ctx.guild.id)
@@ -172,7 +168,6 @@ class cmdwebhooks(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def webhooksend(self, ctx, *, message: str = None):
         """Envoie un test au webhook."""
         if message is None:

@@ -71,7 +71,6 @@ class cmdlogs(commands.Cog):
         return channels
 
     @commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
     async def setlog(self, ctx, channel: discord.TextChannel = None):
         """Active les logs dans le canal spécifié (ou canal courant)."""
         channel = channel or ctx.channel
@@ -84,7 +83,6 @@ class cmdlogs(commands.Cog):
         await ctx.send(f"Logs activés dans {channel.mention}.")
 
     @commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
     async def unsetlog(self, ctx, channel: discord.TextChannel = None):
         """Désactive les logs dans le canal spécifié (ou canal courant)."""
         channel = channel or ctx.channel
@@ -133,7 +131,6 @@ class cmdlogs(commands.Cog):
         return embed
 
     @commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
     async def logspanel(self, ctx):
         """Ouvre un panneau interactif pour choisir les catégories envoyées dans les logs."""
         view = LogsPanelView(self, ctx.guild.id, ctx.author.id)

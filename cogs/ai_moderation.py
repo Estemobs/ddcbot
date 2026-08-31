@@ -186,7 +186,6 @@ class cmdaimoderation(commands.Cog):
         await self._check_message(message)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def aimod(self, ctx, state: str = None):
         """Active/desactive l'AI-moderation (on/off) ou affiche la config."""
         if state is None:
@@ -203,7 +202,6 @@ class cmdaimoderation(commands.Cog):
             await ctx.send("❌ AI-Moderation desactivee.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def aimodconfig(self, ctx):
         """Affiche la configuration de l'AI-moderation."""
         cfg = self.get_config(ctx.guild.id)
@@ -224,7 +222,6 @@ class cmdaimoderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def aimodaction(self, ctx, action: str = None):
         """Change l'action de l'AI-mod (warn/delete/warn_delete)."""
         if action is None or action not in ("warn", "delete", "warn_delete"):
@@ -234,7 +231,6 @@ class cmdaimoderation(commands.Cog):
         await ctx.send(f"✅ Action AI-mod definie sur `{action}`.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def aimodthreshold(self, ctx, threshold: float = None):
         """Change le seuil de detection (0.0-1.0)."""
         if threshold is None or not (0.0 <= threshold <= 1.0):
@@ -244,7 +240,6 @@ class cmdaimoderation(commands.Cog):
         await ctx.send(f"✅ Seuil AI-mod defini sur `{threshold}`.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def aimodignore(self, ctx, role: discord.Role = None):
         """Ajoute/retire un role de la liste d'ignorance de l'AI-mod."""
         if role is None:
@@ -259,7 +254,6 @@ class cmdaimoderation(commands.Cog):
             await ctx.send(f"✅ Le role {role.mention} est ignore par l'AI-mod.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def aimodlog(self, ctx, channel: discord.TextChannel = None):
         """Definit le canal de logs pour l'AI-moderation."""
         if channel is None:

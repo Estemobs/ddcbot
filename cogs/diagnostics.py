@@ -141,10 +141,9 @@ EXPECTED_COMMANDS = {
     "lockdownrole",
     "lockdownlog",
     "lockdownmassjoin",
-    "starboard_config",
     "lockdownauto",
-    "starboard_config",
-    "starboard_entries",
+    "starboard",
+    "starboardclear",
     "plugins",
 }
 
@@ -202,6 +201,12 @@ EXPECTED_TABLES = [
     "starboard_entries",
     "plugins",
     "guild_meta",
+    "custom_commands",
+    "polls",
+    "twitch_config",
+    "twitch_notifications",
+    "error_logs",
+    "translation_subs",
 ]
 
 
@@ -312,7 +317,6 @@ class cmddiagnostics(commands.Cog):
         }
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def selftest(self, ctx, mode: str = "basic"):
         mode = mode.lower().strip()
         if mode not in {"basic", "deep"}:

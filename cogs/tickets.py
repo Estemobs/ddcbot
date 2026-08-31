@@ -91,7 +91,6 @@ class cmdtickets(commands.Cog):
         return embed
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def ticketpanel(self, ctx):
         """Affiche le panneau de configuration des tickets."""
         cfg = self.get_config(ctx.guild.id)
@@ -99,7 +98,6 @@ class cmdtickets(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def ticketcategory(self, ctx, category: discord.CategoryChannel = None):
         """Definit la categorie pour les tickets."""
         if category is None:
@@ -109,7 +107,6 @@ class cmdtickets(commands.Cog):
         await ctx.send(f"✅ Categorie de tickets definie sur **{category.name}**.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def ticketwelcome(self, ctx, *, message: str = None):
         """Definit le message de bienvenue des tickets."""
         if message is None:
@@ -119,7 +116,6 @@ class cmdtickets(commands.Cog):
         await ctx.send(f"✅ Message de bienvenue mis a jour.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def ticketmax(self, ctx, max_tickets: int = None):
         """Definit le max de tickets ouverts par utilisateur."""
         if max_tickets is None or max_tickets < 1:
@@ -129,7 +125,6 @@ class cmdtickets(commands.Cog):
         await ctx.send(f"✅ Max tickets ouverts defini sur `{max_tickets}`.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def ticketlog(self, ctx, channel: discord.TextChannel = None):
         """Definit le canal de logs des tickets."""
         if channel is None:

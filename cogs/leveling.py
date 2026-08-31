@@ -222,7 +222,6 @@ class cmdleveling(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def xptoggle(self, ctx):
         cfg = self.get_config(ctx.guild.id)
         self.set_config(ctx.guild.id, enabled=not cfg["enabled"])
@@ -230,7 +229,6 @@ class cmdleveling(commands.Cog):
         await ctx.send(t(self.db, "xp_config_saved", ctx.guild.id, ctx.author.id) + f" ({state})")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def xpconfig(self, ctx, xp_per_message: int = None, cooldown_seconds: int = None):
         """Configure l'XP par message et le cooldown (secondes). Sans argument : affiche la config."""
         if xp_per_message is not None and cooldown_seconds is not None:
@@ -251,7 +249,6 @@ class cmdleveling(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def xpset(self, ctx, member: discord.Member, xp: int):
         """Définit l'XP d'un membre (admin)."""
         self.db.execute(

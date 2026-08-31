@@ -56,7 +56,6 @@ class cmdguildsettings(commands.Cog):
     # --- commandes ---
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def setwelcome(self, ctx, channel: discord.TextChannel = None, *, message: str = None):
         """Configure le message de bienvenue : ,setwelcome #salon Texte {user} | ,setwelcome off"""
         if channel is None and (message is None or message.strip().lower() == "off"):
@@ -70,7 +69,6 @@ class cmdguildsettings(commands.Cog):
         await ctx.send(t(self.db, "welcome_set", ctx.guild.id, ctx.author.id) + f"\n{t(self.db, 'welcome_placeholders', ctx.guild.id, ctx.author.id)}")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def setleave(self, ctx, channel: discord.TextChannel = None, *, message: str = None):
         """Configure le message de départ : ,setleave #salon Texte {user} | ,setleave off"""
         if channel is None and (message is None or message.strip().lower() == "off"):
@@ -84,7 +82,6 @@ class cmdguildsettings(commands.Cog):
         await ctx.send(t(self.db, "leave_set", ctx.guild.id, ctx.author.id) + f"\n{t(self.db, 'welcome_placeholders', ctx.guild.id, ctx.author.id)}")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def welcomeconfig(self, ctx):
         """Affiche la configuration des messages de bienvenue/départ."""
         settings = self.get_settings(ctx.guild.id)

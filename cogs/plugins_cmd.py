@@ -18,7 +18,6 @@ class cmdplugins(commands.Cog):
         return set(plugin_loader.discover_plugins())
 
     @commands.group(name="plugins", invoke_without_command=True)
-    @commands.has_permissions(manage_guild=True)
     async def plugins(self, ctx):
         """Gestion des plugins: ,plugins list | enable | disable | reload"""
         await ctx.send(
@@ -30,7 +29,6 @@ class cmdplugins(commands.Cog):
         )
 
     @plugins.command(name="list")
-    @commands.has_permissions(manage_guild=True)
     async def plugins_list(self, ctx):
         """Liste les plugins disponibles et leur statut."""
         available = self._available()
@@ -51,7 +49,6 @@ class cmdplugins(commands.Cog):
         await ctx.send(embed=embed)
 
     @plugins.command(name="enable")
-    @commands.has_permissions(manage_guild=True)
     async def plugins_enable(self, ctx, name: str):
         """Active un plugin et le charge."""
         if name not in self._available():
@@ -62,7 +59,6 @@ class cmdplugins(commands.Cog):
         await plugin_loader.reload_plugins(self.bot, self.db, [name])
 
     @plugins.command(name="disable")
-    @commands.has_permissions(manage_guild=True)
     async def plugins_disable(self, ctx, name: str):
         """Desactive un plugin et le decharge."""
         if name not in self._available():
@@ -73,7 +69,6 @@ class cmdplugins(commands.Cog):
         await ctx.send(f"Plugin `{name}` desactive.")
 
     @plugins.command(name="reload")
-    @commands.has_permissions(manage_guild=True)
     async def plugins_reload(self, ctx, name: str = None):
         """Recharge tous les plugins (ou un seul)."""
         if name is not None and name not in self._available():

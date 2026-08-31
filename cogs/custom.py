@@ -10,18 +10,6 @@ class cmdcustom(commands.Cog):
         self.bot = bot
         self.db = db
 
-    def _ensure_custom_cmds_table(self):
-        self.db.execute(
-            "CREATE TABLE IF NOT EXISTS custom_commands ("
-            "guild_id INTEGER,"
-            "command_name TEXT,"
-            "response TEXT,"
-            "PRIMARY KEY (guild_id, command_name))"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_custom_cmds_guild ON custom_commands(guild_id)"
-        )
-
     # --- Configuration ---
 
     def set_custom_command(self, guild_id: int, command_name: str, response: str):
@@ -102,7 +90,6 @@ class cmdcustom(commands.Cog):
     # --- Commandes ---
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def cmdadd(self, ctx, *, command_and_response: str = None):
         """Ajouter une commande personnalisée.
         Usage: ,cmdadd nom_commande = réponse
@@ -137,7 +124,6 @@ class cmdcustom(commands.Cog):
         )
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def cmdlist(self, ctx):
         """Lister toutes les commandes personnalisées."""
         commands_list = self.list_custom_commands(ctx.guild.id)
@@ -159,7 +145,6 @@ class cmdcustom(commands.Cog):
         )
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def cmdrm(self, ctx, *, command_name: str = None):
         """Supprimer une commande personnalisée."""
         if command_name is None:
@@ -171,7 +156,6 @@ class cmdcustom(commands.Cog):
         )
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def cmdedit(self, ctx, cmd_name: str = None, *, new_response: str = None):
         """Modifier une commande personnalisée."""
         if cmd_name is None:
@@ -196,5 +180,4 @@ class cmdcustom(commands.Cog):
 
 def setup(bot, db):
     cog = cmdcustom(bot, db)
-    cog._ensure_custom_cmds_table()
     bot.add_cog(cog)

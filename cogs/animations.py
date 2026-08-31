@@ -119,7 +119,6 @@ class cmdanim(commands.Cog):
     # --- commandes ---
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def gstart(self, ctx, duration: int, *, prize: str):
         if self.get_active_giveaway_by_guild(ctx.guild.id) is not None:
             return await ctx.send("Il y a déjà un giveaway en cours sur ce serveur.")
@@ -145,7 +144,6 @@ class cmdanim(commands.Cog):
         await ctx.send(f"Giveaway démarré pour {duration} secondes ! Prix : {prize}")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def gend(self, ctx):
         giveaway = self.get_active_giveaway_by_guild(ctx.guild.id)
         if giveaway is None:
@@ -153,7 +151,6 @@ class cmdanim(commands.Cog):
         await self._finish_giveaway(giveaway)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def gcancel(self, ctx):
         giveaway = self.get_active_giveaway_by_guild(ctx.guild.id)
         if giveaway is None:

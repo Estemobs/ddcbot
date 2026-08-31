@@ -13,24 +13,6 @@ class cmdpoll(commands.Cog):
         self.db = db
         self._active_polls = {}
 
-    def _ensure_poll_tables(self):
-        self.db.execute(
-            "CREATE TABLE IF NOT EXISTS polls ("
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "guild_id INTEGER,"
-            "message_id INTEGER,"
-            "question TEXT,"
-            "options_json TEXT,"
-            "created_at REAL DEFAULT (unixepoch()),"
-            "ended INTEGER DEFAULT 0)"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_polls_guild ON polls(guild_id)"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_polls_message ON polls(message_id)"
-        )
-
     # --- Configuration ---
 
     def create_poll(self, guild_id: int, message_id: int, question: str, options: list):
@@ -66,7 +48,6 @@ class cmdpoll(commands.Cog):
     # --- Commandes ---
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def poll(self, ctx, *, poll_data: str = None):
         """Créer un sondage.
         Usage: ,poll \"Question\" option1 | option2 | option3
@@ -135,7 +116,6 @@ class cmdpoll(commands.Cog):
         self._active_polls.pop(message_id, None)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def pollresults(self, ctx, message_id: int = None):
         emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
         """Voir les résultats d'un sondage."""
@@ -218,7 +198,6 @@ class cmdpoll(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def pollclose(self, ctx, message_id: int = None):
         """Clôturer un sondage prématurément."""
         if message_id is None:
@@ -246,5 +225,4 @@ class cmdpoll(commands.Cog):
 
 def setup(bot, db):
     cog = cmdpoll(bot, db)
-    cog._ensure_poll_tables()
     bot.add_cog(cog)

@@ -49,7 +49,6 @@ class cmdreactroles(commands.Cog):
         )
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def reactrole(self, ctx, message_link: str, emoji: str, role: discord.Role):
         """Lie une réaction à un rôle sur un message. Lien du message + emoji + rôle."""
         parsed = parse_message_link(message_link)
@@ -81,7 +80,6 @@ class cmdreactroles(commands.Cog):
         )
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def reactrolerm(self, ctx, message_link: str, emoji: str):
         """Retire une liaison réaction-rôle sur un message."""
         parsed = parse_message_link(message_link)
@@ -95,7 +93,6 @@ class cmdreactroles(commands.Cog):
             await ctx.send(t(self.db, "reactrole_not_found", ctx.guild.id, ctx.author.id))
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def reactroles(self, ctx):
         """Liste les reaction roles du serveur."""
         bindings = self.list_bindings(ctx.guild.id)

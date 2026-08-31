@@ -554,19 +554,16 @@ class cmdmoderation(commands.Cog):
             await ctx.send("Impossible d'envoyer le DM a cet utilisateur.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def modpanel(self, ctx):
         embed = self.build_mod_panel_embed(ctx.guild, "warn")
         view = self.build_mod_panel_view("warn", ctx.guild.id, ctx.author.id)
         await ctx.send(embed=embed, view=view)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def warnconfig(self, ctx):
         await self.modpanel(ctx)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def permpanel(self, ctx):
         self.get_permission_config(ctx.guild.id)
         view = PermissionPanelView(self, ctx.guild.id, ctx.author.id)

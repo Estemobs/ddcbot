@@ -278,7 +278,6 @@ class cmdjeu(commands.Cog):
             await channel.send(message)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def gamepanel(self, ctx):
         cfg = self.get_game_panel_config(ctx.guild.id)
         embed = self.build_game_panel_embed(ctx.guild, cfg)

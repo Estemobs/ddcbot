@@ -15,34 +15,6 @@ class cmdstarboard(commands.Cog):
         self._reaction_task = None
         self._process_task = None
 
-    def _ensure_starboard_tables(self):
-        self.db.execute(
-            "CREATE TABLE IF NOT EXISTS starboard_config ("
-            "guild_id INTEGER PRIMARY KEY,"
-            "channel_id INTEGER,"
-            "emoji TEXT DEFAULT '🌟',"
-            "min_stars INTEGER DEFAULT 5,"
-            "include_bot_messages INTEGER DEFAULT 0,"
-            "exclude_pinned INTEGER DEFAULT 1"
-            ")"
-        )
-        self.db.execute(
-            "CREATE TABLE IF NOT EXISTS starboard_entries ("
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "guild_id INTEGER,"
-            "message_id INTEGER,"
-            "source_message_id INTEGER,"
-            "stars INTEGER DEFAULT 0,"
-            "forwarded_message_id INTEGER,"
-            "UNIQUE(guild_id, message_id))"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_starboard_guild ON starboard_config(guild_id)"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_starboard_entries_guild ON starboard_entries(guild_id)"
-        )
-
     def set_starboard_channel(self, guild_id: int, channel_id: int, emoji: str = "🌟", min_stars: int = 5):
         self.db.execute(
             "INSERT INTO starboard_config (guild_id, channel_id, emoji, min_stars) "
@@ -282,7 +254,6 @@ class cmdstarboard(commands.Cog):
                     pass
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def starboard(self, ctx, *, arg: str = None):
         if arg is None:
             cfg = self.get_starboard_config(ctx.guild.id)
@@ -346,7 +317,6 @@ class cmdstarboard(commands.Cog):
             return await ctx.send(f"✅ Exclusion des messages épinglés {status}")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def starboardclear(self, ctx):
         self.db.execute("DELETE FROM starboard_entries WHERE guild_id = ?", (ctx.guild.id,))
         self.db.execute("DELETE FROM starboard_config WHERE guild_id = ?", (ctx.guild.id,))
@@ -382,6 +352,5 @@ class cmdstarboard(commands.Cog):
 
 def setup(bot, db):
     cog = cmdstarboard(bot, db)
-    cog._ensure_starboard_tables()
     cog.setup_process_task()
     bot.add_cog(cog)

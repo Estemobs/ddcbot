@@ -7,6 +7,9 @@ Deux méthodes d'envoi vers Minecraft :
   - RCON (recommandé) : fonctionne avec n'importe quel serveur (Vanilla, moddé,
     Spigot/Paper via plugin, etc.) via le protocole RCON asynchrone intégré.
   - tmux : envoi via `tmux send-keys` sur la session du serveur (fallback).
+    Exige que le bot tourne sur la machine du serveur Minecraft. En deploiement
+    Docker, tmux n'est pas dans l'image et les sessions de l'hote sont hors de
+    portee : seule la methode RCON fonctionne, d'ou le defaut.
 
 La lecture du tchat Minecraft -> Discord se fait en suivant le fichier
 `latest.log` avec `tail -F` (gère la rotation des logs) via un sous-processus
@@ -16,6 +19,7 @@ asynchrone, un lecteur par serveur, démarré/arrêté par `,mcenable`/`,mcdisab
 from __future__ import annotations
 
 import asyncio
+import shutil
 import re
 import struct
 
@@ -165,7 +169,7 @@ class cmdminecraft(commands.Cog):
     def save_config(self, guild_id: int, **fields):
         existing = self.get_config(guild_id)
         merged = {**existing, **fields}
-        merged.setdefault("method", "tmux")
+        merged.setdefault("method", "rcon")
         merged.setdefault("use_sudo", False)
         merged.setdefault("enabled", False)
         self.db.execute(
@@ -213,6 +217,15 @@ class cmdminecraft(commands.Cog):
         return client
 
     async def _send_via_tmux(self, guild_id: int, text: str) -> None:
+        """Envoie via `tmux send-keys`. Exige que le bot tourne sur la machine du
+        serveur Minecraft : en conteneur, tmux est absent et les sessions de
+        l'hote sont inaccessibles — utiliser RCON dans ce cas."""
+        if shutil.which("tmux") is None:
+            raise RuntimeError(
+                "tmux est introuvable. Le bot doit tourner sur la machine du serveur "
+                "Minecraft pour cette methode ; en conteneur, passez a RCON "
+                "(,mcconfig method rcon)."
+            )
         cfg = self.get_config(guild_id)
         session = cfg.get("tmux_session") or "minecraft"
         base = ["sudo", "tmux"] if cfg.get("use_sudo") else ["tmux"]
@@ -222,12 +235,15 @@ class cmdminecraft(commands.Cog):
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.PIPE,
         )
-        await proc.communicate()
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            detail = (stderr or b"").decode(errors="replace").strip()
+            raise RuntimeError(detail or f"tmux a renvoye le code {proc.returncode}")
 
     async def send_to_minecraft(self, guild_id: int, text: str) -> str:
         """Envoie *text* vers Minecraft, via RCON ou tmux selon la config."""
         cfg = self.get_config(guild_id)
-        method = cfg.get("method") or "tmux"
+        method = cfg.get("method") or "rcon"
 
         if method == "rcon":
             try:
@@ -307,7 +323,6 @@ class cmdminecraft(commands.Cog):
     # --- commandes ---
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def mcenable(self, ctx):
         """Active le pont Discord <-> Minecraft sur ce serveur."""
         cfg = self.get_config(ctx.guild.id)
@@ -322,7 +337,6 @@ class cmdminecraft(commands.Cog):
         await ctx.send(t(self.db, "minecraft_enabled", ctx.guild.id, ctx.author.id))
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def mcdisable(self, ctx):
         """Désactive le pont Discord <-> Minecraft sur ce serveur."""
         self.save_config(ctx.guild.id, enabled=False)
@@ -330,7 +344,6 @@ class cmdminecraft(commands.Cog):
         await ctx.send(t(self.db, "minecraft_disabled", ctx.guild.id, ctx.author.id))
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def mcconfig(self, ctx, *options: str):
         """Configure le pont Minecraft (voir `,mcconfig show` pour la syntaxe)."""
         args = [o.lower() for o in options]
@@ -341,7 +354,7 @@ class cmdminecraft(commands.Cog):
                 color=discord.Color.blue(),
             )
             embed.add_field(name="Enabled", value="✅" if cfg.get("enabled") else "❌", inline=True)
-            embed.add_field(name="Méthode", value=cfg.get("method") or "tmux", inline=True)
+            embed.add_field(name="Méthode", value=cfg.get("method") or "rcon", inline=True)
             embed.add_field(name="Log", value=cfg.get("log_path") or "—", inline=False)
             if cfg.get("channel_id"):
                 embed.add_field(name="Canal", value=f"<#{cfg['channel_id']}>", inline=True)
@@ -383,7 +396,6 @@ class cmdminecraft(commands.Cog):
             await ctx.send(t(self.db, "minecraft_config_usage", ctx.guild.id, ctx.author.id))
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def mcsay(self, ctx, *, message: str):
         """Envoie un message depuis Discord vers Minecraft (en tant que serveur)."""
         text = sanitize_minecraft_input(message)
@@ -398,7 +410,6 @@ class cmdminecraft(commands.Cog):
         await ctx.send(t(self.db, "minecraft_sent", ctx.guild.id, ctx.author.id, method=method, text=text))
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def mcstatus(self, ctx):
         """Affiche l'état du pont Discord <-> Minecraft."""
         cfg = self.get_config(ctx.guild.id)

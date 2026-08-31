@@ -183,7 +183,6 @@ class cmdinvitations(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def invleft(self, ctx, member: discord.Member):
         """Marque un invité comme ayant quitté le serveur (admin)."""
         self.add_left(ctx.guild.id, member.id)

@@ -69,7 +69,6 @@ class cmdautomod(commands.Cog):
     # --- commandes ---
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def automod(self, ctx, state: str = None):
         """Active/désactive l'auto-mod (on/off) ou affiche la config."""
         if state is None:
@@ -86,7 +85,6 @@ class cmdautomod(commands.Cog):
             await ctx.send(t(self.db, "automod_disabled", ctx.guild.id, ctx.author.id))
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def automodconfig(self, ctx):
         """Affiche la configuration de l'auto-mod."""
         cfg = self.get_config(ctx.guild.id)
@@ -103,7 +101,6 @@ class cmdautomod(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="badword")
-    @commands.has_permissions(manage_guild=True)
     async def badword(self, ctx, action: str, *, word: str = None):
         """Gère les mots bannis : ,badword add <mot> / remove <mot> / list"""
         action = action.lower()

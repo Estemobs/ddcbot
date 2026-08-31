@@ -69,7 +69,6 @@ class cmdwork(commands.Cog):
         )
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def config_work(self, ctx, min_amount: int, max_amount: int, reward_tiers: int, cooldown: int, *rewards: int):
         if len(rewards) != reward_tiers:
             await ctx.send(f"Le nombre de récompenses doit être égal au nombre de paliers de récompenses ({reward_tiers})")

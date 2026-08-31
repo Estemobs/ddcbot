@@ -19,35 +19,6 @@ class cmdtwitch(commands.Cog):
         self._api_task = None
         self.streams = {}
 
-    def _ensure_twitch_tables(self):
-        self.db.execute(
-            "CREATE TABLE IF NOT EXISTS twitch_config ("
-            "guild_id INTEGER PRIMARY KEY,"
-            "channel_id INTEGER,"
-            "client_id TEXT,"
-            "client_secret TEXT,"
-            "access_token TEXT,"
-            "refresh_token TEXT,"
-            "expires_at REAL DEFAULT 0,"
-            "enabled INTEGER DEFAULT 1)"
-        )
-        self.db.execute(
-            "CREATE TABLE IF NOT EXISTS twitch_notifications ("
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "guild_id INTEGER,"
-            "user_id INTEGER,"
-            "user_login TEXT,"
-            "stream_title TEXT,"
-            "stream_url TEXT,"
-            "occurred_at REAL DEFAULT (unixepoch()))"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_twitch_guild ON twitch_config(guild_id)"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_twitch_notif_guild ON twitch_notifications(guild_id, user_id)"
-        )
-
     # --- Configuration ---
 
     def set_twitch_config(
@@ -205,7 +176,6 @@ class cmdtwitch(commands.Cog):
     # --- Commandes ---
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def twitchconfig(self, ctx, action: str = None, *args):
         if action is None:
             cfg = self.get_twitch_config(ctx.guild.id)
@@ -252,7 +222,6 @@ class cmdtwitch(commands.Cog):
             await ctx.send("Alertes Twitch desactivees.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def twitch(self, ctx, action: str = None, *args):
         if action is None:
             await ctx.send("Utilisez ,twitchconfig pour configurer.")
@@ -272,5 +241,4 @@ class cmdtwitch(commands.Cog):
 
 def setup(bot, db):
     cog = cmdtwitch(bot, db)
-    cog._ensure_twitch_tables()
     bot.add_cog(cog)

@@ -19,6 +19,14 @@ ADMIN_COMMANDS = frozenset({
     "webhookset", "webhooktoggle", "webhookevent", "webhookconfig", "webhooksend",
     "lockdown", "unlockdown", "lockdownchannel", "unlockdownchannel", "lockdownconfig",
     "lockdownrole", "lockdownlog", "lockdownmassjoin", "lockdownauto",
-    "starboard",
+    "starboard", "starboardclear",
     "plugins", "plugins list", "plugins enable", "plugins disable", "plugins reload",
+    # Commandes qui s'appuyaient sur @commands.has_permissions(manage_guild=True) :
+    # le decorateur court-circuitait la delegation par role du panneau de permissions.
+    "setlog", "unsetlog",
+    "cmdadd", "cmdedit", "cmdrm", "cmdlist",
+    "poll", "pollclose", "pollresults",
+    "twitch", "twitchconfig",
+    # Ecriture des notes du serveur : n'etait protegee par rien.
+    "addtag", "removetag", "tagedit", "tagrename",
 })

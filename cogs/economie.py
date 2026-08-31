@@ -197,7 +197,6 @@ class cmdeco(commands.Cog):
         return embed
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def ecopanel(self, ctx):
         cfg = self.get_eco_config(ctx.guild.id)
         embed = self.build_eco_panel_embed(ctx.guild, cfg)

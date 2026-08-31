@@ -52,7 +52,6 @@ class cmdtranslation(commands.Cog):
         await ctx.send(t(self.db, "lang_changed", ctx.guild.id if ctx.guild else None, ctx.author.id, lang=lang))
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def guildlang(self, ctx, lang: str):
         """Définit la langue par défaut du serveur (fr ou en)."""
         lang = lang.lower().strip()

@@ -132,7 +132,6 @@ class cmdlockdown(commands.Cog):
         await ctx.send(f"🔓 Salon {channel.mention} deverrouille.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def lockdownconfig(self, ctx):
         """Affiche la configuration du systeme de lockdown."""
         cfg = self.get_config(ctx.guild.id)
@@ -147,7 +146,6 @@ class cmdlockdown(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def lockdownrole(self, ctx, role: discord.Role = None):
         """Definit le role a assigner en mode lockdown."""
         if role is None:
@@ -158,7 +156,6 @@ class cmdlockdown(commands.Cog):
             await ctx.send(f"✅ Role lockdown defini sur {role.mention}.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def lockdownlog(self, ctx, channel: discord.TextChannel = None):
         """Definit le canal de logs du lockdown."""
         if channel is None:
@@ -169,7 +166,6 @@ class cmdlockdown(commands.Cog):
             await ctx.send(f"✅ Canal de logs lockdown defini sur {channel.mention}.")
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def lockdownmassjoin(self, ctx, threshold: int = None, window: int = None):
         """Configure le lockdown automatique sur mass-join."""
         if threshold is not None:
@@ -182,7 +178,6 @@ class cmdlockdown(commands.Cog):
         )
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def lockdownauto(self, ctx, state: str = None):
         """Active/desactive le lockdown automatique sur mass-join."""
         if state is None or state.lower() not in ("on", "off"):

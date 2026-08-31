@@ -287,4 +287,6 @@ async def main():
     await plugin_loader.load_plugins(bot, db)
     await bot.start(token)
 
-asyncio.run(main())
+
+if __name__ == "__main__":
+    asyncio.run(main())

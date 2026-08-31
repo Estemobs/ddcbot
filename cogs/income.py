@@ -239,7 +239,6 @@ class cmdincome(commands.Cog):
         return embed
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
     async def incomepanel(self, ctx):
         cfg = self.get_income_config(ctx.guild.id)
         embed = self.build_income_panel_embed(ctx.guild, cfg)
