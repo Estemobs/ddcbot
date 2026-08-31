@@ -23,6 +23,7 @@ from jinja2 import pass_context
 import sys as _sys
 _sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from data.db import Database
+from casino_engine import CasinoEngine, CasinoError
 from web_dashboard.i18n import tr, resolve_lang, get_text
 
 app = FastAPI(title="DDCBot Dashboard", docs_url=None, redoc_url=None)
@@ -68,6 +69,7 @@ GUILD_MODULES = [
     {"slug": "minecraft", "key": "module.minecraft", "icon": "cube", "table": "minecraft_config"},
     {"slug": "steam", "key": "module.steam", "icon": "gamepad", "table": "steam_config"},
     {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
+    {"slug": "casino", "key": "module.casino", "icon": "dice", "table": "casino_games"},
     {"slug": "notes", "key": "module.notes", "icon": "note", "table": "notes"},
     {"slug": "transactions", "key": "module.transactions", "icon": "swap", "table": "transactions"},
     {"slug": "reminders", "key": "module.reminders", "icon": "clock", "table": "reminders"},
@@ -101,6 +103,7 @@ templates.env.globals["auth_enabled"] = auth_enabled
 
 DB_PATH = os.environ.get("DDC_DB_PATH", os.path.join(BASE_DIR, "..", "data", "ddcbot.sqlite3"))
 db = Database(path=DB_PATH)
+casino = CasinoEngine(db)
 
 DASHBOARD_TOKEN = os.environ.get("DASHBOARD_TOKEN", "")
 API_KEY = os.environ.get("DASHBOARD_API_KEY", "")
@@ -375,13 +378,16 @@ async def economy_save_config(
     allow_transfers: str = Form("0"),
     max_transfer: float = Form(10000),
     allow_negative: str = Form("0"),
+    starting_balance: float = Form(0),
 ):
     db.execute(
-        "INSERT INTO economy_config (guild_id, allow_transfers, max_transfer, allow_negative_balances) "
-        "VALUES (?, ?, ?, ?) ON CONFLICT(guild_id) DO UPDATE SET "
+        "INSERT INTO economy_config (guild_id, allow_transfers, max_transfer, "
+        "allow_negative_balances, starting_balance) "
+        "VALUES (?, ?, ?, ?, ?) ON CONFLICT(guild_id) DO UPDATE SET "
         "allow_transfers=excluded.allow_transfers, max_transfer=excluded.max_transfer, "
-        "allow_negative_balances=excluded.allow_negative_balances",
-        (guild_id, int(allow_transfers), max_transfer, int(allow_negative)),
+        "allow_negative_balances=excluded.allow_negative_balances, "
+        "starting_balance=excluded.starting_balance",
+        (guild_id, int(allow_transfers), max_transfer, int(allow_negative), starting_balance),
     )
     return RedirectResponse(f"/guild/{guild_id}/economy", status_code=303)
 
@@ -879,10 +885,15 @@ async def invitations_page(request: Request, guild_id: int):
     )
     total_invited = sum(i["invited"] for i in invites)
     total_left = sum(i["left"] for i in invites)
+    rewards = db.fetchall(
+        "SELECT threshold, amount FROM invite_rewards WHERE guild_id = ? ORDER BY threshold",
+        (guild_id,),
+    )
     return templates.TemplateResponse(request, "invitations.html", {
         "request": request, "guild_id": guild_id,
         "invites": invites, "total_invited": total_invited,
         "total_left": total_left, "total_active": total_invited - total_left,
+        "rewards": rewards,
     })
 
 
@@ -1310,6 +1321,210 @@ async def api_giveaways():
         "active": [dict(g) for g in active],
         "ended": [dict(g) for g in ended],
     }
+
+
+# ── Casino ──
+# Les jeux sont des donnees : tout ce qui est editable ici (jeux, lots, poids,
+# cooldowns, quetes, effets) est lu tel quel par le bot via casino_engine.
+
+@app.get("/guild/{guild_id}/casino", response_class=HTMLResponse)
+async def casino_page(request: Request, guild_id: int):
+    games = casino.list_games(guild_id, include_disabled=True)
+    for game in games:
+        game["lots"] = casino.list_lots(game["id"])
+        game["expected"] = casino.expected_value(game)
+        game["rtp"] = casino.theoretical_rtp(game)
+        game["stats"] = casino.actual_stats(guild_id, game["slug"])
+    return templates.TemplateResponse(request, "casino.html", {
+        "request": request, "guild_id": guild_id, "games": games,
+        "quests": casino.list_quests(guild_id, include_disabled=True),
+        "style": casino.get_style(guild_id),
+        "overall": casino.actual_stats(guild_id),
+    })
+
+
+@app.post("/guild/{guild_id}/casino/game/add")
+async def casino_game_add(
+    guild_id: int,
+    display_name: str = Form(...),
+    slug: str = Form(""),
+    kind: str = Form("weighted"),
+    category: str = Form("box"),
+    price: float = Form(0),
+    cooldown_seconds: int = Form(0),
+    description: str = Form(""),
+    dice: int = Form(2),
+    faces: int = Form(6),
+    win_amount: float = Form(0),
+    lose_amount: float = Form(0),
+):
+    config = {}
+    if kind == "dice_sum":
+        config = {"dice": dice, "faces": faces}
+    elif kind == "dice_guess":
+        config = {"faces": faces, "win_amount": win_amount, "lose_amount": lose_amount}
+    try:
+        casino.create_game(
+            guild_id, slug or display_name, display_name=display_name, kind=kind,
+            category=category, price=price, cooldown_seconds=cooldown_seconds,
+            description=description, config=config,
+        )
+    except CasinoError:
+        pass
+    return RedirectResponse(f"/guild/{guild_id}/casino", status_code=303)
+
+
+@app.post("/guild/{guild_id}/casino/game/{game_id}/edit")
+async def casino_game_edit(
+    guild_id: int, game_id: int,
+    display_name: str = Form(...),
+    category: str = Form("box"),
+    price: float = Form(0),
+    cooldown_seconds: int = Form(0),
+    description: str = Form(""),
+    enabled: int = Form(0),
+):
+    casino.update_game(
+        game_id, display_name=display_name, category=category, price=price,
+        cooldown_seconds=cooldown_seconds, description=description, enabled=enabled,
+    )
+    return RedirectResponse(f"/guild/{guild_id}/casino#jeu-{game_id}", status_code=303)
+
+
+@app.post("/guild/{guild_id}/casino/game/{game_id}/delete")
+async def casino_game_delete(guild_id: int, game_id: int):
+    casino.delete_game(game_id)
+    return RedirectResponse(f"/guild/{guild_id}/casino", status_code=303)
+
+
+@app.post("/guild/{guild_id}/casino/game/{game_id}/lot/add")
+async def casino_lot_add(
+    guild_id: int, game_id: int,
+    reward_kind: str = Form("money"),
+    reward_value: str = Form(...),
+    label: str = Form(""),
+    weight: float = Form(1),
+    outcome: str = Form(""),
+):
+    try:
+        casino.add_lot(
+            game_id, reward_kind, reward_value, label=label, weight=weight,
+            outcome=int(outcome) if outcome.strip() else None,
+        )
+    except (CasinoError, ValueError):
+        pass
+    return RedirectResponse(f"/guild/{guild_id}/casino#jeu-{game_id}", status_code=303)
+
+
+@app.post("/guild/{guild_id}/casino/lot/{lot_id}/edit")
+async def casino_lot_edit(
+    guild_id: int, lot_id: int,
+    reward_value: str = Form(...),
+    weight: float = Form(1),
+    game_id: int = Form(0),
+):
+    try:
+        casino.update_lot(lot_id, reward_value=reward_value, weight=weight)
+    except CasinoError:
+        pass
+    return RedirectResponse(f"/guild/{guild_id}/casino#jeu-{game_id}", status_code=303)
+
+
+@app.post("/guild/{guild_id}/casino/lot/{lot_id}/delete")
+async def casino_lot_delete(guild_id: int, lot_id: int, game_id: int = Form(0)):
+    casino.delete_lot(lot_id)
+    return RedirectResponse(f"/guild/{guild_id}/casino#jeu-{game_id}", status_code=303)
+
+
+@app.post("/guild/{guild_id}/casino/quest/add")
+async def casino_quest_add(
+    guild_id: int,
+    name: str = Form(...),
+    goal: int = Form(1),
+    reward_kind: str = Form("money"),
+    reward_value: str = Form(...),
+    target_kind: str = Form("any"),
+    target_value: str = Form(""),
+    description: str = Form(""),
+    repeatable: int = Form(0),
+):
+    try:
+        casino.create_quest(
+            guild_id, name, goal, reward_kind, reward_value,
+            target_kind=target_kind, target_value=target_value,
+            description=description, repeatable=bool(repeatable),
+        )
+    except CasinoError:
+        pass
+    return RedirectResponse(f"/guild/{guild_id}/casino#quetes", status_code=303)
+
+
+@app.post("/guild/{guild_id}/casino/quest/{quest_id}/delete")
+async def casino_quest_delete(guild_id: int, quest_id: int):
+    casino.delete_quest(quest_id)
+    return RedirectResponse(f"/guild/{guild_id}/casino#quetes", status_code=303)
+
+
+@app.post("/guild/{guild_id}/casino/style")
+async def casino_style_save(
+    guild_id: int,
+    animations_enabled: int = Form(0),
+    frame_count: int = Form(4),
+    frame_delay_ms: int = Form(650),
+    reel_symbols: str = Form(""),
+    reel_width: int = Form(3),
+    suspense_text: str = Form(""),
+    win_emoji: str = Form("🎉"),
+    lose_emoji: str = Form("💸"),
+    win_color: str = Form("#57F287"),
+    lose_color: str = Form("#ED4245"),
+    jackpot_threshold: float = Form(0),
+    jackpot_text: str = Form(""),
+    currency_symbol: str = Form("$"),
+):
+    casino.update_style(
+        guild_id, animations_enabled=animations_enabled, frame_count=frame_count,
+        frame_delay_ms=frame_delay_ms, reel_symbols=reel_symbols, reel_width=reel_width,
+        suspense_text=suspense_text, win_emoji=win_emoji, lose_emoji=lose_emoji,
+        win_color=win_color, lose_color=lose_color, jackpot_threshold=jackpot_threshold,
+        jackpot_text=jackpot_text, currency_symbol=currency_symbol,
+    )
+    return RedirectResponse(f"/guild/{guild_id}/casino#effets", status_code=303)
+
+
+@app.post("/guild/{guild_id}/invitations/reward")
+async def invite_reward_save(guild_id: int, threshold: int = Form(...),
+                             amount: float = Form(...)):
+    db.execute(
+        "INSERT INTO invite_rewards (guild_id, threshold, amount) VALUES (?, ?, ?) "
+        "ON CONFLICT(guild_id, threshold) DO UPDATE SET amount = excluded.amount",
+        (guild_id, threshold, amount),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/invitations", status_code=303)
+
+
+@app.post("/guild/{guild_id}/invitations/reward/delete")
+async def invite_reward_delete(guild_id: int, threshold: int = Form(...)):
+    db.execute(
+        "DELETE FROM invite_rewards WHERE guild_id = ? AND threshold = ?",
+        (guild_id, threshold),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/invitations", status_code=303)
+
+
+@app.get("/api/guild/{guild_id}/casino")
+async def api_casino(guild_id: int):
+    games = []
+    for game in casino.list_games(guild_id, include_disabled=True):
+        games.append({
+            "slug": game["slug"], "name": game["display_name"], "kind": game["kind"],
+            "category": game["category"], "price": game["price"],
+            "cooldown_seconds": game["cooldown_seconds"], "enabled": bool(game["enabled"]),
+            "expected_value": casino.expected_value(game),
+            "rtp": casino.theoretical_rtp(game),
+            "lots": casino.list_lots(game["id"]),
+        })
+    return {"games": games, "stats": casino.actual_stats(guild_id)}
 
 
 @app.get("/api/notes")

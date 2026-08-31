@@ -29,4 +29,6 @@ ADMIN_COMMANDS = frozenset({
     "twitch", "twitchconfig",
     # Ecriture des notes du serveur : n'etait protegee par rien.
     "addtag", "removetag", "tagedit", "tagrename",
+    # Casino : creation/edition des jeux, lots, quetes et statistiques.
+    "addlot", "rmlot", "gamelots", "casinostats", "inviterewards",
 })

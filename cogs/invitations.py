@@ -62,6 +62,63 @@ class cmdinvitations(commands.Cog):
         )
         return [(row["user_id"], {"invited": row["invited"], "left": row["left"]}) for row in rows]
 
+    # --- paliers de recompense ---
+
+    def list_rewards(self, guild_id: int) -> list:
+        rows = self.db.fetchall(
+            "SELECT threshold, amount FROM invite_rewards WHERE guild_id = ? ORDER BY threshold",
+            (guild_id,),
+        )
+        return [(row["threshold"], row["amount"]) for row in rows]
+
+    def set_reward(self, guild_id: int, threshold: int, amount: float):
+        self.db.execute(
+            "INSERT INTO invite_rewards (guild_id, threshold, amount) VALUES (?, ?, ?) "
+            "ON CONFLICT(guild_id, threshold) DO UPDATE SET amount = excluded.amount",
+            (guild_id, threshold, amount),
+        )
+
+    def remove_reward(self, guild_id: int, threshold: int) -> bool:
+        cur = self.db.execute(
+            "DELETE FROM invite_rewards WHERE guild_id = ? AND threshold = ?",
+            (guild_id, threshold),
+        )
+        return bool(cur.rowcount)
+
+    def pending_rewards(self, guild_id: int, user_id: int, invited: int) -> list:
+        """Paliers atteints et pas encore verses a ce joueur."""
+        claimed = {
+            row["threshold"] for row in self.db.fetchall(
+                "SELECT threshold FROM invite_reward_claims WHERE guild_id = ? AND user_id = ?",
+                (guild_id, user_id),
+            )
+        }
+        return [
+            (threshold, amount)
+            for threshold, amount in self.list_rewards(guild_id)
+            if invited >= threshold and threshold not in claimed
+        ]
+
+    def grant_invite_rewards(self, guild_id: int, user_id: int, invited: int) -> float:
+        """Verse les paliers dus et renvoie le total credite."""
+        total = 0.0
+        for threshold, amount in self.pending_rewards(guild_id, user_id, invited):
+            self.db.execute(
+                "INSERT INTO balances (user_id, amount) VALUES (?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET amount = amount + excluded.amount",
+                (user_id, amount),
+            )
+            self.db.execute(
+                "INSERT OR IGNORE INTO invite_reward_claims (guild_id, user_id, threshold) "
+                "VALUES (?, ?, ?)",
+                (guild_id, user_id, threshold),
+            )
+            self.db.log_transaction(
+                guild_id, user_id, amount, "invite", f"palier {threshold} invitation(s)"
+            )
+            total += amount
+        return total
+
     # --- événements ---
 
     @commands.Cog.listener()
@@ -90,7 +147,52 @@ class cmdinvitations(commands.Cog):
             if invite.uses > cached.get(invite.code, 0):
                 if invite.inviter is not None and not invite.inviter.bot:
                     self.add_invite(guild.id, invite.inviter.id)
+                    await self._reward_inviter(guild, invite.inviter)
                 return
+
+    async def _reward_inviter(self, guild, inviter):
+        stats = self.get_stats(guild.id, inviter.id)
+        total = self.grant_invite_rewards(guild.id, inviter.id, stats["invited"])
+        if not total:
+            return
+        channel = guild.system_channel
+        if channel is not None:
+            try:
+                await channel.send(
+                    f"🎉 {inviter.mention} atteint **{stats['invited']}** invitation(s) "
+                    f"et reçoit **{total:.0f}** pièces !"
+                )
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
+    @commands.command()
+    async def inviterewards(self, ctx, action: str = "list", threshold: int = None,
+                            amount: float = None):
+        """,inviterewards list | set <invitations> <montant> | remove <invitations>"""
+        action = action.lower()
+        if action == "set" and threshold is not None and amount is not None:
+            self.set_reward(ctx.guild.id, threshold, amount)
+            await ctx.send(f"✅ Palier **{threshold} invitation(s)** → **{amount:.0f}** pièces.")
+            return
+        if action == "remove" and threshold is not None:
+            if self.remove_reward(ctx.guild.id, threshold):
+                await ctx.send(f"✅ Palier **{threshold}** supprimé.")
+            else:
+                await ctx.send("❌ Ce palier n'existe pas.")
+            return
+
+        rewards = self.list_rewards(ctx.guild.id)
+        if not rewards:
+            await ctx.send(
+                "Aucun palier configuré. Exemple : `,inviterewards set 5 500` "
+                "(5 invitations → 500 pièces)."
+            )
+            return
+        lines = "\n".join(f"↦ {t} = {a:.0f}" for t, a in rewards)
+        await ctx.send(embed=discord.Embed(
+            title="Récompenses d'invitation", description=lines,
+            color=discord.Color.blurple(),
+        ))
 
     @commands.Cog.listener()
     async def on_invite_create(self, invite: discord.Invite):

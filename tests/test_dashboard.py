@@ -111,7 +111,7 @@ class TestDashboardSixNewPages(unittest.TestCase):
             f"/guild/{GUILD}/work", f"/guild/{GUILD}/rss",
             f"/guild/{GUILD}/lang", f"/guild/{GUILD}/notes",
             f"/guild/{GUILD}/transactions", f"/guild/{GUILD}/reminders",
-            f"/guild/{GUILD}/giveaways",
+            f"/guild/{GUILD}/giveaways", f"/guild/{GUILD}/casino",
         ]:
             with self.subTest(path=path):
                 resp = self.client.get(path)
@@ -325,6 +325,109 @@ class TestPerGuildNotes(unittest.TestCase):
                 "SELECT 1 FROM notes WHERE guild_id = ? AND title = 'locale'", (GUILD,)
             )
         )
+
+
+class TestCasinoDashboard(unittest.TestCase):
+    """L'editeur de jeux : c'est la que le game master configure tout."""
+
+    def setUp(self):
+        self._old_db = dashboard.db
+        self._old_engine_db = dashboard.casino.db
+        dashboard.db = _fresh_db()
+        dashboard.casino.db = dashboard.db
+        dashboard.db.execute("INSERT INTO economy_config (guild_id) VALUES (?)", (GUILD,))
+        self.client = TestClient(dashboard.app, follow_redirects=False)
+
+    def tearDown(self):
+        dashboard.db = self._old_db
+        dashboard.casino.db = self._old_engine_db
+
+    def test_create_game_normalises_the_name(self):
+        resp = self.client.post(f"/guild/{GUILD}/casino/game/add", data={
+            "display_name": "Machine Saison 1", "kind": "weighted", "category": "machine",
+            "price": "3500", "cooldown_seconds": "0", "description": "",
+            "dice": "2", "faces": "6", "win_amount": "0", "lose_amount": "0",
+        })
+        self.assertEqual(resp.status_code, 303)
+        game = dashboard.casino.get_game(GUILD, "machine-saison-1")
+        self.assertIsNotNone(game)
+        self.assertEqual(game["display_name"], "Machine Saison 1")
+        self.assertEqual(game["price"], 3500)
+
+    def test_lot_weight_round_trip(self):
+        game_id = dashboard.casino.create_game(GUILD, "machine", price=250)
+        self.client.post(f"/guild/{GUILD}/casino/game/{game_id}/lot/add", data={
+            "reward_kind": "money", "reward_value": "450", "label": "",
+            "weight": "3", "outcome": "",
+        })
+        lots = dashboard.casino.list_lots(game_id)
+        self.assertEqual(len(lots), 1)
+        self.assertEqual(lots[0]["weight"], 3)
+
+        self.client.post(f"/guild/{GUILD}/casino/lot/{lots[0]['id']}/edit", data={
+            "reward_value": "500", "weight": "9", "game_id": str(game_id),
+        })
+        self.assertEqual(dashboard.casino.list_lots(game_id)[0]["weight"], 9)
+
+        self.client.post(f"/guild/{GUILD}/casino/lot/{lots[0]['id']}/delete",
+                         data={"game_id": str(game_id)})
+        self.assertEqual(dashboard.casino.list_lots(game_id), [])
+
+    def test_page_warns_about_games_that_mint_money(self):
+        game_id = dashboard.casino.create_game(GUILD, "dieu", display_name="Machine de DIEU",
+                                               price=50000)
+        for value in (100000, 35000):
+            dashboard.casino.add_lot(game_id, "money", value)
+        body = self.client.get(f"/guild/{GUILD}/casino").text
+        self.assertIn("Machine de DIEU", body)
+        self.assertIn("RTP 135", body)
+
+    def test_effects_are_configurable(self):
+        resp = self.client.post(f"/guild/{GUILD}/casino/style", data={
+            "animations_enabled": "1", "frame_count": "6", "frame_delay_ms": "400",
+            "reel_symbols": "🍀,💰,🎲", "reel_width": "4", "suspense_text": "Ça tourne",
+            "win_emoji": "🤑", "lose_emoji": "😭", "win_color": "#00FF00",
+            "lose_color": "#FF0000", "jackpot_threshold": "50000",
+            "jackpot_text": "GROS LOT", "currency_symbol": "$",
+        })
+        self.assertEqual(resp.status_code, 303)
+        style = dashboard.casino.get_style(GUILD)
+        self.assertEqual(style["frame_count"], 6)
+        self.assertEqual(style["reels"], ["🍀", "💰", "🎲"])
+        self.assertEqual(style["jackpot_text"], "GROS LOT")
+
+    def test_quest_creation_and_deletion(self):
+        self.client.post(f"/guild/{GUILD}/casino/quest/add", data={
+            "name": "Ouvreur de boxs", "goal": "20", "reward_kind": "role",
+            "reward_value": "111", "target_kind": "category", "target_value": "box",
+            "description": "", "repeatable": "0",
+        })
+        quests = dashboard.casino.list_quests(GUILD)
+        self.assertEqual([q["name"] for q in quests], ["Ouvreur de boxs"])
+        self.client.post(f"/guild/{GUILD}/casino/quest/{quests[0]['id']}/delete")
+        self.assertEqual(dashboard.casino.list_quests(GUILD), [])
+
+    def test_invite_tiers_round_trip(self):
+        self.client.post(f"/guild/{GUILD}/invitations/reward",
+                         data={"threshold": "5", "amount": "500"})
+        rows = dashboard.db.fetchall(
+            "SELECT threshold, amount FROM invite_rewards WHERE guild_id = ?", (GUILD,)
+        )
+        self.assertEqual([(r["threshold"], r["amount"]) for r in rows], [(5, 500)])
+        self.client.post(f"/guild/{GUILD}/invitations/reward/delete", data={"threshold": "5"})
+        self.assertEqual(
+            dashboard.db.fetchall("SELECT 1 FROM invite_rewards WHERE guild_id = ?", (GUILD,)), []
+        )
+
+    def test_starting_balance_is_saved(self):
+        self.client.post(f"/guild/{GUILD}/economy/config", data={
+            "allow_transfers": "1", "max_transfer": "10000",
+            "allow_negative": "0", "starting_balance": "100",
+        })
+        row = dashboard.db.fetchone(
+            "SELECT starting_balance FROM economy_config WHERE guild_id = ?", (GUILD,)
+        )
+        self.assertEqual(row["starting_balance"], 100)
 
 
 class TestDashboardAuth(unittest.TestCase):

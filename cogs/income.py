@@ -157,7 +157,36 @@ class cmdincome(commands.Cog):
         )
 
     def set_role_income_last_collect(self, role_id: int, timestamp: float):
+        """Compatibilite : marque le role entier. Prefere set_user_last_collect."""
         self.db.execute("UPDATE role_income SET last_collect = ? WHERE role_id = ?", (timestamp, role_id))
+
+    def get_user_last_collect(self, role_id: int, user_id: int) -> float:
+        """Derniere collecte de CE joueur pour CE role.
+
+        Le cooldown vivait sur role_income.last_collect, donc partage : le
+        premier joueur a collecter bloquait tous les autres porteurs du role
+        jusqu'a la fin de l'intervalle.
+        """
+        row = self.db.fetchone(
+            "SELECT last_collect FROM role_income_state WHERE role_id = ? AND user_id = ?",
+            (role_id, user_id),
+        )
+        if row is not None:
+            return row["last_collect"]
+        # Aucun etat pour ce joueur : on repart du repere migre (user_id 0), ce
+        # qui evite un versement immediat a tout le monde apres la migration.
+        legacy = self.db.fetchone(
+            "SELECT last_collect FROM role_income_state WHERE role_id = ? AND user_id = 0",
+            (role_id,),
+        )
+        return legacy["last_collect"] if legacy else 0.0
+
+    def set_user_last_collect(self, role_id: int, user_id: int, timestamp: float):
+        self.db.execute(
+            "INSERT INTO role_income_state (role_id, user_id, last_collect) VALUES (?, ?, ?) "
+            "ON CONFLICT(role_id, user_id) DO UPDATE SET last_collect = excluded.last_collect",
+            (role_id, user_id, timestamp),
+        )
 
     # --- config revenus passifs par serveur ---
 
@@ -332,15 +361,17 @@ class cmdincome(commands.Cog):
             if role is None or role not in member.roles:
                 continue
 
-            if current_time - role_data["last_collect"] >= role_data["collect_interval"]:
+            last_collect = self.get_user_last_collect(role_id, member.id)
+
+            if current_time - last_collect >= role_data["collect_interval"]:
                 self.add_balance(member.id, role_data["amount"])
-                self.set_role_income_last_collect(role_id, current_time)
+                self.set_user_last_collect(role_id, member.id, current_time)
                 self.db.log_transaction(ctx.guild.id, member.id, role_data["amount"], "income", f"rôle {role_data['name']}")
                 new_balance = self.get_balance(member.id)
                 await ctx.send(f"{member.mention}, vous avez collecté **{role_data['amount']:.2f}** pièces grâce à votre rôle **{role_data['name']}**. Nouveau solde : **{new_balance:.2f}** pièces.")
                 collected_any = True
             else:
-                time_left = role_data["collect_interval"] - (current_time - role_data["last_collect"])
+                time_left = role_data["collect_interval"] - (current_time - last_collect)
                 hours_left = int(time_left // 3600)
                 minutes_left = int((time_left % 3600) // 60)
                 await ctx.send(f"{member.mention}, vous devez attendre encore **{hours_left}h {minutes_left}min** avant de collecter votre gain pour le rôle **{role_data['name']}**.")

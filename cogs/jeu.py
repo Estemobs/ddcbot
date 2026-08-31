@@ -1,16 +1,41 @@
-import discord
-import json
-import random
+"""Casino : boxes, machines, loto et des, entierement configurables.
+
+Aucun jeu n'est code en dur. Un jeu est une ligne de `casino_games` avec ses
+lots, cree depuis le dashboard web ou avec ,addgame. Les regles et le hasard
+vivent dans casino_engine ; ce cog ne fait que l'affichage Discord,
+l'attribution des roles et le debit/credit du solde.
+"""
+
 import asyncio
+import discord
 from discord.ext import commands
 from discord import Embed
 
+from casino_engine import (
+    CasinoEngine, CasinoError, Reward, format_duration, normalize_slug,
+)
 
 DEFAULT_GAME_PANEL_CONFIG = {
     "openlot_enabled": True,
     "quests_enabled": True,
     "announce_win_public": True,
     "log_channel_id": None,
+}
+
+# Alias acceptes cote commandes Discord, pour rester proche du vocabulaire du jeu.
+REWARD_ALIASES = {
+    "argent": "money", "money": "money",
+    "grade": "role", "role": "role", "rôle": "role",
+    "ticket": "ticket",
+    "objet": "item", "item": "item",
+    "rien": "nothing", "nothing": "nothing",
+}
+
+KIND_ALIASES = {
+    "box": "weighted", "machine": "weighted", "pondere": "weighted",
+    "pondéré": "weighted", "weighted": "weighted",
+    "loto": "dice_sum", "des": "dice_sum", "dés": "dice_sum", "dice_sum": "dice_sum",
+    "de": "dice_guess", "dé": "dice_guess", "pari": "dice_guess", "dice_guess": "dice_guess",
 }
 
 
@@ -24,14 +49,7 @@ class GamePanelView(discord.ui.View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message(
-                "Seul l'auteur de la commande peut modifier ce panneau.",
-                ephemeral=True,
-            )
-            return False
-        if not interaction.user.guild_permissions.manage_guild:
-            await interaction.response.send_message(
-                "Permission manquante: Manage Server.",
-                ephemeral=True,
+                "Seul l'auteur de la commande peut modifier ce panneau.", ephemeral=True
             )
             return False
         return True
@@ -56,7 +74,17 @@ class GamePanelView(discord.ui.View):
     @discord.ui.button(label="Toggle annonce gains", style=discord.ButtonStyle.primary, row=0)
     async def toggle_public_announce(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_game_panel_config(self.guild_id)
-        self.cog.update_game_panel_config(self.guild_id, announce_win_public=not cfg["announce_win_public"])
+        self.cog.update_game_panel_config(
+            self.guild_id, announce_win_public=not cfg["announce_win_public"]
+        )
+        await self.refresh(interaction)
+
+    @discord.ui.button(label="Toggle animations", style=discord.ButtonStyle.secondary, row=1)
+    async def toggle_animations(self, interaction: discord.Interaction, button: discord.ui.Button):
+        style = self.cog.engine.get_style(self.guild_id)
+        self.cog.engine.update_style(
+            self.guild_id, animations_enabled=0 if style["animations_enabled"] else 1
+        )
         await self.refresh(interaction)
 
     @discord.ui.button(label="Canal logs = ici", style=discord.ButtonStyle.secondary, row=1)
@@ -69,7 +97,7 @@ class GamePanelView(discord.ui.View):
         self.cog.reset_game_panel_config(self.guild_id)
         await self.refresh(interaction)
 
-    @discord.ui.button(label="Fermer", style=discord.ButtonStyle.danger, row=1)
+    @discord.ui.button(label="Fermer", style=discord.ButtonStyle.danger, row=2)
     async def close_panel(self, interaction: discord.Interaction, button: discord.ui.Button):
         for child in self.children:
             child.disabled = True
@@ -83,6 +111,15 @@ class cmdjeu(commands.Cog):
     def __init__(self, bot, db):
         self.bot = bot
         self.db = db
+        self.engine = CasinoEngine(db)
+        self._locks = {}
+
+    def _user_lock(self, user_id: int) -> asyncio.Lock:
+        """Une partie a la fois par joueur : evite le double-debit sur spam."""
+        lock = self._locks.get(user_id)
+        if lock is None:
+            lock = self._locks[user_id] = asyncio.Lock()
+        return lock
 
     # --- balances (table partagee avec economie.py/income.py/work.py) ---
 
@@ -96,107 +133,6 @@ class cmdjeu(commands.Cog):
             "ON CONFLICT(user_id) DO UPDATE SET amount = amount + excluded.amount",
             (user_id, delta),
         )
-
-    # --- jeux / lootbox ---
-
-    def list_games(self) -> dict:
-        rows = self.db.fetchall("SELECT name, num_lots, lots_json, game_price FROM games")
-        return {
-            row["name"]: {
-                "num_lots": row["num_lots"],
-                "lots": json.loads(row["lots_json"]),
-                "game_price": row["game_price"],
-            }
-            for row in rows
-        }
-
-    def get_game(self, name: str):
-        row = self.db.fetchone("SELECT num_lots, lots_json, game_price FROM games WHERE name = ?", (name,))
-        if row is None:
-            return None
-        return {"num_lots": row["num_lots"], "lots": json.loads(row["lots_json"]), "game_price": row["game_price"]}
-
-    def add_game(self, name: str, num_lots: int, lots: list, game_price: int):
-        self.db.execute(
-            "INSERT INTO games (name, num_lots, lots_json, game_price) VALUES (?, ?, ?, ?)",
-            (name, num_lots, json.dumps(lots), game_price),
-        )
-
-    def remove_game(self, name: str):
-        self.db.execute("DELETE FROM games WHERE name = ?", (name,))
-
-    # --- quetes ---
-
-    def list_quests(self) -> dict:
-        rows = self.db.fetchall("SELECT name, lot_count, lot_json, progress FROM quests")
-        return {
-            row["name"]: {
-                "name": row["name"],
-                "lot_count": row["lot_count"],
-                "lot": json.loads(row["lot_json"]),
-                "progress": row["progress"],
-            }
-            for row in rows
-        }
-
-    def get_quest(self, name: str):
-        row = self.db.fetchone("SELECT lot_count, lot_json, progress FROM quests WHERE name = ?", (name,))
-        if row is None:
-            return None
-        return {"lot_count": row["lot_count"], "lot": json.loads(row["lot_json"]), "progress": row["progress"]}
-
-    def add_quest(self, name: str, lot_count: int, lot: dict):
-        self.db.execute(
-            "INSERT INTO quests (name, lot_count, lot_json, progress) VALUES (?, ?, ?, 0) "
-            "ON CONFLICT(name) DO UPDATE SET lot_count=excluded.lot_count, lot_json=excluded.lot_json, progress=0",
-            (name, lot_count, json.dumps(lot)),
-        )
-
-    def remove_quest(self, name: str):
-        self.db.execute("DELETE FROM quests WHERE name = ?", (name,))
-
-    def increment_quest_progress(self, name: str) -> int:
-        self.db.execute("UPDATE quests SET progress = progress + 1 WHERE name = ?", (name,))
-        row = self.db.fetchone("SELECT progress FROM quests WHERE name = ?", (name,))
-        return row["progress"]
-
-    def reset_quest_progress(self, name: str):
-        self.db.execute("UPDATE quests SET progress = 0 WHERE name = ?", (name,))
-
-    # --- inventaire (tickets) ---
-
-    def add_ticket(self, user_id: int, item_name: str):
-        self.db.execute("INSERT INTO inventory_tickets (user_id, item_name) VALUES (?, ?)", (user_id, item_name))
-
-    def pop_ticket(self, user_id: int, item_name: str) -> bool:
-        row = self.db.fetchone(
-            "SELECT id FROM inventory_tickets WHERE user_id = ? AND item_name = ? LIMIT 1",
-            (user_id, item_name),
-        )
-        if row is None:
-            return False
-        self.db.execute("DELETE FROM inventory_tickets WHERE id = ?", (row["id"],))
-        return True
-
-    def has_ticket(self, user_id: int, item_name: str) -> bool:
-        return self.db.fetchone(
-            "SELECT 1 FROM inventory_tickets WHERE user_id = ? AND item_name = ? LIMIT 1",
-            (user_id, item_name),
-        ) is not None
-
-    def user_ticket_counts(self, user_id: int) -> dict:
-        rows = self.db.fetchall(
-            "SELECT item_name, COUNT(*) as cnt FROM inventory_tickets WHERE user_id = ? GROUP BY item_name",
-            (user_id,),
-        )
-        return {row["item_name"]: row["cnt"] for row in rows}
-
-    def clear_user_tickets(self, user_id: int) -> bool:
-        row = self.db.fetchone("SELECT 1 FROM inventory_tickets WHERE user_id = ? LIMIT 1", (user_id,))
-        if row is None:
-            return False
-        self.db.execute("DELETE FROM inventory_tickets WHERE user_id = ?", (user_id,))
-        return True
 
     # --- config panneau jeux par serveur ---
 
@@ -233,14 +169,17 @@ class cmdjeu(commands.Cog):
             assignments.append(f"{key} = ?")
             values.append(int(value) if isinstance(value, bool) else value)
         values.append(guild_id)
-        self.db.execute(f"UPDATE game_panel_config SET {', '.join(assignments)} WHERE guild_id = ?", values)
+        self.db.execute(
+            f"UPDATE game_panel_config SET {', '.join(assignments)} WHERE guild_id = ?", values
+        )
 
     def reset_game_panel_config(self, guild_id: int):
         self.db.execute(
-            "INSERT INTO game_panel_config (guild_id, openlot_enabled, quests_enabled, announce_win_public, log_channel_id) "
-            "VALUES (?, ?, ?, ?, ?) "
+            "INSERT INTO game_panel_config (guild_id, openlot_enabled, quests_enabled, "
+            "announce_win_public, log_channel_id) VALUES (?, ?, ?, ?, ?) "
             "ON CONFLICT(guild_id) DO UPDATE SET openlot_enabled=excluded.openlot_enabled, "
-            "quests_enabled=excluded.quests_enabled, announce_win_public=excluded.announce_win_public, "
+            "quests_enabled=excluded.quests_enabled, "
+            "announce_win_public=excluded.announce_win_public, "
             "log_channel_id=excluded.log_channel_id",
             (
                 guild_id,
@@ -254,17 +193,27 @@ class cmdjeu(commands.Cog):
     def build_game_panel_embed(self, guild: discord.Guild, cfg: dict):
         channel_id = cfg.get("log_channel_id")
         log_channel = guild.get_channel(channel_id) if channel_id else None
-        log_label = f"#{log_channel.name}" if log_channel else "Non defini"
+        style = self.engine.get_style(guild.id)
 
         embed = discord.Embed(
-            title="Panneau Jeux / Lootbox",
-            description="Configuration de la categorie jeux.",
+            title="Panneau Casino",
+            description="Jeux, lots et effets se configurent dans le dashboard web.",
             color=discord.Color.purple(),
         )
-        embed.add_field(name="Ouverture des lots", value="Active" if cfg["openlot_enabled"] else "Desactivee", inline=True)
-        embed.add_field(name="Systeme de quetes", value="Actif" if cfg["quests_enabled"] else "Desactive", inline=True)
-        embed.add_field(name="Annonce publique des gains", value="Oui" if cfg["announce_win_public"] else "Non", inline=True)
-        embed.add_field(name="Canal logs", value=log_label, inline=False)
+        embed.add_field(name="Ouverture des lots",
+                        value="Active" if cfg["openlot_enabled"] else "Desactivee", inline=True)
+        embed.add_field(name="Systeme de quetes",
+                        value="Actif" if cfg["quests_enabled"] else "Desactive", inline=True)
+        embed.add_field(name="Annonce publique des gains",
+                        value="Oui" if cfg["announce_win_public"] else "Non", inline=True)
+        embed.add_field(name="Animations",
+                        value="Activees" if style["animations_enabled"] else "Desactivees",
+                        inline=True)
+        embed.add_field(name="Jeux configures",
+                        value=str(len(self.engine.list_games(guild.id, include_disabled=True))),
+                        inline=True)
+        embed.add_field(name="Canal logs",
+                        value=f"#{log_channel.name}" if log_channel else "Non defini", inline=False)
         embed.set_footer(text=f"Serveur: {guild.name}")
         return embed
 
@@ -277,391 +226,529 @@ class cmdjeu(commands.Cog):
         if channel:
             await channel.send(message)
 
-    @commands.command()
-    async def gamepanel(self, ctx):
-        cfg = self.get_game_panel_config(ctx.guild.id)
-        embed = self.build_game_panel_embed(ctx.guild, cfg)
-        view = GamePanelView(self, ctx.guild.id, ctx.author.id)
-        await ctx.send(embed=embed, view=view)
-
-    # ─── Méthodes internes ───────────────────────────────────────────────────────
+    # --- deroulement d'une partie ---
 
     async def _ask(self, ctx, timeout: float = 60.0):
-        """Attend une réponse de l'auteur dans le même salon, avec timeout."""
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
         try:
-            msg = await self.bot.wait_for('message', check=check, timeout=timeout)
-            return msg
+            return await self.bot.wait_for('message', check=check, timeout=timeout)
         except asyncio.TimeoutError:
             await ctx.send("⏱️ Temps écoulé. La commande a été annulée.")
             return None
 
-    async def _award_prize(self, ctx, prize: dict):
-        """Attribue un prix à l'utilisateur selon le type (grade / ticket / argent)."""
+    def money(self, style: dict, amount: float) -> str:
+        return f"{amount:,.0f}".replace(",", " ") + style["currency_symbol"]
+
+    async def _grant(self, ctx, reward, style: dict) -> str:
+        """Applique une recompense et renvoie sa description lisible."""
+        if reward.kind == "money":
+            amount = reward.money
+            self.add_balance(ctx.author.id, amount)
+            self.db.log_transaction(
+                ctx.guild.id, ctx.author.id, amount, "casino",
+                "gain" if amount >= 0 else "perte",
+            )
+            return self.money(style, amount)
+        if reward.kind == "role":
+            try:
+                role = ctx.guild.get_role(int(reward.value))
+            except (TypeError, ValueError):
+                role = None
+            if role is None:
+                return "un rôle introuvable ⚠️"
+            try:
+                await ctx.author.add_roles(role)
+            except discord.Forbidden:
+                return f"le rôle **{role.name}** (permissions manquantes ⚠️)"
+            return f"le rôle **{role.name}**"
+        if reward.kind == "ticket":
+            self.engine.add_item(ctx.guild.id, ctx.author.id, reward.value, "ticket")
+            return f"un ticket **{reward.value}**"
+        if reward.kind == "item":
+            self.engine.add_item(ctx.guild.id, ctx.author.id, reward.value, "item")
+            return f"**{reward.value}**"
+        return "rien du tout"
+
+    async def _animate(self, ctx, game: dict, style: dict):
+        """Fait defiler les symboles dans un seul message, puis le renvoie.
+
+        On edite un message unique plutot que d'en envoyer plusieurs : l'effet
+        de rouleaux qui tournent, sans inonder le salon.
+        """
+        if not style["animations_enabled"] or not style["frame_count"]:
+            return None
+        frames = self.engine.animation_frames(style)
+        if not frames:
+            return None
+        delay = max(0, int(style["frame_delay_ms"])) / 1000
+        embed = Embed(
+            title=game["display_name"],
+            description=f"{style['suspense_text']}\n\n**{frames[0]}**",
+            color=discord.Color.blurple(),
+        )
+        message = await ctx.send(embed=embed)
+        for frame in frames[1:]:
+            await asyncio.sleep(delay)
+            embed.description = f"{style['suspense_text']}\n\n**{frame}**"
+            try:
+                await message.edit(embed=embed)
+            except discord.HTTPException:
+                break
+        if delay:
+            await asyncio.sleep(delay)
+        return message
+
+    async def play_game(self, ctx, game: dict, guess=None):
+        """Cycle complet : cooldown, mise, tirage, effets, quetes."""
+        panel = self.get_game_panel_config(ctx.guild.id)
+        if not panel["openlot_enabled"]:
+            await ctx.send("Les jeux sont désactivés sur ce serveur.")
+            return
+        if not game["enabled"]:
+            await ctx.send(f"**{game['display_name']}** est désactivé.")
+            return
+
+        style = self.engine.get_style(ctx.guild.id)
         user_id = ctx.author.id
-        for prize_type, prize_value in prize.items():
-            if prize_type == 'grade':
-                role_id = int(prize_value)
-                role = ctx.guild.get_role(role_id)
-                if role is not None:
-                    await ctx.author.add_roles(role)
-                    await ctx.send(f"🎖️ Félicitations ! Vous avez reçu le rôle **{role.name}**.")
-                else:
-                    await ctx.send("⚠️ Désolé, je n'ai pas pu trouver le rôle correspondant à cet ID.")
-            elif prize_type == 'ticket':
-                self.add_ticket(user_id, prize_value)
-                await ctx.send(f"🎟️ Vous avez gagné un ticket pour : **{prize_value}** !")
-            elif prize_type == 'argent':
-                self.add_balance(user_id, int(prize_value))
-                self.db.log_transaction(ctx.guild.id, user_id, int(prize_value), "game", "lot gagné")
-                await ctx.send(f"💰 Vous avez gagné **{prize_value}** pièces !")
 
-    # ─── Commandes ──────────────────────────────────────────────────────────────
+        async with self._user_lock(user_id):
+            remaining = self.engine.cooldown_remaining(ctx.guild.id, user_id, game)
+            if remaining > 0:
+                await ctx.send(
+                    f"⏳ **{game['display_name']}** sera de nouveau disponible dans "
+                    f"**{format_duration(remaining)}**."
+                )
+                return
 
-    @commands.command()
-    async def addgame(self, ctx):
-        await ctx.send("Combien de lots voulez-vous ?")
-        num_lots_msg = await self._ask(ctx)
-        if num_lots_msg is None:
-            return
-
-        if not num_lots_msg.content.isdigit():
-            await ctx.send("❌ Nombre de lots invalide.")
-            return
-
-        num_lots = int(num_lots_msg.content)
-        lots = []
-
-        for i in range(num_lots):
-            valid_lot = False
-            while not valid_lot:
-                await ctx.send(f"Quel est le type du lot {i+1} ? (grade / ticket / argent)")
-                lot_type = await self._ask(ctx)
-                if lot_type is None:
+            price = float(game["price"] or 0)
+            paid_with_ticket = self.engine.take_ticket(ctx.guild.id, user_id, game["slug"])
+            if paid_with_ticket:
+                price = 0.0
+            elif price > 0:
+                if self.get_balance(user_id) < price:
+                    await ctx.send(
+                        f"❌ Il vous faut **{self.money(style, price)}** pour jouer à "
+                        f"**{game['display_name']}**."
+                    )
                     return
+                self.add_balance(user_id, -price)
+                self.db.log_transaction(
+                    ctx.guild.id, user_id, -price, "casino", f"mise {game['slug']}"
+                )
 
-                if lot_type.content == 'grade':
-                    await ctx.send("Quel est l'ID du grade ?")
-                    lot_value = await self._ask(ctx)
-                    if lot_value is None:
-                        return
-                    while not lot_value.content.isdigit() or not ctx.guild.get_role(int(lot_value.content)):
-                        await ctx.send("ID de grade invalide. Veuillez entrer un ID de grade valide.")
-                        lot_value = await self._ask(ctx)
-                        if lot_value is None:
-                            return
-                    valid_lot = True
-                elif lot_type.content == 'ticket':
-                    games = self.list_games()
-                    if not games:
-                        await ctx.send("Impossible de créer un ticket car il n'y a aucun jeu. Veuillez choisir un autre type de lot.")
-                    else:
-                        await ctx.send("Veuillez choisir parmi les jeux suivants : " + ', '.join(games.keys()))
-                        lot_value = await self._ask(ctx)
-                        if lot_value is None:
-                            return
-                        while lot_value.content not in self.list_games():
-                            await ctx.send("Nom de jeu invalide. Veuillez entrer un nom de jeu existant.")
-                            lot_value = await self._ask(ctx)
-                            if lot_value is None:
-                                return
-                        valid_lot = True
-                elif lot_type.content == 'argent':
-                    await ctx.send("Quel est le montant de l'argent ?")
-                    lot_value = await self._ask(ctx)
-                    if lot_value is None:
-                        return
-                    while not lot_value.content.isdigit():
-                        await ctx.send("Montant d'argent invalide. Veuillez entrer un montant valide.")
-                        lot_value = await self._ask(ctx)
-                        if lot_value is None:
-                            return
-                    valid_lot = True
-                else:
-                    await ctx.send("Type invalide. Choisissez parmi : grade / ticket / argent")
-
-            lots.append({lot_type.content: lot_value.content})
-
-        await ctx.send("Quel est le prix du jeu ?")
-        game_price = await self._ask(ctx)
-        if game_price is None:
-            return
-        while not game_price.content.isdigit():
-            await ctx.send("Prix du jeu invalide. Veuillez entrer un prix valide.")
-            game_price = await self._ask(ctx)
-            if game_price is None:
+            try:
+                outcome = self.engine.draw(game, guess=guess)
+            except CasinoError as exc:
+                # La partie n'a pas eu lieu : on rend la mise.
+                if price > 0:
+                    self.add_balance(user_id, price)
+                    self.db.log_transaction(
+                        ctx.guild.id, user_id, price, "casino", f"remboursement {game['slug']}"
+                    )
+                if paid_with_ticket:
+                    self.engine.add_item(ctx.guild.id, user_id, game["slug"], "ticket")
+                await ctx.send(f"❌ {exc}")
                 return
 
-        await ctx.send("Quel est le nom du jeu ?")
-        command_name = await self._ask(ctx)
-        if command_name is None:
-            return
-        while not command_name.content.isalpha():
-            await ctx.send("Nom de jeu invalide. Veuillez entrer un nom composé uniquement de lettres.")
-            command_name = await self._ask(ctx)
-            if command_name is None:
-                return
+            message = await self._animate(ctx, game, style)
+            granted = await self._grant(ctx, outcome.reward, style)
+            payout = outcome.reward.money if outcome.reward.kind == "money" else 0.0
+            self.engine.record_play(
+                ctx.guild.id, user_id, game, price, payout, outcome.reward.describe()
+            )
 
-        self.add_game(command_name.content, num_lots, lots, int(game_price.content))
+            won = payout > 0 or outcome.reward.kind in ("role", "ticket", "item")
+            color = discord.Color.from_str(style["win_color"] if won else style["lose_color"])
+            emoji = style["win_emoji"] if won else style["lose_emoji"]
+            title = game["display_name"]
+            if self.engine.is_jackpot(style, payout):
+                title = f"{style['jackpot_text']} — {title}"
+                color = discord.Color.gold()
 
-        await ctx.send(f"✅ Le jeu **{command_name.content}** a été enregistré avec succès.")
+            embed = Embed(title=title, color=color)
+            embed.description = f"{emoji} Vous obtenez **{granted}**"
+            if outcome.detail:
+                embed.add_field(name="Tirage", value=outcome.detail, inline=True)
+            if paid_with_ticket:
+                embed.add_field(name="Mise", value="Ticket 🎟️", inline=True)
+            elif price:
+                embed.add_field(name="Mise", value=self.money(style, price), inline=True)
+            embed.add_field(name="Solde", value=self.money(style, self.get_balance(user_id)),
+                            inline=True)
+            plays = self.engine.play_count(ctx.guild.id, user_id, slug=game["slug"])
+            embed.set_footer(text=f"{plays} partie(s) sur ce jeu")
+
+            if message is not None:
+                await message.edit(embed=embed)
+            else:
+                await ctx.send(embed=embed)
+
+            if panel["quests_enabled"]:
+                await self._settle_quests(ctx, style)
+
+            if not panel["announce_win_public"]:
+                try:
+                    await ctx.message.delete()
+                except (discord.Forbidden, discord.HTTPException, AttributeError):
+                    pass
+
+            await self.send_game_log(
+                ctx.guild,
+                f"[CASINO] {ctx.author.mention} — {game['display_name']} → "
+                f"{outcome.reward.describe()}",
+            )
+
+    async def _settle_quests(self, ctx, style: dict):
+        """Verse les quetes dues. La progression est comptee par joueur."""
+        role_ids = [role.id for role in getattr(ctx.author, "roles", [])]
+        for quest, times, progress in self.engine.claimable_quests(
+            ctx.guild.id, ctx.author.id, role_ids
+        ):
+            for _ in range(times):
+                granted = await self._grant(
+                    ctx, Reward(quest["reward_kind"], quest["reward_value"]), style
+                )
+                await ctx.send(
+                    f"🏆 Quête **{quest['name']}** accomplie ({progress}/{quest['goal']}) — "
+                    f"vous recevez {granted} !"
+                )
+            self.engine.mark_claimed(quest["id"], ctx.author.id, times)
+
+    # --- commandes joueur ---
 
     @commands.command()
-    async def openlot(self, ctx):
-        panel_cfg = self.get_game_panel_config(ctx.guild.id)
-        if not panel_cfg["openlot_enabled"]:
-            await ctx.send("L'ouverture des lots est desactivee sur ce serveur.")
-            return
+    async def gamepanel(self, ctx):
+        cfg = self.get_game_panel_config(ctx.guild.id)
+        embed = self.build_game_panel_embed(ctx.guild, cfg)
+        await ctx.send(embed=embed, view=GamePanelView(self, ctx.guild.id, ctx.author.id))
 
-        games = self.list_games()
+    @commands.command(aliases=["jeux", "casino"])
+    async def shop(self, ctx):
+        """Catalogue des jeux disponibles."""
+        games = self.engine.list_games(ctx.guild.id)
         if not games:
-            await ctx.send("Il n'y a actuellement aucun jeu enregistré. Consultez la boutique avec `,shop`.")
+            await ctx.send(
+                "Aucun jeu n'est configuré. Ajoutez-en avec `,addgame` ou depuis le dashboard."
+            )
             return
 
-        await ctx.send("Quel jeu voulez-vous ouvrir ? Jeux disponibles : " + ', '.join(games.keys()))
-        lot_name_msg = await self._ask(ctx, timeout=30.0)
-        if lot_name_msg is None:
-            return
+        style = self.engine.get_style(ctx.guild.id)
+        by_category = {}
+        for game in games:
+            by_category.setdefault(game["category"] or "Jeux", []).append(game)
 
-        lot_name = lot_name_msg.content
-        game = self.get_game(lot_name)
+        embed = Embed(title="🎰 Casino", color=discord.Color.blurple())
+        for category, entries in by_category.items():
+            lines = []
+            for game in entries:
+                price = "Gratuit" if not game["price"] else self.money(style, game["price"])
+                line = f"`,{game['slug']}` — **{game['display_name']}** · {price}"
+                if game["cooldown_seconds"]:
+                    line += f" · 1× / {format_duration(game['cooldown_seconds'])}"
+                lines.append(line)
+            embed.add_field(name=str(category).capitalize(), value="\n".join(lines), inline=False)
+        embed.set_footer(text="Jouez avec ,<nom du jeu> — détails avec ,jeu <nom>")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="jeu")
+    async def game_details(self, ctx, *, name: str):
+        """Fiche d'un jeu : lots, chances reelles et cooldown."""
+        game = self.engine.get_game(ctx.guild.id, normalize_slug(name))
         if game is None:
             await ctx.send("❌ Ce jeu n'existe pas.")
             return
+        style = self.engine.get_style(ctx.guild.id)
+        lots = self.engine.list_lots(game["id"])
+        embed = Embed(
+            title=game["display_name"],
+            description=game["description"] or None,
+            color=discord.Color.blurple(),
+        )
+        embed.add_field(name="Prix",
+                        value="Gratuit" if not game["price"] else self.money(style, game["price"]),
+                        inline=True)
+        if game["cooldown_seconds"]:
+            embed.add_field(name="Disponible",
+                            value=f"1× / {format_duration(game['cooldown_seconds'])}", inline=True)
 
-        user_id = ctx.author.id
-        game_price = int(game['game_price'])
+        total_weight = sum(lot["weight"] for lot in lots) or 1
+        lines = []
+        for lot in lots:
+            label = Reward(lot["reward_kind"], lot["reward_value"], lot["label"]).describe()
+            if game["kind"] == "dice_sum":
+                lines.append(f"`{lot['outcome']}` → {label}")
+            else:
+                lines.append(f"{label} — {lot['weight'] / total_weight * 100:.1f} %")
+        if lines:
+            embed.add_field(name="Lots", value="\n".join(lines[:20]), inline=False)
 
-        if self.has_ticket(user_id, lot_name):
-            self.pop_ticket(user_id, lot_name)
-            await ctx.send("🎟️ Ouverture avec un ticket !")
-        elif game_price > 0:
-            if self.get_balance(user_id) < game_price:
-                await ctx.send(f"❌ Vous n'avez pas assez d'argent pour ouvrir ce lot. Prix : **{game_price}** pièces.")
-                return
-            self.add_balance(user_id, -game_price)
-            self.db.log_transaction(ctx.guild.id, user_id, -game_price, "game", f"ouverture {lot_name}")
-        # Si game_price == 0, ouverture gratuite sans ticket
-
-        prize = random.choice(game['lots'])
-
-        quest = self.get_quest(lot_name)
-        if panel_cfg["quests_enabled"] and quest is not None:
-            progress = self.increment_quest_progress(lot_name)
-            if progress >= quest['lot_count']:
-                await self._award_prize(ctx, quest['lot'])
-                self.reset_quest_progress(lot_name)
-                await ctx.send(f"🏆 Quête **{lot_name}** complétée ! Vous avez reçu votre récompense de quête.")
-
-        await self._award_prize(ctx, prize)
-
-        if not panel_cfg["announce_win_public"]:
-            try:
-                await ctx.message.delete()
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-
-        await self.send_game_log(ctx.guild, f"[JEUX] {ctx.author.mention} a ouvert {lot_name} et a recu: {prize}")
+        remaining = self.engine.cooldown_remaining(ctx.guild.id, ctx.author.id, game)
+        if remaining:
+            embed.set_footer(text=f"Disponible dans {format_duration(remaining)}")
+        await ctx.send(embed=embed)
 
     @commands.command()
-    async def deletegame(self, ctx):
-        await ctx.send("Quel est le nom du jeu que vous voulez supprimer ?")
-        command_name = await self._ask(ctx, timeout=30.0)
-        if command_name is None:
-            return
+    async def openlot(self, ctx, *, name: str = None):
+        """Joue a un jeu. Sans argument, demande lequel."""
+        if name is None:
+            games = self.engine.list_games(ctx.guild.id)
+            if not games:
+                await ctx.send("Aucun jeu n'est configuré. Consultez `,shop`.")
+                return
+            await ctx.send("Quel jeu ? " + ", ".join(g["slug"] for g in games))
+            answer = await self._ask(ctx, timeout=30.0)
+            if answer is None:
+                return
+            name = answer.content
 
-        if self.get_game(command_name.content) is None:
+        game = self.engine.get_game(ctx.guild.id, normalize_slug(name))
+        if game is None:
             await ctx.send("❌ Ce jeu n'existe pas.")
             return
-
-        self.remove_game(command_name.content)
-
-        await ctx.send(f"✅ Le jeu **{command_name.content}** a été supprimé avec succès.")
+        await self.play_game(ctx, game)
 
     @commands.command()
-    async def shop(self, ctx):
-        games = self.list_games()
-        if not games:
-            await ctx.send("Il n'y a actuellement aucun jeu enregistré.")
-            return
+    async def inventaire(self, ctx, member: discord.Member = None):
+        """Tickets, objets et nombre de parties par jeu."""
+        member = member or ctx.author
+        style = self.engine.get_style(ctx.guild.id)
+        items = self.engine.inventory(ctx.guild.id, member.id)
+        counts = self.engine.play_counts_by_game(ctx.guild.id, member.id)
 
-        embed = Embed(title="🎰 Boutique des jeux", description="Voici la liste des jeux actuellement disponibles :", color=0x00ff00)
-
-        for command_name, game_info in games.items():
-            game_details = f"Nombre de lots : {game_info['num_lots']}\n"
-            for i, lot in enumerate(game_info['lots'], start=1):
-                for lot_type, lot_value in lot.items():
-                    game_details += f"Lot {i} : {lot_type} — {lot_value}\n"
-            price = game_info['game_price']
-            game_details += f"Prix : {'Gratuit' if price == 0 else f'{price} pièces'}"
-            embed.add_field(name=command_name, value=game_details, inline=False)
-
+        embed = Embed(title=f"🎒 Inventaire de {member.display_name}",
+                      color=discord.Color.blurple())
+        tickets = [f"🎟️ **{name}** × {n}" for (kind, name), n in items.items() if kind == "ticket"]
+        objects = [f"📦 **{name}** × {n}" for (kind, name), n in items.items() if kind != "ticket"]
+        embed.add_field(name="Tickets", value="\n".join(tickets) or "Aucun", inline=False)
+        if objects:
+            embed.add_field(name="Objets", value="\n".join(objects), inline=False)
+        if counts:
+            top = "\n".join(f"**{slug}** × {n}" for slug, n in list(counts.items())[:10])
+            embed.add_field(name="Parties jouées", value=top, inline=False)
+            embed.set_footer(text=f"{sum(counts.values())} partie(s) au total")
+        embed.add_field(name="Solde", value=self.money(style, self.get_balance(member.id)),
+                        inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command()
-    async def inventaire(self, ctx):
-        ticket_counts = self.user_ticket_counts(ctx.author.id)
-        if not ticket_counts:
-            await ctx.send("Votre inventaire est vide.")
-            return
-
-        embed = discord.Embed(title="🎒 Votre inventaire", color=0x00ff00)
-        for game_name, count in ticket_counts.items():
-            embed.add_field(name=f"🎟️ {game_name}", value=f"Quantité : {count}", inline=False)
-
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def clearinventory(self, ctx, user: discord.User = None):
-        if user is None:
-            user = ctx.author
-
-        if not self.clear_user_tickets(user.id):
-            await ctx.send("L'inventaire de cet utilisateur est déjà vide.")
-            return
-
-        await ctx.send(f"✅ L'inventaire de **{user.name}** a été effacé.")
-
-    @commands.command()
-    async def addquest(self, ctx):
-        games = self.list_games()
-        if not games:
-            await ctx.send("Il n'y a actuellement aucun lot enregistré.")
-            return
-
-        await ctx.send("La quête est associée à quel jeu ? Jeux disponibles : " + ', '.join(games.keys()))
-        lot_name = await self._ask(ctx)
-        if lot_name is None:
-            return
-        while lot_name.content not in self.list_games():
-            await ctx.send("Nom de jeu invalide. Veuillez entrer un nom de jeu existant.")
-            lot_name = await self._ask(ctx)
-            if lot_name is None:
-                return
-
-        await ctx.send("Combien de lots doivent être ouverts pour débloquer la récompense ?")
-        lot_count = await self._ask(ctx)
-        if lot_count is None:
-            return
-        while not lot_count.content.isdigit():
-            await ctx.send("Valeur invalide. Veuillez entrer un nombre entier.")
-            lot_count = await self._ask(ctx)
-            if lot_count is None:
-                return
-
-        valid_lot = False
-        while not valid_lot:
-            await ctx.send("Quel est le type de récompense pour la quête ? (grade / ticket / argent)")
-            lot_type = await self._ask(ctx)
-            if lot_type is None:
-                return
-
-            if lot_type.content == 'grade':
-                await ctx.send("Quel est l'ID du grade ?")
-                lot_value = await self._ask(ctx)
-                if lot_value is None:
-                    return
-                while not lot_value.content.isdigit() or not ctx.guild.get_role(int(lot_value.content)):
-                    await ctx.send("ID de grade invalide. Veuillez entrer un ID de grade valide.")
-                    lot_value = await self._ask(ctx)
-                    if lot_value is None:
-                        return
-                valid_lot = True
-            elif lot_type.content == 'ticket':
-                games = self.list_games()
-                if not games:
-                    await ctx.send("Impossible de créer un ticket car il n'y a aucun jeu. Veuillez choisir un autre type.")
-                else:
-                    await ctx.send("Veuillez choisir parmi les jeux suivants : " + ', '.join(games.keys()))
-                    lot_value = await self._ask(ctx)
-                    if lot_value is None:
-                        return
-                    while lot_value.content not in self.list_games():
-                        await ctx.send("Nom de jeu invalide. Veuillez entrer un nom de jeu existant.")
-                        lot_value = await self._ask(ctx)
-                        if lot_value is None:
-                            return
-                    valid_lot = True
-            elif lot_type.content == 'argent':
-                await ctx.send("Quel est le montant de l'argent ?")
-                lot_value = await self._ask(ctx)
-                if lot_value is None:
-                    return
-                while not lot_value.content.isdigit():
-                    await ctx.send("Montant invalide. Veuillez entrer un montant valide.")
-                    lot_value = await self._ask(ctx)
-                    if lot_value is None:
-                        return
-                valid_lot = True
-            else:
-                await ctx.send("Type invalide. Choisissez parmi : grade / ticket / argent")
-
-        lot = {lot_type.content: lot_value.content}
-
-        self.add_quest(lot_name.content, int(lot_count.content), lot)
-        await ctx.send(f"✅ La quête pour le jeu **{lot_name.content}** a été ajoutée avec succès !")
-
-    @commands.command()
-    async def deletequete(self, ctx):
-        await ctx.send("Quel est le nom de la quête que vous voulez supprimer ?")
-        quest_name = await self._ask(ctx, timeout=30.0)
-        if quest_name is None:
-            return
-
-        if self.get_quest(quest_name.content) is None:
-            await ctx.send("❌ Cette quête n'existe pas.")
-            return
-
-        self.remove_quest(quest_name.content)
-        await ctx.send(f"✅ La quête **{quest_name.content}** a été supprimée avec succès.")
-
-    @commands.command()
+    @commands.command(aliases=["quetes"])
     async def quest(self, ctx):
-        quests = self.list_quests()
+        """Progression du joueur sur les quetes, comptee individuellement."""
+        quests = self.engine.list_quests(ctx.guild.id)
         if not quests:
-            await ctx.send("Aucune quête n'est actuellement disponible.")
+            await ctx.send("Aucune quête n'est configurée.")
             return
-
-        embed = discord.Embed(title="📋 Quêtes actives", color=0x00ff00)
-        for quest_name, quest in quests.items():
-            progress = quest['progress']
-            lot_count = quest['lot_count']
-            reward = ', '.join([f"{lot_type} — {lot_value}" for lot_type, lot_value in quest['lot'].items()])
-            quest_details = (
-                f"Lots à ouvrir : {lot_count}\n"
-                f"Progression globale : {progress}/{lot_count}\n"
-                f"Récompense : {reward}"
+        role_ids = [role.id for role in getattr(ctx.author, "roles", [])]
+        embed = Embed(title="📜 Quêtes", color=discord.Color.green())
+        for quest in quests:
+            progress = self.engine.quest_progress(ctx.guild.id, ctx.author.id, quest, role_ids)
+            done = min(progress, quest["goal"])
+            filled = int(10 * done / quest["goal"]) if quest["goal"] else 10
+            bar = "▰" * filled + "▱" * (10 - filled)
+            reward = Reward(quest["reward_kind"], quest["reward_value"]).describe()
+            embed.add_field(
+                name=f"{quest['name']} ({done}/{quest['goal']})",
+                value=f"{bar}\n{quest['description'] or ''}\nRécompense : {reward}".strip(),
+                inline=False,
             )
-            embed.add_field(name=f"🗺️ {quest_name}", value=quest_details, inline=False)
-
         await ctx.send(embed=embed)
+
+    # --- commandes d'administration ---
+
+    @commands.command()
+    async def addgame(self, ctx, slug: str = None, price: float = None,
+                      category: str = "box", kind: str = "box"):
+        """,addgame <nom> <prix> [categorie] [type] — puis ,addlot pour les lots."""
+        if slug is None:
+            await ctx.send(
+                "Usage : `,addgame <nom> <prix> [catégorie] [type]`\n"
+                "Types : `box` (tirage pondéré), `loto` (somme de dés), `de` (pari sur un dé).\n"
+                "Exemple : `,addgame \"Machine Bois\" 250 machine box`"
+            )
+            return
+        try:
+            game_id = self.engine.create_game(
+                ctx.guild.id, slug,
+                display_name=slug,
+                kind=KIND_ALIASES.get(kind.lower(), "weighted"),
+                category=category.lower(),
+                price=price or 0,
+            )
+        except CasinoError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        row = self.db.fetchone("SELECT slug FROM casino_games WHERE id = ?", (game_id,))
+        await ctx.send(
+            f"✅ Jeu **{row['slug']}** créé. Ajoutez ses lots avec "
+            f"`,addlot {row['slug']} argent 450 3` (type, valeur, poids)."
+        )
+
+    @commands.command()
+    async def addlot(self, ctx, slug: str, reward_kind: str, value: str,
+                     weight: float = 1.0, outcome: int = None):
+        """,addlot <jeu> <argent|grade|ticket|objet> <valeur> [poids] [somme]"""
+        game = self.engine.get_game(ctx.guild.id, normalize_slug(slug))
+        if game is None:
+            await ctx.send("❌ Ce jeu n'existe pas.")
+            return
+        kind = REWARD_ALIASES.get(reward_kind.lower())
+        if kind is None:
+            await ctx.send("❌ Types de lot : argent, grade, ticket, objet, rien.")
+            return
+        try:
+            self.engine.add_lot(game["id"], kind, value, weight=weight, outcome=outcome)
+        except CasinoError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        total = len(self.engine.list_lots(game["id"]))
+        await ctx.send(f"✅ Lot ajouté à **{game['display_name']}** ({total} lot(s)).")
+
+    @commands.command()
+    async def rmlot(self, ctx, lot_id: int):
+        """Supprime un lot par son identifiant (visible dans ,gamelots)."""
+        self.engine.delete_lot(lot_id)
+        await ctx.send("✅ Lot supprimé.")
+
+    @commands.command()
+    async def gamelots(self, ctx, *, slug: str):
+        """Lots d'un jeu, avec identifiant et probabilite reelle."""
+        game = self.engine.get_game(ctx.guild.id, normalize_slug(slug))
+        if game is None:
+            await ctx.send("❌ Ce jeu n'existe pas.")
+            return
+        lots = self.engine.list_lots(game["id"])
+        if not lots:
+            await ctx.send("Ce jeu n'a aucun lot.")
+            return
+        total = sum(lot["weight"] for lot in lots) or 1
+        lines = [
+            f"`#{lot['id']}` {lot['reward_kind']} {lot['reward_value']} — "
+            f"poids {lot['weight']:g} ({lot['weight'] / total * 100:.1f} %)"
+            + (f" · somme {lot['outcome']}" if lot["outcome"] is not None else "")
+            for lot in lots
+        ]
+        await ctx.send(embed=Embed(title=f"Lots — {game['display_name']}",
+                                   description="\n".join(lines[:25]),
+                                   color=discord.Color.blurple()))
+
+    @commands.command()
+    async def deletegame(self, ctx, *, slug: str):
+        game = self.engine.get_game(ctx.guild.id, normalize_slug(slug))
+        if game is None:
+            await ctx.send("❌ Ce jeu n'existe pas.")
+            return
+        self.engine.delete_game(game["id"])
+        await ctx.send(f"✅ **{game['display_name']}** supprimé.")
+
+    @commands.command()
+    async def addquest(self, ctx, name: str, goal: int, reward_kind: str, value: str,
+                       target_kind: str = "any", target_value: str = ""):
+        """,addquest <nom> <objectif> <argent|grade|ticket> <valeur> [any|game|category|role] [cible]"""
+        kind = REWARD_ALIASES.get(reward_kind.lower())
+        if kind is None:
+            await ctx.send("❌ Récompenses : argent, grade, ticket, objet.")
+            return
+        try:
+            self.engine.create_quest(
+                ctx.guild.id, name, goal, kind, value,
+                target_kind=target_kind.lower(), target_value=target_value,
+            )
+        except CasinoError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        await ctx.send(f"✅ Quête **{name}** enregistrée.")
+
+    @commands.command()
+    async def deletequete(self, ctx, *, name: str):
+        for quest in self.engine.list_quests(ctx.guild.id, include_disabled=True):
+            if quest["name"].lower() == name.lower():
+                self.engine.delete_quest(quest["id"])
+                await ctx.send(f"✅ Quête **{quest['name']}** supprimée.")
+                return
+        await ctx.send("❌ Cette quête n'existe pas.")
 
     @commands.command()
     async def config_quete(self, ctx):
-        """Affiche la configuration complète de toutes les quêtes (admin)."""
-        quests = self.list_quests()
-        if not quests:
-            await ctx.send("Aucune quête n'est configurée. Utilisez `,addquest` pour en créer une.")
-            return
-
-        embed = discord.Embed(
-            title="⚙️ Configuration des quêtes",
-            description="Voici le détail de toutes les quêtes configurées :",
-            color=0xffa500
+        """Rappelle ou se configurent les quetes."""
+        quests = self.engine.list_quests(ctx.guild.id, include_disabled=True)
+        await ctx.send(
+            f"{len(quests)} quête(s) configurée(s). Ajout : `,addquest <nom> <objectif> "
+            "<récompense> <valeur> [cible]`, suppression : `,deletequete <nom>`. "
+            "Édition complète depuis le dashboard web."
         )
-        for quest_name, quest in quests.items():
-            progress = quest['progress']
-            lot_count = quest['lot_count']
-            reward = ', '.join([f"{lot_type} — {lot_value}" for lot_type, lot_value in quest['lot'].items()])
-            details = (
-                f"Lots requis : **{lot_count}**\n"
-                f"Progression : **{progress}/{lot_count}**\n"
-                f"Récompense : {reward}"
-            )
-            embed.add_field(name=f"🗺️ {quest_name}", value=details, inline=False)
 
+    @commands.command()
+    async def clearinventory(self, ctx, user: discord.User = None):
+        user = user or ctx.author
+        removed = self.engine.clear_inventory(ctx.guild.id, user.id)
+        if not removed:
+            await ctx.send("L'inventaire de cet utilisateur est déjà vide.")
+            return
+        await ctx.send(f"✅ Inventaire de **{user.name}** vidé ({removed} objet(s)).")
+
+    @commands.command()
+    async def casinostats(self, ctx, *, slug: str = None):
+        """Ce que le casino encaisse reellement, compare a la theorie."""
+        style = self.engine.get_style(ctx.guild.id)
+        if slug:
+            game = self.engine.get_game(ctx.guild.id, normalize_slug(slug))
+            if game is None:
+                await ctx.send("❌ Ce jeu n'existe pas.")
+                return
+            games = [game]
+        else:
+            games = self.engine.list_games(ctx.guild.id, include_disabled=True)
+
+        embed = Embed(title="📊 Santé du casino", color=discord.Color.gold())
+        overall = self.engine.actual_stats(ctx.guild.id)
+        embed.description = (
+            f"**{overall['plays']}** partie(s) · misé {self.money(style, overall['cost'])} · "
+            f"versé {self.money(style, overall['payout'])} · "
+            f"**bilan {self.money(style, overall['net'])}**"
+        )
+        for game in games[:15]:
+            stats = self.engine.actual_stats(ctx.guild.id, game["slug"])
+            theoretical = self.engine.theoretical_rtp(game)
+            parts = [f"gain moyen {self.money(style, self.engine.expected_value(game))}"]
+            if theoretical is not None:
+                flag = " ⚠️" if theoretical > 1 else ""
+                parts.append(f"RTP théorique {theoretical * 100:.0f} %{flag}")
+            if stats["rtp"] is not None:
+                parts.append(f"réel {stats['rtp'] * 100:.0f} % sur {stats['plays']}")
+            embed.add_field(name=game["display_name"], value=" · ".join(parts), inline=False)
+        embed.set_footer(text="Un RTP théorique > 100 % signifie que le jeu crée de la monnaie.")
         await ctx.send(embed=embed)
+
+    # --- invocation directe ,<slug> ---
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """Permet `,b-gratuite` sans declarer une commande par jeu.
+
+        Les jeux etant des donnees, leurs noms ne peuvent pas etre des commandes
+        enregistrees : on rattrape donc les messages qui ne correspondent a
+        aucune commande connue mais au slug d'un jeu.
+        """
+        if message.author.bot or not message.guild:
+            return
+        prefix = getattr(self.bot, "command_prefix", ",")
+        if not isinstance(prefix, str) or not message.content.startswith(prefix):
+            return
+        parts = message.content[len(prefix):].strip().split()
+        if not parts:
+            return
+        if self.bot.get_command(parts[0]) is not None:
+            return
+        slug = normalize_slug(parts[0])
+        if not slug:
+            return
+        game = self.engine.get_game(message.guild.id, slug)
+        if game is None:
+            return
+        ctx = await self.bot.get_context(message)
+        if ctx.author is None:
+            return
+        await self.play_game(ctx, game, guess=parts[1] if len(parts) > 1 else None)
 
 
 def setup(bot, db):

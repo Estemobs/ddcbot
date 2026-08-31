@@ -145,6 +145,13 @@ EXPECTED_COMMANDS = {
     "starboard",
     "starboardclear",
     "plugins",
+    "jeu",
+    "addlot",
+    "rmlot",
+    "gamelots",
+    "casinostats",
+    "inviterewards",
+    "collect_income",
 }
 
 REQUIRED_MODULES = [
@@ -207,6 +214,16 @@ EXPECTED_TABLES = [
     "twitch_notifications",
     "error_logs",
     "translation_subs",
+    "casino_games",
+    "casino_lots",
+    "casino_plays",
+    "casino_inventory",
+    "casino_quests",
+    "casino_quest_claims",
+    "casino_config",
+    "role_income_state",
+    "invite_rewards",
+    "invite_reward_claims",
 ]
 
 

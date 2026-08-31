@@ -53,4 +53,45 @@
     </table>
   </div>
 </div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('invitations.rewards') }}</h3>
+    <span class="tag tag-hint">{{ t('invitations.rewards_hint') }}</span>
+  </div>
+  {% if rewards %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>{{ t('invitations.threshold') }}</th><th>{{ t('invitations.amount') }}</th><th></th></tr>
+      {% for r in rewards %}
+      <tr>
+        <td>↦ <strong>{{ r.threshold }}</strong></td>
+        <td>{{ '%.0f'|format(r.amount) }}</td>
+        <td>
+          <form method="post" action="/guild/{{ guild_id }}/invitations/reward/delete">
+            <input type="hidden" name="threshold" value="{{ r.threshold }}">
+            <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>{{ t('invitations.empty_rewards') }}</p></div>
+  {% endif %}
+
+  <form method="post" action="/guild/{{ guild_id }}/invitations/reward"
+        style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:14px">
+    <div class="form-group" style="margin:0">
+      <label>{{ t('invitations.threshold') }}</label>
+      <input type="number" name="threshold" min="1" required placeholder="5" style="width:120px">
+    </div>
+    <div class="form-group" style="margin:0">
+      <label>{{ t('invitations.amount') }}</label>
+      <input type="number" name="amount" step="any" required placeholder="500" style="width:140px">
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
+  </form>
+</div>
 {% endblock %}

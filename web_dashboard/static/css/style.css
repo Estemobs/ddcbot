@@ -1217,3 +1217,48 @@ details.disclosure[open] summary .chev { transform: rotate(90deg); }
   .main { margin: 0; padding: 0; }
   body::before { display: none; }
 }
+
+/* ==========================================================================
+   Casino : apercu du defilement des rouleaux
+   ========================================================================== */
+
+.reel-preview {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 26px 18px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(88, 101, 242, 0.18), transparent 60%),
+    var(--bg-elevated);
+  overflow: hidden;
+}
+
+.reel-line {
+  font-size: 2.4rem;
+  letter-spacing: 0.22em;
+  line-height: 1.2;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.35));
+}
+
+.reel-line.spin { animation: reel-roll 0.28s cubic-bezier(0.2, 0.8, 0.3, 1); }
+
+@keyframes reel-roll {
+  0%   { transform: translateY(-42%); opacity: 0; filter: blur(3px); }
+  60%  { transform: translateY(6%);   opacity: 1; filter: blur(0); }
+  100% { transform: translateY(0); }
+}
+
+.reel-caption {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+/* Le defilement est purement decoratif : on le coupe si l'utilisateur a
+   demande moins d'animations (la regle globale ne couvre pas le JS qui relance). */
+@media (prefers-reduced-motion: reduce) {
+  .reel-line.spin { animation: none; }
+}

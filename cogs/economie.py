@@ -129,8 +129,8 @@ class cmdeco(commands.Cog):
             ),
         )
         row = self.db.fetchone(
-            "SELECT allow_transfers, max_transfer, allow_negative_balances, log_channel_id "
-            "FROM economy_config WHERE guild_id = ?",
+            "SELECT allow_transfers, max_transfer, allow_negative_balances, log_channel_id, "
+            "starting_balance FROM economy_config WHERE guild_id = ?",
             (guild_id,),
         )
         return {
@@ -138,7 +138,29 @@ class cmdeco(commands.Cog):
             "max_transfer": row["max_transfer"],
             "allow_negative_balances": bool(row["allow_negative_balances"]),
             "log_channel_id": row["log_channel_id"],
+            "starting_balance": row["starting_balance"],
         }
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        """Credite le solde de depart configure (0 = desactive).
+
+        Le credit n'a lieu que si le membre n'a pas deja un compte, pour qu'un
+        depart/retour ne serve pas de distributeur.
+        """
+        if member.bot:
+            return
+        cfg = self.get_eco_config(member.guild.id)
+        amount = cfg.get("starting_balance") or 0
+        if amount <= 0:
+            return
+        if self.db.fetchone("SELECT 1 FROM balances WHERE user_id = ?", (member.id,)):
+            return
+        self.add_balance(member.id, amount)
+        self.db.log_transaction(member.guild.id, member.id, amount, "welcome", "solde de depart")
+        await self.send_eco_log(
+            member.guild, f"[ECO] solde de depart {amount} credite a {member.mention}"
+        )
 
     def update_eco_config(self, guild_id: int, **fields):
         self.get_eco_config(guild_id)

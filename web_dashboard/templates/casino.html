@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.casino') }}{% endblock %}
+{% block crumb %}{{ t('module.casino') }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h2>🎰 {{ t('module.casino') }}</h2>
+  <p>{{ t('casino.subtitle') }}</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="value">{{ games|length }}</div>
+    <div class="label">{{ t('casino.games') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ overall.plays }}</div>
+    <div class="label">{{ t('casino.plays') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="value" style="color:{{ 'var(--success-text)' if overall.net >= 0 else 'var(--danger-text)' }}">
+      {{ '{:+,.0f}'.format(overall.net).replace(',', ' ') }}
+    </div>
+    <div class="label">{{ t('casino.house_net') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ quests|length }}</div>
+    <div class="label">{{ t('casino.quests') }}</div>
+  </div>
+</div>
+
+{% set risky = games | selectattr('rtp') | selectattr('rtp', 'gt', 1.0) | list %}
+{% if risky %}
+<div class="card" style="border-color:var(--warning)">
+  <div class="card-header"><h3>⚠️ {{ t('casino.warning_title') }}</h3></div>
+  <p style="color:var(--text-secondary)">{{ t('casino.warning_desc') }}</p>
+  <ul style="margin:10px 0 0 18px;color:var(--warning-text)">
+    {% for g in risky %}
+    <li><strong>{{ g.display_name }}</strong> — RTP {{ '%.0f'|format(g.rtp * 100) }} %</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<!-- ─────────── Jeux ─────────── -->
+<div class="card">
+  <div class="card-header">
+    <h3><svg class="i"><use href="#i-dice"/></svg> {{ t('casino.new_game') }}</h3>
+  </div>
+  <form method="post" action="/guild/{{ guild_id }}/casino/game/add">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('casino.name') }}</label>
+        <input type="text" name="display_name" required placeholder="Machine Bois">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.kind') }}</label>
+        <select name="kind" onchange="toggleKind(this)">
+          <option value="weighted">{{ t('casino.kind_weighted') }}</option>
+          <option value="dice_sum">{{ t('casino.kind_dice_sum') }}</option>
+          <option value="dice_guess">{{ t('casino.kind_dice_guess') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.category') }}</label>
+        <input type="text" name="category" value="box" placeholder="box / machine / loto">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.price') }}</label>
+        <input type="number" name="price" value="0" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.cooldown') }}</label>
+        <select name="cooldown_seconds">
+          <option value="0">{{ t('casino.cd_none') }}</option>
+          <option value="3600">{{ t('casino.cd_hour') }}</option>
+          <option value="86400">{{ t('casino.cd_day') }}</option>
+          <option value="604800">{{ t('casino.cd_week') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.description') }}</label>
+        <input type="text" name="description" placeholder="">
+      </div>
+    </div>
+    <div class="form-grid kind-dice" hidden>
+      <div class="form-group">
+        <label>{{ t('casino.dice') }}</label>
+        <input type="number" name="dice" value="2" min="1" max="6">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.faces') }}</label>
+        <input type="number" name="faces" value="6" min="2" max="100">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.win_amount') }}</label>
+        <input type="number" name="win_amount" value="3000" step="any">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.lose_amount') }}</label>
+        <input type="number" name="lose_amount" value="300" step="any">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
+  </form>
+</div>
+
+{% for game in games %}
+<div class="card" id="jeu-{{ game.id }}">
+  <div class="card-header">
+    <h3>
+      {{ game.display_name }}
+      <code style="font-size:.78rem;color:var(--text-muted)">,{{ game.slug }}</code>
+    </h3>
+    <span>
+      {% if game.rtp %}
+      <span class="tag {{ 'tag-danger' if game.rtp > 1 else 'tag-success' }}">
+        RTP {{ '%.0f'|format(game.rtp * 100) }} %
+      </span>
+      {% endif %}
+      <span class="tag tag-info">{{ t('casino.avg_gain') }} {{ '%.0f'|format(game.expected) }}</span>
+      {% if not game.enabled %}<span class="tag tag-muted">{{ t('casino.disabled') }}</span>{% endif %}
+      {% if game.guild_id == 0 %}<span class="tag tag-muted">{{ t('notes.legacy') }}</span>{% endif %}
+    </span>
+  </div>
+
+  <form method="post" action="/guild/{{ guild_id }}/casino/game/{{ game.id }}/edit">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('casino.name') }}</label>
+        <input type="text" name="display_name" value="{{ game.display_name }}" required>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.category') }}</label>
+        <input type="text" name="category" value="{{ game.category }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.price') }}</label>
+        <input type="number" name="price" value="{{ game.price }}" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.cooldown') }}</label>
+        <select name="cooldown_seconds">
+          {% for value, key in [(0,'casino.cd_none'), (3600,'casino.cd_hour'),
+                                (86400,'casino.cd_day'), (604800,'casino.cd_week')] %}
+          <option value="{{ value }}" {% if game.cooldown_seconds == value %}selected{% endif %}>
+            {{ t(key) }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.description') }}</label>
+        <input type="text" name="description" value="{{ game.description }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.enabled') }}</label>
+        <select name="enabled">
+          <option value="1" {% if game.enabled %}selected{% endif %}>{{ t('casino.yes') }}</option>
+          <option value="0" {% if not game.enabled %}selected{% endif %}>{{ t('casino.no') }}</option>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.save') }}</button>
+  </form>
+
+  <div class="table-wrap" style="margin-top:18px">
+    <table>
+      <tr>
+        <th>{{ t('casino.lot_kind') }}</th><th>{{ t('casino.lot_value') }}</th>
+        {% if game.kind == 'dice_sum' %}<th>{{ t('casino.outcome') }}</th>{% endif %}
+        <th>{{ t('casino.weight') }}</th><th>{{ t('casino.chance') }}</th><th></th>
+      </tr>
+      {% set total = game.lots | sum(attribute='weight') or 1 %}
+      {% for lot in game.lots %}
+      <tr>
+        <td>
+          <form method="post" id="lot-{{ lot.id }}"
+                action="/guild/{{ guild_id }}/casino/lot/{{ lot.id }}/edit">
+            <input type="hidden" name="game_id" value="{{ game.id }}">
+          </form>
+          <form method="post" id="lot-del-{{ lot.id }}"
+                action="/guild/{{ guild_id }}/casino/lot/{{ lot.id }}/delete">
+            <input type="hidden" name="game_id" value="{{ game.id }}">
+          </form>
+          <span class="tag tag-info">{{ t('casino.reward.' ~ lot.reward_kind) }}</span>
+        </td>
+        <td>
+          <input form="lot-{{ lot.id }}" type="text" name="reward_value"
+                 value="{{ lot.reward_value }}" style="width:130px">
+        </td>
+        {% if game.kind == 'dice_sum' %}<td><code>{{ lot.outcome }}</code></td>{% endif %}
+        <td>
+          <input form="lot-{{ lot.id }}" type="number" name="weight" value="{{ lot.weight }}"
+                 step="any" min="0" style="width:80px">
+        </td>
+        <td>{{ '%.1f'|format(lot.weight / total * 100) }} %</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button form="lot-{{ lot.id }}" type="submit" class="btn btn-secondary btn-sm">
+              {{ t('btn.save') }}
+            </button>
+            <button form="lot-del-{{ lot.id }}" type="submit" class="btn btn-danger btn-sm">×</button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <form method="post" action="/guild/{{ guild_id }}/casino/game/{{ game.id }}/lot/add"
+        style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:14px">
+    <div class="form-group" style="margin:0">
+      <label>{{ t('casino.lot_kind') }}</label>
+      <select name="reward_kind">
+        <option value="money">{{ t('casino.reward.money') }}</option>
+        <option value="role">{{ t('casino.reward.role') }}</option>
+        <option value="ticket">{{ t('casino.reward.ticket') }}</option>
+        <option value="item">{{ t('casino.reward.item') }}</option>
+        <option value="nothing">{{ t('casino.reward.nothing') }}</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;flex:1">
+      <label>{{ t('casino.lot_value') }}</label>
+      <input type="text" name="reward_value" required placeholder="450 / ID de rôle / slug">
+    </div>
+    {% if game.kind == 'dice_sum' %}
+    <div class="form-group" style="margin:0">
+      <label>{{ t('casino.outcome') }}</label>
+      <input type="number" name="outcome" style="width:90px" placeholder="7">
+    </div>
+    {% endif %}
+    <div class="form-group" style="margin:0">
+      <label>{{ t('casino.weight') }}</label>
+      <input type="number" name="weight" value="1" step="any" min="0" style="width:90px">
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('casino.add_lot') }}</button>
+  </form>
+
+  <form method="post" action="/guild/{{ guild_id }}/casino/game/{{ game.id }}/delete"
+        style="margin-top:12px">
+    <button type="submit" class="btn btn-danger btn-sm"
+            onclick="return confirm('{{ t('casino.confirm_delete_game') }}')">
+      {{ t('casino.delete_game') }}
+    </button>
+  </form>
+
+  {% if game.stats.plays %}
+  <p style="margin-top:12px;color:var(--text-muted);font-size:.82rem">
+    {{ game.stats.plays }} {{ t('casino.plays') }} ·
+    {{ t('casino.real_rtp') }}
+    {{ '%.0f'|format(game.stats.rtp * 100) if game.stats.rtp else '—' }} %
+  </p>
+  {% endif %}
+</div>
+{% endfor %}
+
+<!-- ─────────── Quêtes ─────────── -->
+<div class="card" id="quetes">
+  <div class="card-header">
+    <h3>📜 {{ t('casino.quests') }}</h3>
+    <span class="tag tag-hint">{{ t('casino.quests_hint') }}</span>
+  </div>
+  {% if quests %}
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>{{ t('casino.name') }}</th><th>{{ t('casino.target') }}</th>
+        <th>{{ t('casino.goal') }}</th><th>{{ t('casino.reward') }}</th><th></th>
+      </tr>
+      {% for q in quests %}
+      <tr>
+        <td><strong>{{ q.name }}</strong></td>
+        <td><span class="tag tag-info">{{ t('casino.target.' ~ q.target_kind) }}</span>
+            {{ q.target_value }}</td>
+        <td>{{ q.goal }}{% if q.repeatable %} ↻{% endif %}</td>
+        <td>{{ t('casino.reward.' ~ q.reward_kind) }} {{ q.reward_value }}</td>
+        <td>
+          <form method="post" action="/guild/{{ guild_id }}/casino/quest/{{ q.id }}/delete">
+            <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/guild/{{ guild_id }}/casino/quest/add" style="margin-top:14px">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('casino.name') }}</label>
+        <input type="text" name="name" required placeholder="Ouvreur de boxs">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.target') }}</label>
+        <select name="target_kind">
+          <option value="any">{{ t('casino.target.any') }}</option>
+          <option value="category">{{ t('casino.target.category') }}</option>
+          <option value="game">{{ t('casino.target.game') }}</option>
+          <option value="role">{{ t('casino.target.role') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.target_value') }}</label>
+        <input type="text" name="target_value" placeholder="box / machine / slug / ID de rôle">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.goal') }}</label>
+        <input type="number" name="goal" value="20" min="1">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.reward') }}</label>
+        <select name="reward_kind">
+          <option value="money">{{ t('casino.reward.money') }}</option>
+          <option value="role">{{ t('casino.reward.role') }}</option>
+          <option value="ticket">{{ t('casino.reward.ticket') }}</option>
+          <option value="item">{{ t('casino.reward.item') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.lot_value') }}</label>
+        <input type="text" name="reward_value" required placeholder="2000 / ID de rôle">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.repeatable') }}</label>
+        <select name="repeatable">
+          <option value="0">{{ t('casino.no') }}</option>
+          <option value="1">{{ t('casino.yes') }}</option>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
+  </form>
+</div>
+
+<!-- ─────────── Effets ─────────── -->
+<div class="card" id="effets">
+  <div class="card-header">
+    <h3>✨ {{ t('casino.effects') }}</h3>
+    <span class="tag tag-hint">{{ t('casino.effects_hint') }}</span>
+  </div>
+
+  <div class="reel-preview" id="preview">
+    <div class="reel-line" id="reel">🍒 🍋 💎</div>
+    <div class="reel-caption" id="reel-caption">{{ style.suspense_text }}</div>
+  </div>
+
+  <form method="post" action="/guild/{{ guild_id }}/casino/style">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('casino.animations') }}</label>
+        <select name="animations_enabled">
+          <option value="1" {% if style.animations_enabled %}selected{% endif %}>{{ t('casino.yes') }}</option>
+          <option value="0" {% if not style.animations_enabled %}selected{% endif %}>{{ t('casino.no') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.frames') }}</label>
+        <input type="number" name="frame_count" id="f-count" value="{{ style.frame_count }}" min="0" max="12">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.frame_delay') }}</label>
+        <input type="number" name="frame_delay_ms" id="f-delay" value="{{ style.frame_delay_ms }}" min="100" max="3000" step="50">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.reel_width') }}</label>
+        <input type="number" name="reel_width" id="f-width" value="{{ style.reel_width }}" min="1" max="6">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>{{ t('casino.symbols') }}</label>
+        <input type="text" name="reel_symbols" id="f-symbols" value="{{ style.reel_symbols }}"
+               placeholder="🍒,🍋,🍇,🔔,💎,7️⃣">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.suspense') }}</label>
+        <input type="text" name="suspense_text" id="f-suspense" value="{{ style.suspense_text }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.currency') }}</label>
+        <input type="text" name="currency_symbol" value="{{ style.currency_symbol }}" maxlength="4">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.win_emoji') }}</label>
+        <input type="text" name="win_emoji" value="{{ style.win_emoji }}" maxlength="8">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.lose_emoji') }}</label>
+        <input type="text" name="lose_emoji" value="{{ style.lose_emoji }}" maxlength="8">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.win_color') }}</label>
+        <input type="color" name="win_color" value="{{ style.win_color }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.lose_color') }}</label>
+        <input type="color" name="lose_color" value="{{ style.lose_color }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.jackpot_threshold') }}</label>
+        <input type="number" name="jackpot_threshold" value="{{ style.jackpot_threshold }}" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.jackpot_text') }}</label>
+        <input type="text" name="jackpot_text" value="{{ style.jackpot_text }}">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.save') }}</button>
+  </form>
+</div>
+
+<script>
+  // Les champs "dés" ne concernent que les jeux de dés.
+  function toggleKind(select) {
+    var block = select.closest('form').querySelector('.kind-dice');
+    if (block) block.hidden = (select.value === 'weighted');
+  }
+
+  // Aperçu du défilement, avec les réglages en cours de saisie.
+  (function () {
+    var reel = document.getElementById('reel');
+    var caption = document.getElementById('reel-caption');
+    if (!reel) return;
+    function symbols() {
+      var raw = (document.getElementById('f-symbols').value || '🎰').split(',');
+      return raw.map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    function spin() {
+      var set = symbols();
+      var width = parseInt(document.getElementById('f-width').value, 10) || 3;
+      var out = [];
+      for (var i = 0; i < width; i++) {
+        out.push(set[Math.floor(Math.random() * set.length)]);
+      }
+      reel.textContent = out.join(' ');
+      caption.textContent = document.getElementById('f-suspense').value;
+      reel.classList.remove('spin');
+      void reel.offsetWidth;
+      reel.classList.add('spin');
+      var delay = parseInt(document.getElementById('f-delay').value, 10) || 650;
+      setTimeout(spin, Math.max(120, delay));
+    }
+    spin();
+  })();
+</script>
+{% endblock %}

@@ -33,6 +33,12 @@
       <label>{{ t('economy.max_transfer') }}</label>
       <input type="number" name="max_transfer" value="{{ config.max_transfer if config else 10000 }}" min="1">
     </div>
+    <div class="form-group">
+      <label>{{ t('economy.starting_balance') }}</label>
+      <input type="number" name="starting_balance" step="any" min="0"
+             value="{{ config.starting_balance if config else 0 }}">
+      <small style="color:var(--text-muted)">{{ t('economy.starting_balance_desc') }}</small>
+    </div>
     <button type="submit" class="btn btn-primary">{{ t('btn.save') }}</button>
   </form>
 </div>
