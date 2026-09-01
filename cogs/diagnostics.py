@@ -152,6 +152,14 @@ EXPECTED_COMMANDS = {
     "casinostats",
     "inviterewards",
     "collect_income",
+    "anniv",
+    "annivdel",
+    "annivlist",
+    "annivconfig",
+    "tempvoice",
+    "vocalnom",
+    "vocallimite",
+    "statschannel",
 }
 
 REQUIRED_MODULES = [
@@ -213,6 +221,12 @@ EXPECTED_TABLES = [
     "twitch_config",
     "twitch_notifications",
     "twitch_watch",
+    "birthday_config",
+    "birthdays",
+    "birthday_announced",
+    "tempvoice_config",
+    "tempvoice_channels",
+    "stats_channels",
     "error_logs",
     "translation_subs",
     "casino_games",

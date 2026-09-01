@@ -71,6 +71,10 @@ GUILD_MODULES = [
     {"slug": "twitch", "key": "module.twitch", "icon": "tv", "table": "twitch_watch"},
     {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
     {"slug": "casino", "key": "module.casino", "icon": "dice", "table": "casino_games"},
+    {"slug": "birthdays", "key": "module.birthdays", "icon": "gift", "table": "birthdays"},
+    {"slug": "tempvoice", "key": "module.tempvoice", "icon": "mic", "table": "tempvoice_config"},
+    {"slug": "statschannels", "key": "module.statschannels", "icon": "chart",
+     "table": "stats_channels"},
     {"slug": "notes", "key": "module.notes", "icon": "note", "table": "notes"},
     {"slug": "transactions", "key": "module.transactions", "icon": "swap", "table": "transactions"},
     {"slug": "reminders", "key": "module.reminders", "icon": "clock", "table": "reminders"},
@@ -1577,6 +1581,131 @@ async def api_notes(guild_id: int = 0):
     else:
         notes = db.fetchall("SELECT guild_id, title, content FROM notes ORDER BY guild_id, title")
     return {"notes": [dict(n) for n in notes]}
+
+
+# ── Anniversaires ──
+
+@app.get("/guild/{guild_id}/birthdays", response_class=HTMLResponse)
+async def birthdays_page(request: Request, guild_id: int):
+    db.execute("INSERT OR IGNORE INTO birthday_config (guild_id) VALUES (?)", (guild_id,))
+    cfg = db.fetchone("SELECT * FROM birthday_config WHERE guild_id = ?", (guild_id,))
+    entries = db.fetchall(
+        "SELECT user_id, day, month, year FROM birthdays WHERE guild_id = ? "
+        "ORDER BY month, day",
+        (guild_id,),
+    )
+    return templates.TemplateResponse(request, "birthdays.html", {
+        "request": request, "guild_id": guild_id, "config": cfg, "birthdays": entries,
+    })
+
+
+@app.post("/guild/{guild_id}/birthdays/config")
+async def birthdays_save(
+    guild_id: int,
+    channel_id: str = Form(""),
+    role_id: str = Form(""),
+    message: str = Form("Joyeux anniversaire {user} ! 🎂"),
+    announce_hour: int = Form(9),
+    enabled: int = Form(0),
+):
+    db.execute(
+        "INSERT INTO birthday_config (guild_id, channel_id, role_id, message, "
+        "announce_hour, enabled) VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id, "
+        "role_id=excluded.role_id, message=excluded.message, "
+        "announce_hour=excluded.announce_hour, enabled=excluded.enabled",
+        (guild_id,
+         int(channel_id) if channel_id.strip().isdigit() else None,
+         int(role_id) if role_id.strip().isdigit() else None,
+         message, max(0, min(23, announce_hour)), enabled),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/birthdays", status_code=303)
+
+
+@app.post("/guild/{guild_id}/birthdays/delete")
+async def birthdays_delete(guild_id: int, user_id: int = Form(...)):
+    db.execute(
+        "DELETE FROM birthdays WHERE guild_id = ? AND user_id = ?", (guild_id, user_id)
+    )
+    return RedirectResponse(f"/guild/{guild_id}/birthdays", status_code=303)
+
+
+# ── Salons vocaux temporaires ──
+
+@app.get("/guild/{guild_id}/tempvoice", response_class=HTMLResponse)
+async def tempvoice_page(request: Request, guild_id: int):
+    db.execute("INSERT OR IGNORE INTO tempvoice_config (guild_id) VALUES (?)", (guild_id,))
+    cfg = db.fetchone("SELECT * FROM tempvoice_config WHERE guild_id = ?", (guild_id,))
+    active = db.fetchall(
+        "SELECT channel_id, owner_id, created_at FROM tempvoice_channels WHERE guild_id = ?",
+        (guild_id,),
+    )
+    return templates.TemplateResponse(request, "tempvoice.html", {
+        "request": request, "guild_id": guild_id, "config": cfg, "active": active,
+    })
+
+
+@app.post("/guild/{guild_id}/tempvoice/config")
+async def tempvoice_save(
+    guild_id: int,
+    hub_channel_id: str = Form(""),
+    category_id: str = Form(""),
+    name_template: str = Form("Salon de {user}"),
+    user_limit: int = Form(0),
+    enabled: int = Form(0),
+):
+    db.execute(
+        "INSERT INTO tempvoice_config (guild_id, hub_channel_id, category_id, "
+        "name_template, user_limit, enabled) VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET hub_channel_id=excluded.hub_channel_id, "
+        "category_id=excluded.category_id, name_template=excluded.name_template, "
+        "user_limit=excluded.user_limit, enabled=excluded.enabled",
+        (guild_id,
+         int(hub_channel_id) if hub_channel_id.strip().isdigit() else None,
+         int(category_id) if category_id.strip().isdigit() else None,
+         name_template, max(0, min(99, user_limit)), enabled),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/tempvoice", status_code=303)
+
+
+# ── Salons de statistiques ──
+
+@app.get("/guild/{guild_id}/statschannels", response_class=HTMLResponse)
+async def statschannels_page(request: Request, guild_id: int):
+    from cogs.statschannels import KINDS
+    entries = db.fetchall(
+        "SELECT * FROM stats_channels WHERE guild_id = ? ORDER BY channel_id", (guild_id,)
+    )
+    return templates.TemplateResponse(request, "statschannels.html", {
+        "request": request, "guild_id": guild_id, "entries": entries,
+        "kinds": [(key, label) for key, (label, _) in KINDS.items()],
+    })
+
+
+@app.post("/guild/{guild_id}/statschannels/add")
+async def statschannels_add(
+    guild_id: int,
+    channel_id: str = Form(...),
+    kind: str = Form("members"),
+    template: str = Form("{label} : {value}"),
+    role_id: str = Form(""),
+):
+    from cogs.statschannels import KINDS
+    if channel_id.strip().isdigit() and kind in KINDS:
+        db.execute(
+            "INSERT INTO stats_channels (channel_id, guild_id, kind, template, role_id) "
+            "VALUES (?, ?, ?, ?, ?) ON CONFLICT(channel_id) DO UPDATE SET "
+            "kind=excluded.kind, template=excluded.template, role_id=excluded.role_id",
+            (int(channel_id), guild_id, kind, template,
+             int(role_id) if role_id.strip().isdigit() else None),
+        )
+    return RedirectResponse(f"/guild/{guild_id}/statschannels", status_code=303)
+
+
+@app.post("/guild/{guild_id}/statschannels/delete")
+async def statschannels_delete(guild_id: int, channel_id: int = Form(...)):
+    db.execute("DELETE FROM stats_channels WHERE channel_id = ?", (channel_id,))
+    return RedirectResponse(f"/guild/{guild_id}/statschannels", status_code=303)
 
 
 # ── Notes (par serveur) ──

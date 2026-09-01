@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.statschannels') }}{% endblock %}
+{% block crumb %}{{ t('module.statschannels') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>📊 {{ t('module.statschannels') }}</h2>
+  <p>{{ t('statschannels.subtitle') }}</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('statschannels.tracked') }}</h3>
+    <span class="tag tag-hint">{{ t('statschannels.rate_hint') }}</span>
+  </div>
+  {% if entries %}
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>{{ t('tickets.col_channel') }}</th><th>{{ t('statschannels.kind') }}</th>
+        <th>{{ t('statschannels.template') }}</th><th>{{ t('statschannels.current') }}</th><th></th>
+      </tr>
+      {% for e in entries %}
+      <tr>
+        <td><code>{{ e.channel_id }}</code></td>
+        <td><span class="tag tag-info">{{ e.kind }}</span></td>
+        <td><code>{{ e.template }}</code></td>
+        <td>{{ e.last_value or '—' }}</td>
+        <td>
+          <form method="post" action="/guild/{{ guild_id }}/statschannels/delete">
+            <input type="hidden" name="channel_id" value="{{ e.channel_id }}">
+            <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <svg class="i"><use href="#i-chart"/></svg>
+    <p>{{ t('statschannels.empty') }}</p>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/guild/{{ guild_id }}/statschannels/add" style="margin-top:16px">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('statschannels.channel') }}</label>
+        <input type="text" name="channel_id" required placeholder="123456789012345678">
+      </div>
+      <div class="form-group">
+        <label>{{ t('statschannels.kind') }}</label>
+        <select name="kind">
+          {% for key, label in kinds %}
+          <option value="{{ key }}">{{ label }} ({{ key }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('statschannels.role') }}</label>
+        <input type="text" name="role_id" placeholder="{{ t('statschannels.role_ph') }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('statschannels.template') }}</label>
+        <input type="text" name="template" value="{{ '{label} : {value}' }}">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
+  </form>
+</div>
+{% endblock %}

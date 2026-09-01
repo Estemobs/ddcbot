@@ -113,7 +113,8 @@ class TestDashboardSixNewPages(unittest.TestCase):
             f"/guild/{GUILD}/lang", f"/guild/{GUILD}/notes",
             f"/guild/{GUILD}/transactions", f"/guild/{GUILD}/reminders",
             f"/guild/{GUILD}/giveaways", f"/guild/{GUILD}/casino",
-            f"/guild/{GUILD}/twitch",
+            f"/guild/{GUILD}/twitch", f"/guild/{GUILD}/birthdays",
+            f"/guild/{GUILD}/tempvoice", f"/guild/{GUILD}/statschannels",
         ]:
             with self.subTest(path=path):
                 resp = self.client.get(path)
@@ -430,6 +431,79 @@ class TestCasinoDashboard(unittest.TestCase):
             "SELECT starting_balance FROM economy_config WHERE guild_id = ?", (GUILD,)
         )
         self.assertEqual(row["starting_balance"], 100)
+
+
+class TestNewModulePages(unittest.TestCase):
+    def setUp(self):
+        self._old_db = dashboard.db
+        dashboard.db = _fresh_db()
+        dashboard.db.execute("INSERT INTO economy_config (guild_id) VALUES (?)", (GUILD,))
+        self.client = TestClient(dashboard.app, follow_redirects=False)
+
+    def tearDown(self):
+        dashboard.db = self._old_db
+
+    def test_birthday_config_round_trip(self):
+        resp = self.client.post(f"/guild/{GUILD}/birthdays/config", data={
+            "channel_id": "555", "role_id": "666", "message": "Joyeux anniv {user}",
+            "announce_hour": "10", "enabled": "1",
+        })
+        self.assertEqual(resp.status_code, 303)
+        row = dashboard.db.fetchone(
+            "SELECT * FROM birthday_config WHERE guild_id = ?", (GUILD,)
+        )
+        self.assertEqual((row["channel_id"], row["role_id"], row["announce_hour"]),
+                         (555, 666, 10))
+
+    def test_birthday_hour_is_clamped(self):
+        self.client.post(f"/guild/{GUILD}/birthdays/config", data={
+            "channel_id": "", "role_id": "", "message": "x",
+            "announce_hour": "99", "enabled": "1",
+        })
+        row = dashboard.db.fetchone(
+            "SELECT announce_hour FROM birthday_config WHERE guild_id = ?", (GUILD,)
+        )
+        self.assertEqual(row["announce_hour"], 23)
+
+    def test_birthday_delete(self):
+        dashboard.db.execute(
+            "INSERT INTO birthdays (guild_id, user_id, day, month) VALUES (?, ?, ?, ?)",
+            (GUILD, 42, 24, 12),
+        )
+        self.client.post(f"/guild/{GUILD}/birthdays/delete", data={"user_id": "42"})
+        self.assertEqual(
+            dashboard.db.fetchall("SELECT 1 FROM birthdays WHERE guild_id = ?", (GUILD,)), []
+        )
+
+    def test_tempvoice_config_round_trip(self):
+        self.client.post(f"/guild/{GUILD}/tempvoice/config", data={
+            "hub_channel_id": "777", "category_id": "888",
+            "name_template": "Vocal de {user}", "user_limit": "5", "enabled": "1",
+        })
+        row = dashboard.db.fetchone(
+            "SELECT * FROM tempvoice_config WHERE guild_id = ?", (GUILD,)
+        )
+        self.assertEqual((row["hub_channel_id"], row["user_limit"]), (777, 5))
+
+    def test_stats_channel_add_and_delete(self):
+        self.client.post(f"/guild/{GUILD}/statschannels/add", data={
+            "channel_id": "999", "kind": "members",
+            "template": "{label} : {value}", "role_id": "",
+        })
+        rows = dashboard.db.fetchall("SELECT * FROM stats_channels WHERE guild_id = ?", (GUILD,))
+        self.assertEqual(len(rows), 1)
+        self.client.post(f"/guild/{GUILD}/statschannels/delete", data={"channel_id": "999"})
+        self.assertEqual(
+            dashboard.db.fetchall("SELECT 1 FROM stats_channels WHERE guild_id = ?", (GUILD,)), []
+        )
+
+    def test_unknown_stats_kind_is_rejected(self):
+        self.client.post(f"/guild/{GUILD}/statschannels/add", data={
+            "channel_id": "999", "kind": "nimportequoi", "template": "x", "role_id": "",
+        })
+        self.assertEqual(
+            dashboard.db.fetchall("SELECT 1 FROM stats_channels WHERE guild_id = ?", (GUILD,)), []
+        )
 
 
 class TestDashboardAuth(unittest.TestCase):

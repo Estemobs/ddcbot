@@ -39,6 +39,9 @@ from cogs.tickets import cmdtickets
 from cogs.webhooks import cmdwebhooks
 from cogs.lockdown import cmdlockdown
 from cogs.plugins_cmd import cmdplugins
+from cogs.birthdays import cmdbirthdays
+from cogs.tempvoice import cmdtempvoice
+from cogs.statschannels import cmdstatschannels
 import plugin_loader
 
 intents = discord.Intents.default()
@@ -284,6 +287,9 @@ async def main():
     await bot.add_cog(cmdlockdown(bot, db))
     await bot.add_cog(cmdstarboard(bot, db))
     await bot.add_cog(cmdplugins(bot, db))
+    await bot.add_cog(cmdbirthdays(bot, db))
+    await bot.add_cog(cmdtempvoice(bot, db))
+    await bot.add_cog(cmdstatschannels(bot, db))
     await plugin_loader.load_plugins(bot, db)
     await bot.start(token)
 

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.birthdays') }}{% endblock %}
+{% block crumb %}{{ t('module.birthdays') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🎂 {{ t('module.birthdays') }}</h2>
+  <p>{{ t('birthdays.subtitle') }}</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('common.config') }}</h3>
+    <span class="tag tag-success">{{ t('nokey.badge') }}</span>
+  </div>
+  <form method="post" action="/guild/{{ guild_id }}/birthdays/config">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('birthdays.channel') }}</label>
+        <input type="text" name="channel_id" value="{{ config.channel_id or '' }}"
+               placeholder="123456789012345678">
+      </div>
+      <div class="form-group">
+        <label>{{ t('birthdays.role') }}</label>
+        <input type="text" name="role_id" value="{{ config.role_id or '' }}"
+               placeholder="{{ t('birthdays.role_ph') }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('birthdays.hour') }}</label>
+        <input type="number" name="announce_hour" min="0" max="23"
+               value="{{ config.announce_hour }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('birthdays.enabled') }}</label>
+        <select name="enabled">
+          <option value="1" {% if config.enabled %}selected{% endif %}>{{ t('casino.yes') }}</option>
+          <option value="0" {% if not config.enabled %}selected{% endif %}>{{ t('casino.no') }}</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>{{ t('birthdays.message') }}</label>
+        <input type="text" name="message" value="{{ config.message }}">
+        <small style="color:var(--text-muted)">{{ t('birthdays.vars') }}</small>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.save') }}</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('birthdays.registered') }}</h3>
+    <span class="tag tag-info">{{ birthdays|length }}</span>
+  </div>
+  {% if birthdays %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>{{ t('economy.col_user') }}</th><th>{{ t('birthdays.date') }}</th><th></th></tr>
+      {% for b in birthdays %}
+      <tr>
+        <td><code>{{ b.user_id }}</code></td>
+        <td>{{ '%02d'|format(b.day) }}/{{ '%02d'|format(b.month) }}{% if b.year %}/{{ b.year }}{% endif %}</td>
+        <td>
+          <form method="post" action="/guild/{{ guild_id }}/birthdays/delete">
+            <input type="hidden" name="user_id" value="{{ b.user_id }}">
+            <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <svg class="i"><use href="#i-gift"/></svg>
+    <p>{{ t('birthdays.empty') }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
