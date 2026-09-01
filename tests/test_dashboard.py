@@ -4,6 +4,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import conftest  # noqa: F401
 
+import json
 import unittest
 
 # Pointe la base du dashboard vers une base en memoire AVANT l'import du module.
@@ -115,7 +116,7 @@ class TestDashboardSixNewPages(unittest.TestCase):
             f"/guild/{GUILD}/giveaways", f"/guild/{GUILD}/casino",
             f"/guild/{GUILD}/twitch", f"/guild/{GUILD}/birthdays",
             f"/guild/{GUILD}/tempvoice", f"/guild/{GUILD}/statschannels",
-            f"/guild/{GUILD}/alerts",
+            f"/guild/{GUILD}/alerts", f"/guild/{GUILD}/embeds", f"/guild/{GUILD}/emojis",
         ]:
             with self.subTest(path=path):
                 resp = self.client.get(path)
@@ -534,6 +535,55 @@ class TestNewModulePages(unittest.TestCase):
         )
         self.client.post(f"/guild/{GUILD}/alerts/{feed_id}/delete")
         self.assertEqual(dashboard.db.fetchall("SELECT 1 FROM social_feeds"), [])
+
+    def test_embed_save_normalises_fields(self):
+        self.client.post(f"/guild/{GUILD}/embeds/save", data={
+            "name": "reglement", "title": "Règles", "description": "Sois sympa",
+            "color": "#FF0000", "url": "", "author_name": "", "author_icon": "",
+            "footer_text": "", "image_url": "", "thumbnail_url": "", "content": "",
+            "fields_json": '[{"name":"1","value":"ok"},{"name":"vide","value":""}]',
+        })
+        row = dashboard.db.fetchone("SELECT * FROM embeds WHERE guild_id = ?", (GUILD,))
+        self.assertEqual(row["name"], "reglement")
+        # Le champ dont la valeur est vide serait refuse par Discord.
+        self.assertEqual(len(json.loads(row["fields_json"])), 1)
+
+    def test_embed_save_tolerates_broken_field_json(self):
+        self.client.post(f"/guild/{GUILD}/embeds/save", data={
+            "name": "casse", "title": "x", "description": "", "color": "#00FF00",
+            "url": "", "author_name": "", "author_icon": "", "footer_text": "",
+            "image_url": "", "thumbnail_url": "", "content": "",
+            "fields_json": "{pas du json",
+        })
+        row = dashboard.db.fetchone(
+            "SELECT fields_json FROM embeds WHERE guild_id = ? AND name = 'casse'", (GUILD,)
+        )
+        self.assertEqual(row["fields_json"], "[]")
+
+    def test_embed_without_a_name_is_ignored(self):
+        self.client.post(f"/guild/{GUILD}/embeds/save", data={
+            "name": "   ", "title": "x", "description": "", "color": "#00FF00",
+            "url": "", "author_name": "", "author_icon": "", "footer_text": "",
+            "image_url": "", "thumbnail_url": "", "content": "", "fields_json": "[]",
+        })
+        self.assertEqual(dashboard.db.fetchall("SELECT 1 FROM embeds"), [])
+
+    def test_embed_delete(self):
+        dashboard.db.execute(
+            "INSERT INTO embeds (guild_id, name, title) VALUES (?, ?, ?)",
+            (GUILD, "x", "t"),
+        )
+        self.client.post(f"/guild/{GUILD}/embeds/delete", data={"name": "x"})
+        self.assertEqual(dashboard.db.fetchall("SELECT 1 FROM embeds"), [])
+
+    def test_emoji_page_lists_the_mirror(self):
+        dashboard.db.execute(
+            "INSERT INTO guild_emojis (emoji_id, guild_id, name, animated, url) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (1, GUILD, "pepe", 0, "https://cdn/pepe.png"),
+        )
+        body = self.client.get(f"/guild/{GUILD}/emojis").text
+        self.assertIn(":pepe:", body)
 
     def test_unknown_stats_kind_is_rejected(self):
         self.client.post(f"/guild/{GUILD}/statschannels/add", data={

@@ -70,6 +70,8 @@ GUILD_MODULES = [
     {"slug": "steam", "key": "module.steam", "icon": "gamepad", "table": "steam_config"},
     {"slug": "twitch", "key": "module.twitch", "icon": "tv", "table": "twitch_watch"},
     {"slug": "alerts", "key": "module.alerts", "icon": "bell", "table": "social_feeds"},
+    {"slug": "embeds", "key": "module.embeds", "icon": "note", "table": "embeds"},
+    {"slug": "emojis", "key": "module.emojis", "icon": "sparkles", "table": "guild_emojis"},
     {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
     {"slug": "casino", "key": "module.casino", "icon": "dice", "table": "casino_games"},
     {"slug": "birthdays", "key": "module.birthdays", "icon": "gift", "table": "birthdays"},
@@ -1582,6 +1584,86 @@ async def api_notes(guild_id: int = 0):
     else:
         notes = db.fetchall("SELECT guild_id, title, content FROM notes ORDER BY guild_id, title")
     return {"notes": [dict(n) for n in notes]}
+
+
+# ── Messages Embed ──
+# La composition se fait ici (avec apercu) ; le bot ne fait que publier et
+# corriger en place. embed_builder porte les limites imposees par Discord.
+
+@app.get("/guild/{guild_id}/embeds", response_class=HTMLResponse)
+async def embeds_page(request: Request, guild_id: int):
+    import embed_builder
+    rows = db.fetchall("SELECT * FROM embeds WHERE guild_id = ? ORDER BY name", (guild_id,))
+    stored = []
+    for row in rows:
+        item = dict(row)
+        item["fields"] = embed_builder.parse_fields(item["fields_json"])
+        item["problems"] = embed_builder.validate(item)
+        item["length"] = embed_builder.total_length(item)
+        stored.append(item)
+    return templates.TemplateResponse(request, "embeds.html", {
+        "request": request, "guild_id": guild_id, "embeds": stored,
+        "limits": embed_builder.LIMITS,
+    })
+
+
+@app.post("/guild/{guild_id}/embeds/save")
+async def embeds_save(
+    guild_id: int,
+    name: str = Form(...),
+    title: str = Form(""),
+    description: str = Form(""),
+    color: str = Form("#5865F2"),
+    url: str = Form(""),
+    author_name: str = Form(""),
+    author_icon: str = Form(""),
+    footer_text: str = Form(""),
+    image_url: str = Form(""),
+    thumbnail_url: str = Form(""),
+    content: str = Form(""),
+    fields_json: str = Form("[]"),
+):
+    import embed_builder
+    name = name.strip()
+    if not name:
+        return RedirectResponse(f"/guild/{guild_id}/embeds", status_code=303)
+    # On normalise les champs avant stockage : un JSON casse saisi a la main ne
+    # doit pas empecher l'enregistrement du reste.
+    normalised = json.dumps(embed_builder.parse_fields(fields_json))
+    db.execute(
+        "INSERT INTO embeds (guild_id, name, title, description, color, url, author_name, "
+        "author_icon, footer_text, image_url, thumbnail_url, content, fields_json, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch()) "
+        "ON CONFLICT(guild_id, name) DO UPDATE SET title=excluded.title, "
+        "description=excluded.description, color=excluded.color, url=excluded.url, "
+        "author_name=excluded.author_name, author_icon=excluded.author_icon, "
+        "footer_text=excluded.footer_text, image_url=excluded.image_url, "
+        "thumbnail_url=excluded.thumbnail_url, content=excluded.content, "
+        "fields_json=excluded.fields_json, updated_at=unixepoch()",
+        (guild_id, name, title, description, color, url, author_name, author_icon,
+         footer_text, image_url, thumbnail_url, content, normalised),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/embeds", status_code=303)
+
+
+@app.post("/guild/{guild_id}/embeds/delete")
+async def embeds_delete(guild_id: int, name: str = Form(...)):
+    db.execute("DELETE FROM embeds WHERE guild_id = ? AND name = ?", (guild_id, name))
+    return RedirectResponse(f"/guild/{guild_id}/embeds", status_code=303)
+
+
+# ── Emojis ──
+# Miroir alimente par le bot (cogs/embeds.sync_emojis) : le dashboard n'a pas de
+# connexion Discord et ne peut pas lister les emojis autrement.
+
+@app.get("/guild/{guild_id}/emojis", response_class=HTMLResponse)
+async def emojis_page(request: Request, guild_id: int):
+    emojis = db.fetchall(
+        "SELECT * FROM guild_emojis WHERE guild_id = ? ORDER BY animated, name", (guild_id,)
+    )
+    return templates.TemplateResponse(request, "emojis.html", {
+        "request": request, "guild_id": guild_id, "emojis": emojis,
+    })
 
 
 # ── Alertes sociales (YouTube, Reddit, podcasts/RSS, Kick — sans cle d'API) ──

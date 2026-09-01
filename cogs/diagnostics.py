@@ -161,6 +161,8 @@ EXPECTED_COMMANDS = {
     "vocallimite",
     "statschannel",
     "alerts",
+    "embed",
+    "emoji",
 }
 
 REQUIRED_MODULES = [
@@ -229,6 +231,8 @@ EXPECTED_TABLES = [
     "tempvoice_channels",
     "stats_channels",
     "social_feeds",
+    "embeds",
+    "guild_emojis",
     "error_logs",
     "translation_subs",
     "casino_games",

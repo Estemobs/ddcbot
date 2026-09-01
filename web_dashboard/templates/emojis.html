@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.emojis') }}{% endblock %}
+{% block crumb %}{{ t('module.emojis') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>😀 {{ t('module.emojis') }}</h2>
+  <p>{{ t('emojis.subtitle') }}</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('emojis.list') }}</h3>
+    <span class="tag tag-info">{{ emojis|length }}</span>
+  </div>
+  {% if emojis %}
+  <div class="emoji-grid">
+    {% for e in emojis %}
+    <div class="emoji-cell" title=":{{ e.name }}:">
+      <img src="{{ e.url }}" alt=":{{ e.name }}:" loading="lazy">
+      <span>:{{ e.name }}:</span>
+      {% if e.animated %}<span class="tag tag-muted">GIF</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <svg class="i"><use href="#i-sparkles"/></svg>
+    <p>{{ t('emojis.empty') }}</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>{{ t('aimod.commands') }}</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>{{ t('col.command') }}</th><th>{{ t('col.description') }}</th></tr>
+      <tr><td><code>,emoji list</code></td><td>{{ t('emojis.cmd_list') }}</td></tr>
+      <tr><td><code>,emoji add &lt;nom&gt; &lt;url&gt;</code></td><td>{{ t('emojis.cmd_add') }}</td></tr>
+      <tr><td><code>,emoji remove &lt;nom&gt;</code></td><td>{{ t('emojis.cmd_remove') }}</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

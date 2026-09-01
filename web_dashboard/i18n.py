@@ -47,6 +47,8 @@ STRINGS = {
     "module.casino": {"fr": "Casino", "en": "Casino"},
     "module.twitch": {"fr": "Twitch", "en": "Twitch"},
     "module.alerts": {"fr": "Alertes sociales", "en": "Social alerts"},
+    "module.embeds": {"fr": "Messages Embed", "en": "Embed messages"},
+    "module.emojis": {"fr": "Emojis", "en": "Emojis"},
     "module.birthdays": {"fr": "Anniversaires", "en": "Birthdays"},
     "module.tempvoice": {"fr": "Vocaux temporaires", "en": "Temp voice"},
     "module.statschannels": {"fr": "Salons de stats", "en": "Stats channels"},
@@ -75,6 +77,10 @@ STRINGS = {
     "module.desc.twitch": {"fr": "Alertes de direct Twitch", "en": "Twitch live alerts"},
     "module.desc.alerts": {"fr": "YouTube, Reddit, podcasts et Kick",
                            "en": "YouTube, Reddit, podcasts and Kick"},
+    "module.desc.embeds": {"fr": "Annonces et reglements mis en forme",
+                           "en": "Formatted announcements and rules"},
+    "module.desc.emojis": {"fr": "Emojis personnalises du serveur",
+                           "en": "Server custom emojis"},
     "module.desc.birthdays": {"fr": "Annonce et role du jour", "en": "Announcement and day role"},
     "module.desc.tempvoice": {"fr": "Vocaux crees a la demande", "en": "Voice channels on demand"},
     "module.desc.statschannels": {"fr": "Compteurs dans les noms de salons",
@@ -762,6 +768,51 @@ STRINGS = {
         "en": "The first pass on a source only records a marker, so the whole backlog "
               "is not announced at once.",
     },
+
+    "embeds.subtitle": {
+        "fr": "Composez ici, publiez avec ,embed send <nom>. Un embed deja publie se "
+              "corrige en place avec ,embed edit.",
+        "en": "Compose here, publish with ,embed send <name>. An already published embed "
+              "is corrected in place with ,embed edit.",
+    },
+    "embeds.saved": {"fr": "Embeds enregistres", "en": "Saved embeds"},
+    "embeds.compose": {"fr": "Composer", "en": "Compose"},
+    "embeds.preview": {"fr": "Apercu", "en": "Preview"},
+    "embeds.name": {"fr": "Nom", "en": "Name"},
+    "embeds.title": {"fr": "Titre", "en": "Title"},
+    "embeds.description": {"fr": "Description", "en": "Description"},
+    "embeds.color": {"fr": "Couleur", "en": "Colour"},
+    "embeds.url": {"fr": "Lien du titre", "en": "Title link"},
+    "embeds.author": {"fr": "Auteur", "en": "Author"},
+    "embeds.author_icon": {"fr": "Icone de l'auteur", "en": "Author icon"},
+    "embeds.footer": {"fr": "Pied de page", "en": "Footer"},
+    "embeds.image": {"fr": "Grande image", "en": "Large image"},
+    "embeds.thumbnail": {"fr": "Vignette", "en": "Thumbnail"},
+    "embeds.content": {"fr": "Texte hors embed", "en": "Text outside the embed"},
+    "embeds.content_ph": {"fr": "Mentions, par exemple @everyone", "en": "Mentions, e.g. @everyone"},
+    "embeds.fields": {"fr": "Champs (JSON)", "en": "Fields (JSON)"},
+    "embeds.fields_hint": {
+        "fr": "Liste d'objets {name, value, inline}. Maximum 25 champs.",
+        "en": "List of {name, value, inline} objects. 25 fields maximum.",
+    },
+    "embeds.vars": {"fr": "Variables : {server} {count} {user} {name}",
+                    "en": "Variables: {server} {count} {user} {name}"},
+    "embeds.size": {"fr": "Taille", "en": "Size"},
+    "embeds.published": {"fr": "Publie dans", "en": "Published in"},
+    "embeds.load": {"fr": "Charger", "en": "Load"},
+    "emojis.subtitle": {
+        "fr": "Liste alimentee par le bot. L'ajout et la suppression se font en commande.",
+        "en": "List mirrored by the bot. Adding and removing is done with commands.",
+    },
+    "emojis.list": {"fr": "Emojis du serveur", "en": "Server emojis"},
+    "emojis.empty": {
+        "fr": "Aucun emoji, ou le bot n'a pas encore synchronise",
+        "en": "No emoji, or the bot has not synced yet",
+    },
+    "emojis.cmd_list": {"fr": "Liste les emojis", "en": "Lists the emojis"},
+    "emojis.cmd_add": {"fr": "Ajoute un emoji depuis une URL ou un autre emoji",
+                       "en": "Adds an emoji from a URL or another emoji"},
+    "emojis.cmd_remove": {"fr": "Supprime un emoji", "en": "Removes an emoji"},
 }
 
 SUPPORTED_LANGS = ("fr", "en")

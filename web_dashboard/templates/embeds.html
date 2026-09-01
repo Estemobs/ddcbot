@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.embeds') }}{% endblock %}
+{% block crumb %}{{ t('module.embeds') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🗒️ {{ t('module.embeds') }}</h2>
+  <p>{{ t('embeds.subtitle') }}</p>
+</div>
+
+{% if embeds %}
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('embeds.saved') }}</h3>
+    <span class="tag tag-info">{{ embeds|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>{{ t('embeds.name') }}</th><th>{{ t('embeds.title') }}</th>
+        <th>{{ t('embeds.size') }}</th><th>{{ t('embeds.published') }}</th><th></th>
+      </tr>
+      {% for e in embeds %}
+      <tr>
+        <td><strong>{{ e.name }}</strong>
+          {% if e.problems %}<span class="tag tag-danger">⚠</span>{% endif %}
+        </td>
+        <td>{{ e.title or '—' }}</td>
+        <td>{{ e.length }} / {{ limits.total }}</td>
+        <td>{% if e.message_id %}<code>#{{ e.channel_id }}</code>{% else %}—{% endif %}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="loadEmbed({{ loop.index0 }})">
+              {{ t('embeds.load') }}
+            </button>
+            <form method="post" action="/guild/{{ guild_id }}/embeds/delete">
+              <input type="hidden" name="name" value="{{ e.name }}">
+              <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% for e in embeds %}
+    {% if e.problems %}
+    <p style="color:var(--danger-text);margin-top:8px">
+      <strong>{{ e.name }}</strong> — {{ e.problems|join(' ') }}
+    </p>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="embed-editor">
+  <div class="card">
+    <div class="card-header"><h3>{{ t('embeds.compose') }}</h3></div>
+    <form method="post" action="/guild/{{ guild_id }}/embeds/save" id="embed-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>{{ t('embeds.name') }}</label>
+          <input type="text" name="name" id="f-name" required placeholder="reglement">
+        </div>
+        <div class="form-group">
+          <label>{{ t('embeds.color') }}</label>
+          <input type="color" name="color" id="f-color" value="#5865F2">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>{{ t('embeds.content') }}</label>
+          <input type="text" name="content" id="f-content"
+                 placeholder="{{ t('embeds.content_ph') }}">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>{{ t('embeds.title') }}</label>
+          <input type="text" name="title" id="f-title" maxlength="256">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>{{ t('embeds.description') }}</label>
+          <textarea name="description" id="f-description" rows="5" maxlength="4096"></textarea>
+          <small style="color:var(--text-muted)">{{ t('embeds.vars') }}</small>
+        </div>
+        <div class="form-group">
+          <label>{{ t('embeds.author') }}</label>
+          <input type="text" name="author_name" id="f-author">
+        </div>
+        <div class="form-group">
+          <label>{{ t('embeds.author_icon') }}</label>
+          <input type="text" name="author_icon" id="f-author-icon" placeholder="https://…">
+        </div>
+        <div class="form-group">
+          <label>{{ t('embeds.footer') }}</label>
+          <input type="text" name="footer_text" id="f-footer">
+        </div>
+        <div class="form-group">
+          <label>{{ t('embeds.url') }}</label>
+          <input type="text" name="url" id="f-url" placeholder="https://…">
+        </div>
+        <div class="form-group">
+          <label>{{ t('embeds.thumbnail') }}</label>
+          <input type="text" name="thumbnail_url" id="f-thumb" placeholder="https://…">
+        </div>
+        <div class="form-group">
+          <label>{{ t('embeds.image') }}</label>
+          <input type="text" name="image_url" id="f-image" placeholder="https://…">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>{{ t('embeds.fields') }}</label>
+          <textarea name="fields_json" id="f-fields" rows="4"
+                    placeholder='[{"name": "Titre", "value": "Texte", "inline": true}]'>[]</textarea>
+          <small style="color:var(--text-muted)">{{ t('embeds.fields_hint') }}</small>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.save') }}</button>
+      <span style="margin-left:10px;color:var(--text-muted);font-size:.82rem" id="len-counter"></span>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3>{{ t('embeds.preview') }}</h3>
+      <span class="tag tag-hint">{{ t('casino.effects_hint') }}</span>
+    </div>
+    <div id="preview-content" class="embed-content"></div>
+    <div class="embed-preview" id="preview">
+      <div class="embed-bar" id="p-bar"></div>
+      <div class="embed-body">
+        <div class="embed-author" id="p-author" hidden></div>
+        <div class="embed-title" id="p-title" hidden></div>
+        <div class="embed-desc" id="p-desc" hidden></div>
+        <div class="embed-fields" id="p-fields"></div>
+        <img class="embed-image" id="p-image" alt="" hidden>
+        <div class="embed-footer" id="p-footer" hidden></div>
+      </div>
+      <img class="embed-thumb" id="p-thumb" alt="" hidden>
+    </div>
+  </div>
+</div>
+
+<script>
+  var SAVED = {{ embeds | map(attribute='name') | list | tojson }};
+  var SAVED_DATA = {{ embeds | map('dictsort') | list | tojson }};
+
+  function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+  function loadEmbed(index) {
+    var rows = SAVED_DATA[index] || [];
+    var data = {};
+    rows.forEach(function (pair) { data[pair[0]] = pair[1]; });
+    var map = {
+      'f-name': 'name', 'f-title': 'title', 'f-description': 'description',
+      'f-color': 'color', 'f-url': 'url', 'f-author': 'author_name',
+      'f-author-icon': 'author_icon', 'f-footer': 'footer_text',
+      'f-image': 'image_url', 'f-thumb': 'thumbnail_url', 'f-content': 'content',
+      'f-fields': 'fields_json'
+    };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = data[map[id]] || (id === 'f-fields' ? '[]' : '');
+    });
+    render();
+    document.getElementById('embed-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function setText(id, text) {
+    var el = document.getElementById(id);
+    el.textContent = text || '';
+    el.hidden = !text;
+  }
+
+  function setImage(id, url) {
+    var el = document.getElementById(id);
+    el.hidden = !url;
+    if (url) el.src = url;
+  }
+
+  function render() {
+    document.getElementById('p-bar').style.background = val('f-color') || '#5865F2';
+    setText('p-author', val('f-author'));
+    setText('p-title', val('f-title'));
+    setText('p-desc', val('f-description'));
+    setText('p-footer', val('f-footer'));
+    setImage('p-image', val('f-image'));
+    setImage('p-thumb', val('f-thumb'));
+    document.getElementById('preview-content').textContent = val('f-content');
+
+    var host = document.getElementById('p-fields');
+    host.innerHTML = '';
+    var fields = [];
+    try { fields = JSON.parse(val('f-fields') || '[]'); } catch (e) { fields = []; }
+    if (Array.isArray(fields)) {
+      fields.slice(0, 25).forEach(function (f) {
+        if (!f || !f.name || !f.value) return;
+        var box = document.createElement('div');
+        box.className = 'embed-field' + (f.inline ? ' inline' : '');
+        var n = document.createElement('div');
+        n.className = 'embed-field-name';
+        n.textContent = f.name;
+        var v = document.createElement('div');
+        v.className = 'embed-field-value';
+        v.textContent = f.value;
+        box.appendChild(n); box.appendChild(v);
+        host.appendChild(box);
+      });
+    }
+
+    // Discord compte 6000 caracteres cumules, tous champs confondus.
+    var total = ['f-title', 'f-description', 'f-author', 'f-footer']
+      .reduce(function (sum, id) { return sum + val(id).length; }, 0);
+    (Array.isArray(fields) ? fields : []).forEach(function (f) {
+      if (f && f.name && f.value) total += String(f.name).length + String(f.value).length;
+    });
+    var counter = document.getElementById('len-counter');
+    counter.textContent = total + ' / {{ limits.total }}';
+    counter.style.color = total > {{ limits.total }} ? 'var(--danger-text)' : 'var(--text-muted)';
+  }
+
+  document.getElementById('embed-form').addEventListener('input', render);
+  render();
+</script>
+{% endblock %}
