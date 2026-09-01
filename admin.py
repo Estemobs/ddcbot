@@ -9,7 +9,7 @@ ADMIN_COMMANDS = frozenset({
     "timeout", "untimeout", "slowmode", "lock", "unlock", "addmoney", "removemoney", "reset_money",
     "reset_economy", "clean_leaderboard", "ecopanel", "incomepanel", "gamepanel", "config_work",
     "role_income_add", "role_income_remove", "role_income_edit", "addgame", "deletegame", "addquest",
-    "deletequete", "config_quete", "clearinventory", "gstart", "gend", "gcancel", "selftest", "logspanel",
+    "questdel", "questconfig", "clearinventory", "gstart", "gend", "gcancel", "selftest", "logspanel",
     "guildlang", "xpconfig", "xpset", "xptoggle", "reactrole", "reactroles", "reactrolerm", "setwelcome", "setleave",
     "welcomeconfig", "automod", "automodconfig", "badword",
     "mcenable", "mcdisable", "mcconfig", "mcsay", "mcstatus",
@@ -31,8 +31,9 @@ ADMIN_COMMANDS = frozenset({
     "addtag", "removetag", "tagedit", "tagrename",
     # Casino : creation/edition des jeux, lots, quetes et statistiques.
     "addlot", "rmlot", "gamelots", "gameaccess", "casinostats", "inviterewards",
-    "shopadd", "shopdel", "shopstats",
+    "shopadd", "shopdel", "shopstats", "shopedit",
+    "gameedit", "lotedit", "casinostyle", "achievementconfig", "autoadd", "autodel",
     # Modules serveur ajoutes : configuration reservee aux admins.
-    "annivconfig", "tempvoice", "statschannel", "alerts", "embed", "emoji",
-    "succesadd", "succesdel", "autos", "autotoggle", "accueil",
+    "birthdayconfig", "tempvoice", "statschannel", "alerts", "embed", "emoji",
+    "achievementadd", "achievementdel", "autos", "autotoggle", "welcomepanel",
 })

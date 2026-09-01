@@ -226,7 +226,7 @@ class cmdsocialalerts(commands.Cog):
 
     # --- commandes ---
 
-    @commands.command(aliases=["alertes"])
+    @commands.command()
     async def alerts(self, ctx, action: str = None, kind: str = None, *, rest: str = None):
         """,alerts add <youtube|reddit|rss|kick> <cible> [#salon]"""
         if action is None or action.lower() == "list":

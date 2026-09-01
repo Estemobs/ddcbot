@@ -15,6 +15,58 @@ from casino_engine import (
     ACCESS_KINDS, CasinoEngine, CasinoError, Reward, describe_access,
     format_duration, normalize_access, normalize_slug,
 )
+from settings_fields import Field, FieldError, apply_field, describe_fields
+
+# Reglages d'un jeu, modifiables un par un depuis Discord. Memes champs et
+# memes bornes que le formulaire du dashboard.
+GAME_FIELDS = {
+    "nom": Field("text", "Nom affiché"),
+    "prix": Field("float", "Prix du jeu", minimum=0),
+    "categorie": Field("text", "Catégorie (box, machine, loto…)"),
+    "description": Field("text", "Description"),
+    "cooldown": Field("int", "Délai entre deux parties, en secondes", minimum=0),
+    "actif": Field("bool", "Jeu jouable"),
+}
+GAME_FIELD_COLUMNS = {
+    "nom": "display_name", "prix": "price", "categorie": "category",
+    "description": "description", "cooldown": "cooldown_seconds", "actif": "enabled",
+}
+
+LOT_FIELDS = {
+    "valeur": Field("text", "Ce que le lot donne"),
+    "poids": Field("float", "Poids du tirage, plus il est haut plus le lot sort", minimum=0),
+    "libelle": Field("text", "Libellé affiché"),
+    "somme": Field("int", "Somme de dés concernée (jeux de type loto)"),
+}
+LOT_FIELD_COLUMNS = {
+    "valeur": "reward_value", "poids": "weight", "libelle": "label", "somme": "outcome",
+}
+
+# Effets : exactement les reglages de la page Casino du dashboard.
+STYLE_FIELDS = {
+    "animations": Field("bool", "Faire défiler les symboles avant le résultat"),
+    "images": Field("int", "Nombre d'images du défilement", minimum=0, maximum=12),
+    "delai": Field("int", "Délai entre deux images, en millisecondes",
+                   minimum=100, maximum=3000),
+    "symboles": Field("text", "Symboles du défilement, séparés par des virgules"),
+    "largeur": Field("int", "Symboles affichés par ligne", minimum=1, maximum=6),
+    "suspense": Field("text", "Texte affiché pendant le défilement"),
+    "emojigain": Field("text", "Emoji de gain"),
+    "emojiperte": Field("text", "Emoji de perte"),
+    "couleurgain": Field("color", "Couleur de gain"),
+    "couleurperte": Field("color", "Couleur de perte"),
+    "jackpot": Field("float", "Gain à partir duquel on annonce un jackpot (0 = jamais)",
+                     minimum=0),
+    "textejackpot": Field("text", "Texte du jackpot"),
+    "monnaie": Field("text", "Symbole monétaire"),
+}
+STYLE_FIELD_COLUMNS = {
+    "animations": "animations_enabled", "images": "frame_count", "delai": "frame_delay_ms",
+    "symboles": "reel_symbols", "largeur": "reel_width", "suspense": "suspense_text",
+    "emojigain": "win_emoji", "emojiperte": "lose_emoji", "couleurgain": "win_color",
+    "couleurperte": "lose_color", "jackpot": "jackpot_threshold",
+    "textejackpot": "jackpot_text", "monnaie": "currency_symbol",
+}
 
 DEFAULT_GAME_PANEL_CONFIG = {
     "openlot_enabled": True,
@@ -463,9 +515,9 @@ class cmdjeu(commands.Cog):
         embed = self.build_game_panel_embed(ctx.guild, cfg)
         await ctx.send(embed=embed, view=GamePanelView(self, ctx.guild.id, ctx.author.id))
 
-    @commands.command(name="jeux", aliases=["casino"])
-    async def jeux(self, ctx):
-        """Catalogue des jeux jouables. La boutique, elle, est sur ,boutique."""
+    @commands.command(name="games", aliases=["casino"])
+    async def games(self, ctx):
+        """Catalogue des jeux jouables. La boutique, elle, est sur ,shop."""
         games = self.engine.list_games(ctx.guild.id)
         if not games:
             await ctx.send(
@@ -488,11 +540,11 @@ class cmdjeu(commands.Cog):
                 lines.append(line)
             embed.add_field(name=str(category).capitalize(), value="\n".join(lines), inline=False)
         embed.set_footer(
-            text="Jouez avec ,<nom du jeu> · détails avec ,jeu <nom> · achats avec ,boutique"
+            text="Jouez avec ,<nom du jeu> · détails avec ,game <nom> · achats avec ,shop"
         )
         await ctx.send(embed=embed)
 
-    @commands.command(name="jeu")
+    @commands.command(name="game")
     async def game_details(self, ctx, *, name: str):
         """Fiche d'un jeu : lots, chances reelles et cooldown."""
         game = self.engine.get_game(ctx.guild.id, normalize_slug(name))
@@ -538,7 +590,7 @@ class cmdjeu(commands.Cog):
         if name is None:
             games = self.engine.list_games(ctx.guild.id)
             if not games:
-                await ctx.send("Aucun jeu n'est configuré. Consultez `,jeux`.")
+                await ctx.send("Aucun jeu n'est configuré. Consultez `,games`.")
                 return
             await ctx.send("Quel jeu ? " + ", ".join(g["slug"] for g in games))
             answer = await self._ask(ctx, timeout=30.0)
@@ -553,7 +605,7 @@ class cmdjeu(commands.Cog):
         await self.play_game(ctx, game)
 
     @commands.command()
-    async def inventaire(self, ctx, member: discord.Member = None):
+    async def inventory(self, ctx, member: discord.Member = None):
         """Tickets, objets et nombre de parties par jeu."""
         member = member or ctx.author
         style = self.engine.get_style(ctx.guild.id)
@@ -575,8 +627,8 @@ class cmdjeu(commands.Cog):
                         inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=["quetes"])
-    async def quest(self, ctx):
+    @commands.command()
+    async def quests(self, ctx):
         """Progression du joueur sur les quetes, comptee individuellement."""
         quests = self.engine.list_quests(ctx.guild.id)
         if not quests:
@@ -683,6 +735,80 @@ class cmdjeu(commands.Cog):
         )
 
     @commands.command()
+    async def gameedit(self, ctx, slug: str = None, field: str = None, *, value: str = None):
+        """,gameedit <jeu> <champ> <valeur> — sans champ, liste les réglages."""
+        if slug is None:
+            await ctx.send("Usage : `,gameedit <jeu> <champ> <valeur>`")
+            return
+        game = self.engine.get_game(ctx.guild.id, normalize_slug(slug))
+        if game is None:
+            await ctx.send("❌ Ce jeu n'existe pas.")
+            return
+        if field is None:
+            current = {key: game[column] for key, column in GAME_FIELD_COLUMNS.items()}
+            await ctx.send(embed=Embed(
+                title=f"Réglages — {game['display_name']}",
+                description=describe_fields(GAME_FIELDS, current),
+                color=discord.Color.blurple(),
+            ))
+            return
+        try:
+            key, parsed = apply_field(GAME_FIELDS, field, value)
+        except FieldError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        self.engine.update_game(game["id"], **{GAME_FIELD_COLUMNS[key]: parsed})
+        await ctx.send(f"✅ **{game['display_name']}** — `{key}` = **{parsed}**")
+
+    @commands.command()
+    async def lotedit(self, ctx, lot_id: int = None, field: str = None, *, value: str = None):
+        """,lotedit <id du lot> <champ> <valeur> — identifiants visibles dans ,gamelots."""
+        if lot_id is None or field is None:
+            await ctx.send(
+                "Usage : `,lotedit <id> <champ> <valeur>`\n" + describe_fields(LOT_FIELDS)
+            )
+            return
+        row = self.db.fetchone(
+            "SELECT l.id FROM casino_lots l JOIN casino_games g ON g.id = l.game_id "
+            "WHERE l.id = ? AND g.guild_id IN (?, 0)",
+            (lot_id, ctx.guild.id),
+        )
+        if row is None:
+            await ctx.send("❌ Ce lot n'existe pas sur ce serveur.")
+            return
+        try:
+            key, parsed = apply_field(LOT_FIELDS, field, value)
+        except FieldError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        try:
+            self.engine.update_lot(lot_id, **{LOT_FIELD_COLUMNS[key]: parsed})
+        except CasinoError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        await ctx.send(f"✅ Lot `#{lot_id}` — `{key}` = **{parsed}**")
+
+    @commands.command()
+    async def casinostyle(self, ctx, field: str = None, *, value: str = None):
+        """,casinostyle <champ> <valeur> — effets et présentation du casino."""
+        style = self.engine.get_style(ctx.guild.id)
+        if field is None:
+            current = {key: style[column] for key, column in STYLE_FIELD_COLUMNS.items()}
+            await ctx.send(embed=Embed(
+                title="🎰 Effets du casino",
+                description=describe_fields(STYLE_FIELDS, current),
+                color=discord.Color.blurple(),
+            ))
+            return
+        try:
+            key, parsed = apply_field(STYLE_FIELDS, field, value)
+        except FieldError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        self.engine.update_style(ctx.guild.id, **{STYLE_FIELD_COLUMNS[key]: parsed})
+        await ctx.send(f"✅ `{key}` = **{parsed}**")
+
+    @commands.command()
     async def rmlot(self, ctx, lot_id: int):
         """Supprime un lot par son identifiant (visible dans ,gamelots)."""
         self.engine.delete_lot(lot_id)
@@ -738,7 +864,7 @@ class cmdjeu(commands.Cog):
         await ctx.send(f"✅ Quête **{name}** enregistrée.")
 
     @commands.command()
-    async def deletequete(self, ctx, *, name: str):
+    async def questdel(self, ctx, *, name: str):
         for quest in self.engine.list_quests(ctx.guild.id, include_disabled=True):
             if quest["name"].lower() == name.lower():
                 self.engine.delete_quest(quest["id"])
@@ -747,12 +873,12 @@ class cmdjeu(commands.Cog):
         await ctx.send("❌ Cette quête n'existe pas.")
 
     @commands.command()
-    async def config_quete(self, ctx):
+    async def questconfig(self, ctx):
         """Rappelle ou se configurent les quetes."""
         quests = self.engine.list_quests(ctx.guild.id, include_disabled=True)
         await ctx.send(
             f"{len(quests)} quête(s) configurée(s). Ajout : `,addquest <nom> <objectif> "
-            "<récompense> <valeur> [cible]`, suppression : `,deletequete <nom>`. "
+            "<récompense> <valeur> [cible]`, suppression : `,questdel <nom>`. "
             "Édition complète depuis le dashboard web."
         )
 

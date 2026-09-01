@@ -10,8 +10,8 @@ Commandes :
   ,tempvoice nom <modele>    — modele de nom, variables {user} et {count}
   ,tempvoice limite <n>      — limite de membres (0 = illimitee)
   ,tempvoice on | off
-  ,vocalnom <nom>            — le proprietaire renomme son salon
-  ,vocallimite <n>           — le proprietaire change la limite
+  ,voicename <nom>            — le proprietaire renomme son salon
+  ,voicelimit <n>           — le proprietaire change la limite
 """
 
 import discord
@@ -192,7 +192,7 @@ class cmdtempvoice(commands.Cog):
         return channel
 
     @commands.command()
-    async def vocalnom(self, ctx, *, name: str):
+    async def voicename(self, ctx, *, name: str):
         """Renomme son propre salon temporaire."""
         channel = self._owned_channel(ctx)
         if channel is None:
@@ -206,7 +206,7 @@ class cmdtempvoice(commands.Cog):
         await ctx.send(f"✅ Salon renommé en **{name[:100]}**.")
 
     @commands.command()
-    async def vocallimite(self, ctx, limit: int):
+    async def voicelimit(self, ctx, limit: int):
         """Change la limite de membres de son salon temporaire."""
         channel = self._owned_channel(ctx)
         if channel is None:

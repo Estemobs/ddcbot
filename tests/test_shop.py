@@ -232,27 +232,26 @@ class TestDescriptions(unittest.TestCase):
 
 
 class TestCommandNaming(unittest.TestCase):
-    """`,shop` listait des jeux sans rien vendre : le nom part a la boutique."""
+    """Les noms de commandes sont en anglais ; le francais reste dans les textes."""
 
     def setUp(self):
         from cogs.diagnostics import EXPECTED_COMMANDS
         self.expected = EXPECTED_COMMANDS
 
-    def test_the_catalogue_is_now_jeux(self):
-        self.assertIn("jeux", self.expected)
-
-    def test_shop_is_no_longer_the_catalogue(self):
-        self.assertNotIn("shop", self.expected)
+    def test_the_catalogue_is_games_and_the_shop_sells(self):
+        """`,shop` listait des jeux sans rien vendre : le nom part a la boutique."""
+        self.assertIn("games", self.expected)
+        self.assertIn("shop", self.expected)
 
     def test_the_shop_commands_exist(self):
-        for name in ("boutique", "acheter", "shopadd", "shopdel", "shopstats"):
+        for name in ("shop", "buy", "shopadd", "shopdel", "shopstats"):
             with self.subTest(command=name):
                 self.assertIn(name, self.expected)
 
-    def test_shop_stays_reachable_as_an_alias_of_boutique(self):
-        from pathlib import Path
-        source = (Path(__file__).resolve().parent.parent / "cogs" / "boutique.py").read_text()
-        self.assertIn('aliases=["shop"]', source)
+    def test_french_command_names_are_gone(self):
+        for name in ("boutique", "acheter", "jeux", "jeu", "inventaire", "paye"):
+            with self.subTest(command=name):
+                self.assertNotIn(name, self.expected)
 
     def test_shop_admin_commands_are_gated(self):
         from admin import ADMIN_COMMANDS
@@ -262,8 +261,8 @@ class TestCommandNaming(unittest.TestCase):
 
     def test_buying_is_open_to_everyone(self):
         from admin import ADMIN_COMMANDS
-        self.assertNotIn("acheter", ADMIN_COMMANDS)
-        self.assertNotIn("boutique", ADMIN_COMMANDS)
+        self.assertNotIn("buy", ADMIN_COMMANDS)
+        self.assertNotIn("shop", ADMIN_COMMANDS)
 
 
 if __name__ == "__main__":

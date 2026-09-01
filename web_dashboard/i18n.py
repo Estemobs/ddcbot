@@ -687,8 +687,8 @@ STRINGS = {
 
     # Anniversaires
     "birthdays.subtitle": {
-        "fr": "Les membres enregistrent leur date avec ,anniv JJ/MM. L'annee est facultative.",
-        "en": "Members register with ,anniv DD/MM. The year is optional.",
+        "fr": "Les membres enregistrent leur date avec ,birthday JJ/MM. L'annee est facultative.",
+        "en": "Members register with ,birthday DD/MM. The year is optional.",
     },
     "birthdays.channel": {"fr": "Salon d'annonce (ID)", "en": "Announcement channel (ID)"},
     "birthdays.role": {"fr": "Role du jour (ID)", "en": "Day role (ID)"},

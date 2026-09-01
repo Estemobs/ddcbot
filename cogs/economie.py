@@ -287,7 +287,7 @@ class cmdeco(commands.Cog):
             await ctx.send(f"{member.mention} n'a pas suffisamment de fonds pour retirer {amount:.2f}. Solde actuel : {current:.2f}.")
 
     @commands.command()
-    async def paye(self, ctx, member: discord.Member, amount: float):
+    async def pay(self, ctx, member: discord.Member, amount: float):
         cfg = self.get_eco_config(ctx.guild.id)
         if not cfg["allow_transfers"]:
             await ctx.send("Les transferts entre membres sont desactives sur ce serveur.")

@@ -5,11 +5,11 @@ de membres donnent leur jour et leur mois sans vouloir reveler leur age, et l'ag
 n'est affiche que s'ils ont fourni l'annee.
 
 Commandes :
-  ,anniv <JJ/MM[/AAAA]>      — enregistre son anniversaire
-  ,anniv                     — affiche le sien
-  ,annivdel                  — le supprime
-  ,annivlist                 — les prochains anniversaires du serveur
-  ,annivconfig               — configuration (admin)
+  ,birthday <JJ/MM[/AAAA]>      — enregistre son anniversaire
+  ,birthday                     — affiche le sien
+  ,birthdaydel                  — le supprime
+  ,birthdays                 — les prochains anniversaires du serveur
+  ,birthdayconfig               — configuration (admin)
 """
 
 import asyncio
@@ -249,15 +249,15 @@ class cmdbirthdays(commands.Cog):
 
     # --- commandes ---
 
-    @commands.command(aliases=["anniversaire", "birthday"])
-    async def anniv(self, ctx, *, date: str = None):
-        """,anniv 24/12 ou ,anniv 24/12/2001 — sans argument, affiche le sien."""
+    @commands.command()
+    async def birthday(self, ctx, *, date: str = None):
+        """,birthday 24/12 ou ,birthday 24/12/2001 — sans argument, affiche le sien."""
         if date is None:
             entry = self.get_birthday(ctx.guild.id, ctx.author.id)
             if entry is None:
                 await ctx.send(
                     "Vous n'avez pas enregistré d'anniversaire. "
-                    "Utilisez `,anniv JJ/MM` (l'année est facultative)."
+                    "Utilisez `,birthday JJ/MM` (l'année est facultative)."
                 )
                 return
             await ctx.send(
@@ -268,14 +268,14 @@ class cmdbirthdays(commands.Cog):
 
         parsed = parse_birthday(date)
         if parsed is None:
-            await ctx.send("❌ Format attendu : `JJ/MM` ou `JJ/MM/AAAA`. Exemple : `,anniv 24/12`.")
+            await ctx.send("❌ Format attendu : `JJ/MM` ou `JJ/MM/AAAA`. Exemple : `,birthday 24/12`.")
             return
         day, month, year = parsed
         self.set_birthday(ctx.guild.id, ctx.author.id, day, month, year)
         await ctx.send(f"✅ Anniversaire enregistré : **{format_birthday(day, month, year)}**.")
 
     @commands.command()
-    async def annivdel(self, ctx):
+    async def birthdaydel(self, ctx):
         """Supprime son anniversaire."""
         if self.delete_birthday(ctx.guild.id, ctx.author.id):
             await ctx.send("✅ Anniversaire supprimé.")
@@ -283,7 +283,7 @@ class cmdbirthdays(commands.Cog):
             await ctx.send("Vous n'aviez pas d'anniversaire enregistré.")
 
     @commands.command()
-    async def annivlist(self, ctx):
+    async def birthdays(self, ctx):
         """Prochains anniversaires du serveur."""
         today = dt.date.today()
         entries = self.upcoming(ctx.guild.id, today)
@@ -306,8 +306,8 @@ class cmdbirthdays(commands.Cog):
         ))
 
     @commands.command()
-    async def annivconfig(self, ctx, action: str = None, *, value: str = None):
-        """,annivconfig channel #salon | role @role | message <texte> | heure <0-23> | on | off"""
+    async def birthdayconfig(self, ctx, action: str = None, *, value: str = None):
+        """,birthdayconfig channel #salon | role @role | message <texte> | heure <0-23> | on | off"""
         cfg = self.get_config(ctx.guild.id)
         if action is None:
             channel = ctx.guild.get_channel(cfg["channel_id"]) if cfg["channel_id"] else None
@@ -331,7 +331,7 @@ class cmdbirthdays(commands.Cog):
             if channel is None and value and value.strip().isdigit():
                 channel = ctx.guild.get_channel(int(value.strip()))
             if channel is None:
-                await ctx.send("Usage : `,annivconfig channel #salon`")
+                await ctx.send("Usage : `,birthdayconfig channel #salon`")
                 return
             self.set_config(ctx.guild.id, channel_id=channel.id)
             await ctx.send(f"✅ Annonces dans {channel.mention}.")
@@ -340,19 +340,19 @@ class cmdbirthdays(commands.Cog):
             if role is None and value and value.strip().isdigit():
                 role = ctx.guild.get_role(int(value.strip()))
             if role is None:
-                await ctx.send("Usage : `,annivconfig role @role`")
+                await ctx.send("Usage : `,birthdayconfig role @role`")
                 return
             self.set_config(ctx.guild.id, role_id=role.id)
             await ctx.send(f"✅ Le rôle **{role.name}** sera donné le jour J.")
         elif action == "message":
             if not value:
-                await ctx.send("Usage : `,annivconfig message Joyeux anniversaire {user} !`")
+                await ctx.send("Usage : `,birthdayconfig message Joyeux anniversaire {user} !`")
                 return
             self.set_config(ctx.guild.id, message=value)
             await ctx.send("✅ Message enregistré.")
         elif action in ("heure", "hour"):
             if not value or not value.strip().isdigit() or not 0 <= int(value.strip()) <= 23:
-                await ctx.send("Usage : `,annivconfig heure 9` (0 à 23)")
+                await ctx.send("Usage : `,birthdayconfig heure 9` (0 à 23)")
                 return
             self.set_config(ctx.guild.id, announce_hour=int(value.strip()))
             await ctx.send(f"✅ Annonce à partir de {int(value.strip())}h.")

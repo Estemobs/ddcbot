@@ -282,8 +282,8 @@ class cmdtwitch(commands.Cog):
 
         elif action in ("enable", "disable"):
             self.set_config(ctx.guild.id, enabled=1 if action == "enable" else 0)
-            await ctx.send("✅ Alertes Twitch " + ("activees." if action == "enable"
-                                                   else "desactivees."))
+            state = "activees." if action == "enable" else "desactivees."
+            await ctx.send(f"✅ Alertes Twitch {state}")
         else:
             await ctx.send(
                 "Actions : `channel #salon`, `add <chaine>`, `remove <chaine>`, "

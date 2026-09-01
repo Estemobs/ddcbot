@@ -154,7 +154,7 @@ class cmdai(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command()
-    async def devoir(self, ctx):
+    async def homework(self, ctx):
         """Résout un devoir à partir d'une image."""
         print(f"[DEVOIR] Lancé par {ctx.author}")
         await ctx.send("Envoie une image ou un lien valide.")

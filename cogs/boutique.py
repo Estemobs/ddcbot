@@ -1,15 +1,15 @@
 """Boutique du serveur.
 
-Separe volontairement du catalogue des jeux : `,jeux` montre a quoi on peut
-jouer, `,boutique` montre ce qu'on peut acheter. Les deux se rejoignent par
+Separe volontairement du catalogue des jeux : `,games` montre a quoi on peut
+jouer, `,shop` montre ce qu'on peut acheter. Les deux se rejoignent par
 l'inventaire — un article de type ticket depose une entree que `,<jeu>`
 consomme ensuite.
 
 Les regles vivent dans shop_engine, sans discord.py.
 
 Commandes :
-  ,boutique                        — articles en vente
-  ,acheter <article> [quantite]    — achete
+  ,shop                        — articles en vente
+  ,buy <article> [quantite]    — achete
   ,shopadd <slug> <prix> <ticket|role|objet> <valeur> [nom]
   ,shopdel <slug>
   ,shopstats
@@ -19,7 +19,25 @@ import discord
 from discord.ext import commands
 
 from casino_engine import CasinoEngine, normalize_slug
+from settings_fields import Field, FieldError, apply_field, describe_fields
 from shop_engine import ShopEngine, ShopError, describe_item, stock_label
+
+# Memes champs que le formulaire de la page Boutique.
+ITEM_FIELDS = {
+    "nom": Field("text", "Nom affiché"),
+    "prix": Field("float", "Prix", minimum=0),
+    "stock": Field("int", "Stock disponible (-1 = illimité)", minimum=-1),
+    "limite": Field("int", "Achats maximum par joueur (0 = sans limite)", minimum=0),
+    "role": Field("id", "Rôle requis pour acheter (vide = ouvert à tous)"),
+    "categorie": Field("text", "Catégorie d'affichage"),
+    "description": Field("text", "Description"),
+    "actif": Field("bool", "Article en vente"),
+}
+ITEM_FIELD_COLUMNS = {
+    "nom": "display_name", "prix": "price", "stock": "stock",
+    "limite": "per_user_limit", "role": "required_role_id",
+    "categorie": "category", "description": "description", "actif": "enabled",
+}
 
 KIND_ALIASES = {
     "ticket": "ticket", "entree": "ticket", "entrée": "ticket", "jeu": "ticket",
@@ -61,14 +79,14 @@ class cmdboutique(commands.Cog):
 
     # --- commandes joueur ---
 
-    @commands.command(aliases=["shop"])
-    async def boutique(self, ctx):
+    @commands.command()
+    async def shop(self, ctx):
         """Articles en vente sur le serveur."""
         items = self.shop.list_items(ctx.guild.id)
         if not items:
             await ctx.send(
                 "La boutique est vide. Un admin peut la remplir avec `,shopadd` "
-                "ou depuis le dashboard.\nPour voir les jeux : `,jeux`."
+                "ou depuis le dashboard.\nPour voir les jeux : `,games`."
             )
             return
 
@@ -85,7 +103,7 @@ class cmdboutique(commands.Cog):
         for category, entries in by_category.items():
             lines = []
             for item in entries:
-                line = (f"`,acheter {item['slug']}` — **{item['display_name']}** · "
+                line = (f"`,buy {item['slug']}` — **{item['display_name']}** · "
                         f"{self.money(ctx.guild.id, item['price'])}")
                 if item["stock"] != -1:
                     line += f" · stock {stock_label(item)}"
@@ -95,18 +113,18 @@ class cmdboutique(commands.Cog):
                 lines.append(line + f"\n　{describe_item(item, role_names=names)}")
             embed.add_field(name=str(category).capitalize(), value="\n".join(lines),
                             inline=False)
-        embed.set_footer(text="Les jeux se lancent avec ,jeux puis ,<nom du jeu>")
+        embed.set_footer(text="Les jeux se lancent avec ,games puis ,<nom du jeu>")
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=["buy"])
-    async def acheter(self, ctx, slug: str = None, quantity: int = 1):
-        """,acheter <article> [quantité] — paie et livre immédiatement."""
+    @commands.command()
+    async def buy(self, ctx, slug: str = None, quantity: int = 1):
+        """,buy <article> [quantité] — paie et livre immédiatement."""
         if slug is None:
-            await ctx.send("Usage : `,acheter <article> [quantité]` — voir `,boutique`.")
+            await ctx.send("Usage : `,buy <article> [quantité]` — voir `,shop`.")
             return
         item = self.shop.get_item(ctx.guild.id, normalize_slug(slug))
         if item is None:
-            await ctx.send(f"❌ Aucun article `{slug}` en boutique. Voir `,boutique`.")
+            await ctx.send(f"❌ Aucun article `{slug}` en boutique. Voir `,shop`.")
             return
 
         role_ids = [role.id for role in getattr(ctx.author, "roles", [])]
@@ -190,8 +208,38 @@ class cmdboutique(commands.Cog):
             return
         await ctx.send(
             f"✅ **{display_name or slug}** en vente pour "
-            f"{self.money(ctx.guild.id, price)} — `,acheter {normalize_slug(slug)}`"
+            f"{self.money(ctx.guild.id, price)} — `,buy {normalize_slug(slug)}`"
         )
+
+    @commands.command()
+    async def shopedit(self, ctx, slug: str = None, field: str = None, *, value: str = None):
+        """,shopedit <article> <champ> <valeur> — sans champ, liste les réglages."""
+        if slug is None:
+            await ctx.send("Usage : `,shopedit <article> <champ> <valeur>`")
+            return
+        item = self.shop.get_item(ctx.guild.id, normalize_slug(slug))
+        if item is None:
+            await ctx.send("❌ Cet article n'existe pas.")
+            return
+        if field is None:
+            current = {key: item[column] for key, column in ITEM_FIELD_COLUMNS.items()}
+            await ctx.send(embed=discord.Embed(
+                title=f"Réglages — {item['display_name']}",
+                description=describe_fields(ITEM_FIELDS, current),
+                color=discord.Color.blurple(),
+            ))
+            return
+        try:
+            key, parsed = apply_field(ITEM_FIELDS, field, value)
+        except FieldError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        try:
+            self.shop.update_item(item["id"], **{ITEM_FIELD_COLUMNS[key]: parsed})
+        except ShopError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        await ctx.send(f"✅ **{item['display_name']}** — `{key}` = **{parsed}**")
 
     @commands.command()
     async def shopdel(self, ctx, *, slug: str):

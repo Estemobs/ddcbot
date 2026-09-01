@@ -6,15 +6,16 @@ achievements_engine, sans discord.py ; ce cog tient les compteurs a jour,
 ecoute les evenements et applique les recompenses et actions.
 
 Commandes :
-  ,succes                       — ses succes et sa progression
-  ,succesadd <nom> <compteur> <objectif> [recompense] [valeur]
-  ,succesdel <nom>
+  ,achievements                       — ses succes et sa progression
+  ,achievementadd <nom> <compteur> <objectif> [recompense] [valeur]
+  ,achievementdel <nom>
   ,autos                        — automatisations configurees
   ,autotoggle <id>
-  ,accueil                      — etat du salon d'accueil
+  ,welcomepanel                      — etat du salon d'accueil
 """
 
 import asyncio
+import json
 import time
 
 import discord
@@ -22,6 +23,24 @@ from discord.ext import commands
 
 import achievements_engine as engine
 from achievements_engine import METRICS, progress
+from settings_fields import Field, FieldError, apply_field, describe_fields
+
+ACHIEVEMENT_CONFIG_FIELDS = {
+    "salon": Field("id", "Salon où annoncer les succès débloqués"),
+    "actif": Field("bool", "Succès activés"),
+}
+ACHIEVEMENT_CONFIG_COLUMNS = {"salon": "channel_id", "actif": "enabled"}
+
+WELCOME_PANEL_FIELDS = {
+    "salon": Field("id", "Salon d'accueil"),
+    "embed": Field("text", "Nom de l'embed affiché en tête du salon"),
+    "message": Field("text", "Message adressé aux nouveaux membres"),
+    "actif": Field("bool", "Salon d'accueil activé"),
+}
+WELCOME_PANEL_COLUMNS = {
+    "salon": "channel_id", "embed": "embed_name",
+    "message": "greet_template", "actif": "enabled",
+}
 
 VOICE_FLUSH_SECONDS = 60
 
@@ -137,7 +156,7 @@ class cmdachievements(commands.Cog):
                 "ON CONFLICT(user_id) DO UPDATE SET amount = amount + excluded.amount",
                 (member.id, amount),
             )
-            self.db.log_transaction(guild.id, member.id, amount, "achievement", "succes")
+            self.db.log_transaction(guild.id, member.id, amount, "achievement", "achievements")
             return f"{amount:.0f} pièces"
         if kind == "role":
             try:
@@ -395,14 +414,14 @@ class cmdachievements(commands.Cog):
 
     # --- commandes ---
 
-    @commands.command(aliases=["achievements"])
-    async def succes(self, ctx, member: discord.Member = None):
+    @commands.command()
+    async def achievements(self, ctx, member: discord.Member = None):
         """Progression sur les succes du serveur."""
         member = member or ctx.author
         achievements = self.list_achievements(ctx.guild.id)
         if not achievements:
             await ctx.send(
-                "Aucun succès configuré. Ajoutez-en avec `,succesadd` ou depuis le dashboard."
+                "Aucun succès configuré. Ajoutez-en avec `,achievementadd` ou depuis le dashboard."
             )
             return
         embed = discord.Embed(
@@ -425,9 +444,9 @@ class cmdachievements(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def succesadd(self, ctx, name: str, metric: str, goal: int,
-                        reward_kind: str = "none", reward_value: str = ""):
-        """,succesadd <nom> <compteur> <objectif> [none|money|role] [valeur]"""
+    async def achievementadd(self, ctx, name: str, metric: str, goal: int,
+                             reward_kind: str = "none", reward_value: str = ""):
+        """,achievementadd <nom> <compteur> <objectif> [none|money|role] [valeur]"""
         try:
             self.create_achievement(ctx.guild.id, name, metric.lower(), goal,
                                     reward_kind.lower(), reward_value)
@@ -437,11 +456,85 @@ class cmdachievements(commands.Cog):
         await ctx.send(f"✅ Succès **{name}** enregistré.")
 
     @commands.command()
-    async def succesdel(self, ctx, *, name: str):
+    async def achievementdel(self, ctx, *, name: str):
         if self.delete_achievement(ctx.guild.id, name):
             await ctx.send(f"✅ Succès **{name}** supprimé.")
         else:
             await ctx.send("❌ Ce succès n'existe pas.")
+
+    @commands.command()
+    async def achievementconfig(self, ctx, field: str = None, *, value: str = None):
+        """,achievementconfig <champ> <valeur> — salon d'annonce et activation."""
+        cfg = self.get_ach_config(ctx.guild.id)
+        if field is None:
+            current = {k: cfg[c] for k, c in ACHIEVEMENT_CONFIG_COLUMNS.items()}
+            await ctx.send(embed=discord.Embed(
+                title="🏅 Réglages des succès",
+                description=describe_fields(ACHIEVEMENT_CONFIG_FIELDS, current),
+                color=discord.Color.gold(),
+            ))
+            return
+        try:
+            key, parsed = apply_field(ACHIEVEMENT_CONFIG_FIELDS, field, value)
+        except FieldError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        column = ACHIEVEMENT_CONFIG_COLUMNS[key]
+        self.db.execute(
+            f"UPDATE achievement_config SET {column} = ? WHERE guild_id = ?",
+            (parsed, ctx.guild.id),
+        )
+        await ctx.send(f"✅ `{key}` = **{parsed}**")
+
+    @commands.command()
+    async def autoadd(self, ctx, name: str = None, event: str = None,
+                      action: str = None, *, value: str = None):
+        """,autoadd <nom> <événement> <action> <valeur> — règle simple à une action."""
+        if not all((name, event, action, value)):
+            await ctx.send(
+                "Usage : `,autoadd <nom> <événement> <action> <valeur>`\n"
+                "Événements : " + ", ".join(f"`{e}`" for e in engine.EVENTS) + "\n"
+                "Actions : " + ", ".join(f"`{a}`" for a in engine.ACTION_KINDS) + "\n"
+                "Exemple : `,autoadd bienvenue member_join send_dm Salut {user} !`\n"
+                "Les règles à plusieurs actions ou avec condition se composent dans "
+                "le dashboard."
+            )
+            return
+        if event not in engine.EVENTS:
+            await ctx.send("❌ Événements : " + ", ".join(f"`{e}`" for e in engine.EVENTS))
+            return
+        if action not in engine.ACTION_KINDS:
+            await ctx.send("❌ Actions : " + ", ".join(f"`{a}`" for a in engine.ACTION_KINDS))
+            return
+
+        # Les actions qui visent un role ou un salon prennent l'identifiant en
+        # valeur ; les autres prennent un texte.
+        target = ""
+        text = value
+        if action in ("add_role", "remove_role"):
+            target, text = value.strip().strip("<@&>"), ""
+            if not target.isdigit():
+                await ctx.send("❌ Donnez l'identifiant du rôle.")
+                return
+        actions = json.dumps([{"kind": action, "target": target, "value": text}])
+        self.db.execute(
+            "INSERT INTO automations (guild_id, name, event, actions_json) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(guild_id, name) DO UPDATE SET "
+            "event=excluded.event, actions_json=excluded.actions_json",
+            (ctx.guild.id, name, event, actions),
+        )
+        await ctx.send(f"✅ Automatisation **{name}** enregistrée sur `{event}`.")
+
+    @commands.command()
+    async def autodel(self, ctx, rule_id: int):
+        """Supprime une automatisation par son identifiant."""
+        cur = self.db.execute(
+            "DELETE FROM automations WHERE id = ? AND guild_id = ?", (rule_id, ctx.guild.id)
+        )
+        if cur.rowcount:
+            await ctx.send("✅ Automatisation supprimée.")
+        else:
+            await ctx.send("❌ Cette automatisation n'existe pas.")
 
     @commands.command()
     async def autos(self, ctx):
@@ -481,8 +574,23 @@ class cmdachievements(commands.Cog):
         await ctx.send("✅ " + ("Activée." if row["enabled"] else "Mise en pause."))
 
     @commands.command()
-    async def accueil(self, ctx):
-        """Etat du salon d'accueil."""
+    async def welcomepanel(self, ctx, field: str = None, *, value: str = None):
+        """,welcomepanel [champ] [valeur] — sans argument, affiche l'état."""
+        if field is not None:
+            try:
+                key, parsed = apply_field(WELCOME_PANEL_FIELDS, field, value)
+            except FieldError as exc:
+                await ctx.send(f"❌ {exc}")
+                return
+            self.get_welcome_panel(ctx.guild.id)
+            column = WELCOME_PANEL_COLUMNS[key]
+            self.db.execute(
+                f"UPDATE welcome_panel SET {column} = ? WHERE guild_id = ?",
+                (parsed, ctx.guild.id),
+            )
+            await ctx.send(f"✅ `{key}` = **{parsed}**")
+            await self.refresh_welcome_panel(ctx.guild)
+            return
         cfg = self.get_welcome_panel(ctx.guild.id)
         channel = ctx.guild.get_channel(cfg["channel_id"]) if cfg["channel_id"] else None
         embed = discord.Embed(title="👋 Salon d'accueil", color=discord.Color.blurple())
@@ -491,7 +599,9 @@ class cmdachievements(commands.Cog):
                         inline=True)
         embed.add_field(name="Embed affiche", value=cfg["embed_name"] or "Aucun", inline=True)
         embed.add_field(name="Message d'accueil", value=cfg["greet_template"], inline=False)
-        embed.set_footer(text="Configuration dans le dashboard")
+        embed.set_footer(text="Modifier : ,welcomepanel <champ> <valeur>")
+        embed.add_field(name="Champs", value=describe_fields(WELCOME_PANEL_FIELDS),
+                        inline=False)
         await ctx.send(embed=embed)
 
 
