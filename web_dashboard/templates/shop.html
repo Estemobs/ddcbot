@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.shop') }}{% endblock %}
+{% block crumb %}{{ t('module.shop') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🛒 {{ t('module.shop') }}</h2>
+  <p>{{ t('shop.subtitle') }}</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="value">{{ items|length }}</div>
+    <div class="label">{{ t('shop.articles') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ stats.units }}</div>
+    <div class="label">{{ t('shop.sold') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ '{:,.0f}'.format(stats.revenue).replace(',', ' ') }}</div>
+    <div class="label">{{ t('shop.revenue') }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('shop.catalogue') }}</h3>
+    <span class="tag tag-hint">{{ t('shop.sink_hint') }}</span>
+  </div>
+  {% if items %}
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>{{ t('shop.article') }}</th><th>{{ t('shop.gives') }}</th>
+        <th>{{ t('casino.price') }}</th><th>{{ t('shop.stock') }}</th>
+        <th>{{ t('shop.limit') }}</th><th>{{ t('shop.sales') }}</th><th></th>
+      </tr>
+      {% for i in items %}
+      <tr>
+        <td>
+          <form method="post" id="item-{{ i.id }}"
+                action="/guild/{{ guild_id }}/shop/{{ i.id }}/edit"></form>
+          <form method="post" id="del-{{ i.id }}" action="/guild/{{ guild_id }}/shop/delete">
+            <input type="hidden" name="slug" value="{{ i.slug }}">
+          </form>
+          <input form="item-{{ i.id }}" type="text" name="display_name"
+                 value="{{ i.display_name }}" style="width:150px">
+          <div class="tile-sub"><code>,acheter {{ i.slug }}</code></div>
+        </td>
+        <td>{{ i.describe }}</td>
+        <td>
+          <input form="item-{{ i.id }}" type="number" name="price" value="{{ i.price }}"
+                 step="any" min="0" style="width:100px">
+        </td>
+        <td>
+          <input form="item-{{ i.id }}" type="number" name="stock" value="{{ i.stock }}"
+                 style="width:80px" title="{{ t('shop.stock_hint') }}">
+        </td>
+        <td>
+          <input form="item-{{ i.id }}" type="number" name="per_user_limit"
+                 value="{{ i.per_user_limit }}" min="0" style="width:70px">
+        </td>
+        <td>{{ i.sales.units }}</td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select form="item-{{ i.id }}" name="enabled" style="width:auto">
+              <option value="1" {% if i.enabled %}selected{% endif %}>{{ t('casino.yes') }}</option>
+              <option value="0" {% if not i.enabled %}selected{% endif %}>{{ t('casino.no') }}</option>
+            </select>
+            <button form="item-{{ i.id }}" type="submit" class="btn btn-secondary btn-sm">
+              {{ t('btn.save') }}
+            </button>
+            <button form="del-{{ i.id }}" type="submit" class="btn btn-danger btn-sm">×</button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <svg class="i"><use href="#i-coins"/></svg>
+    <p>{{ t('shop.empty') }}</p>
+  </div>
+  {% endif %}
+</div>
+
+{% if games %}
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('shop.sell_game') }}</h3>
+    <span class="tag tag-hint">{{ t('shop.sell_game_hint') }}</span>
+  </div>
+  <div class="tile-grid">
+    {% for g in games %}
+    <form method="post" action="/guild/{{ guild_id }}/shop/sell-game" class="tile"
+          style="display:block">
+      <input type="hidden" name="slug" value="{{ g.slug }}">
+      <div class="tile-top">
+        <div class="tile-icon"><svg class="i"><use href="#i-dice"/></svg></div>
+        <div style="min-width:0">
+          <h4>{{ g.display_name }}</h4>
+          <div class="tile-sub">{{ '{:,.0f}'.format(g.price).replace(',', ' ') }}</div>
+        </div>
+      </div>
+      <div class="tile-foot">
+        <input type="number" name="price" value="{{ g.price }}" step="any" min="0"
+               style="width:110px">
+        <button type="submit" class="btn btn-secondary btn-sm">{{ t('shop.put_on_sale') }}</button>
+      </div>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><h3>{{ t('shop.new_article') }}</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/shop/add">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('shop.slug') }}</label>
+        <input type="text" name="slug" required placeholder="ticket-loto">
+      </div>
+      <div class="form-group">
+        <label>{{ t('shop.display_name') }}</label>
+        <input type="text" name="display_name" placeholder="Ticket de Loto">
+      </div>
+      <div class="form-group">
+        <label>{{ t('shop.kind') }}</label>
+        <select name="kind">
+          {% for k in kinds %}<option value="{{ k }}">{{ t('shop.kind.' ~ k) }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('shop.value') }}</label>
+        <input type="text" name="value" required placeholder="{{ t('shop.value_ph') }}">
+        <small style="color:var(--text-muted)">{{ t('shop.value_hint') }}</small>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.price') }}</label>
+        <input type="number" name="price" value="0" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.category') }}</label>
+        <input type="text" name="category" placeholder="Entrées de jeu">
+      </div>
+      <div class="form-group">
+        <label>{{ t('shop.stock') }}</label>
+        <input type="number" name="stock" value="-1">
+        <small style="color:var(--text-muted)">{{ t('shop.stock_hint') }}</small>
+      </div>
+      <div class="form-group">
+        <label>{{ t('shop.limit') }}</label>
+        <input type="number" name="per_user_limit" value="0" min="0">
+        <small style="color:var(--text-muted)">{{ t('shop.limit_hint') }}</small>
+      </div>
+      <div class="form-group">
+        <label>{{ t('shop.required_role') }}</label>
+        <input type="text" name="required_role_id" placeholder="{{ t('shop.required_role_ph') }}">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>{{ t('casino.description') }}</label>
+        <input type="text" name="description">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
+  </form>
+</div>
+{% endblock %}

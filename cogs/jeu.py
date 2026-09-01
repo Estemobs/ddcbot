@@ -463,9 +463,9 @@ class cmdjeu(commands.Cog):
         embed = self.build_game_panel_embed(ctx.guild, cfg)
         await ctx.send(embed=embed, view=GamePanelView(self, ctx.guild.id, ctx.author.id))
 
-    @commands.command(aliases=["jeux", "casino"])
-    async def shop(self, ctx):
-        """Catalogue des jeux disponibles."""
+    @commands.command(name="jeux", aliases=["casino"])
+    async def jeux(self, ctx):
+        """Catalogue des jeux jouables. La boutique, elle, est sur ,boutique."""
         games = self.engine.list_games(ctx.guild.id)
         if not games:
             await ctx.send(
@@ -487,7 +487,9 @@ class cmdjeu(commands.Cog):
                     line += f" · 1× / {format_duration(game['cooldown_seconds'])}"
                 lines.append(line)
             embed.add_field(name=str(category).capitalize(), value="\n".join(lines), inline=False)
-        embed.set_footer(text="Jouez avec ,<nom du jeu> — détails avec ,jeu <nom>")
+        embed.set_footer(
+            text="Jouez avec ,<nom du jeu> · détails avec ,jeu <nom> · achats avec ,boutique"
+        )
         await ctx.send(embed=embed)
 
     @commands.command(name="jeu")
@@ -536,7 +538,7 @@ class cmdjeu(commands.Cog):
         if name is None:
             games = self.engine.list_games(ctx.guild.id)
             if not games:
-                await ctx.send("Aucun jeu n'est configuré. Consultez `,shop`.")
+                await ctx.send("Aucun jeu n'est configuré. Consultez `,jeux`.")
                 return
             await ctx.send("Quel jeu ? " + ", ".join(g["slug"] for g in games))
             answer = await self._ask(ctx, timeout=30.0)

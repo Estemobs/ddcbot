@@ -45,6 +45,7 @@ STRINGS = {
     "module.steam": {"fr": "Steam", "en": "Steam"},
     "module.lang": {"fr": "Langue", "en": "Language"},
     "module.casino": {"fr": "Casino", "en": "Casino"},
+    "module.shop": {"fr": "Boutique", "en": "Shop"},
     "module.twitch": {"fr": "Twitch", "en": "Twitch"},
     "module.alerts": {"fr": "Alertes sociales", "en": "Social alerts"},
     "module.embeds": {"fr": "Messages Embed", "en": "Embed messages"},
@@ -77,6 +78,8 @@ STRINGS = {
     "module.desc.steam": {"fr": "Cle API et profils Steam", "en": "Steam API key and profiles"},
     "module.desc.lang": {"fr": "Langue du bot sur ce serveur", "en": "Bot language on this server"},
     "module.desc.casino": {"fr": "Jeux, lots, quetes et effets", "en": "Games, prizes, quests and effects"},
+    "module.desc.shop": {"fr": "Entrees de jeu, grades et objets a vendre",
+                         "en": "Game entries, ranks and items for sale"},
     "module.desc.twitch": {"fr": "Alertes de direct Twitch", "en": "Twitch live alerts"},
     "module.desc.alerts": {"fr": "YouTube, Reddit, podcasts et Kick",
                            "en": "YouTube, Reddit, podcasts and Kick"},
@@ -938,6 +941,49 @@ STRINGS = {
               "the Welcome module, which sends a message in any channel without keeping "
               "a panel there.",
     },
+
+    "shop.subtitle": {
+        "fr": "Ce que les membres peuvent acheter avec leur solde. Les jeux, eux, "
+              "se configurent dans Casino.",
+        "en": "What members can buy with their balance. Games are configured under Casino.",
+    },
+    "shop.articles": {"fr": "Articles", "en": "Items"},
+    "shop.sold": {"fr": "Vendus", "en": "Sold"},
+    "shop.revenue": {"fr": "Retire de l'economie", "en": "Removed from the economy"},
+    "shop.catalogue": {"fr": "Catalogue", "en": "Catalogue"},
+    "shop.sink_hint": {
+        "fr": "La boutique est ce qui retire de la monnaie du serveur",
+        "en": "The shop is what takes currency out of the server",
+    },
+    "shop.article": {"fr": "Article", "en": "Item"},
+    "shop.gives": {"fr": "Donne", "en": "Gives"},
+    "shop.stock": {"fr": "Stock", "en": "Stock"},
+    "shop.stock_hint": {"fr": "-1 = illimite", "en": "-1 = unlimited"},
+    "shop.limit": {"fr": "Max/joueur", "en": "Max/player"},
+    "shop.limit_hint": {"fr": "0 = sans limite", "en": "0 = no limit"},
+    "shop.sales": {"fr": "Ventes", "en": "Sales"},
+    "shop.empty": {"fr": "La boutique est vide", "en": "The shop is empty"},
+    "shop.new_article": {"fr": "Nouvel article", "en": "New item"},
+    "shop.slug": {"fr": "Identifiant", "en": "Slug"},
+    "shop.display_name": {"fr": "Nom affiche", "en": "Display name"},
+    "shop.kind": {"fr": "Type", "en": "Type"},
+    "shop.kind.ticket": {"fr": "Entree de jeu", "en": "Game entry"},
+    "shop.kind.role": {"fr": "Role", "en": "Role"},
+    "shop.kind.item": {"fr": "Objet", "en": "Item"},
+    "shop.value": {"fr": "Ce que ca donne", "en": "What it gives"},
+    "shop.value_ph": {"fr": "loto / 123456789 / Canette", "en": "loto / 123456789 / Can"},
+    "shop.value_hint": {
+        "fr": "Entree de jeu : le nom du jeu · Role : son identifiant · Objet : son nom",
+        "en": "Game entry: the game name · Role: its id · Item: its name",
+    },
+    "shop.required_role": {"fr": "Role requis", "en": "Required role"},
+    "shop.required_role_ph": {"fr": "Vide = ouvert a tous", "en": "Empty = open to everyone"},
+    "shop.sell_game": {"fr": "Mettre un jeu en vente", "en": "Put a game on sale"},
+    "shop.sell_game_hint": {
+        "fr": "Cree l'entree correspondante en un clic",
+        "en": "Creates the matching entry in one click",
+    },
+    "shop.put_on_sale": {"fr": "Vendre", "en": "Sell"},
 }
 
 SUPPORTED_LANGS = ("fr", "en")

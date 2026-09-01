@@ -24,6 +24,7 @@ import sys as _sys
 _sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from data.db import Database
 from casino_engine import CasinoEngine, CasinoError
+from shop_engine import ShopEngine, ShopError, describe_item
 from web_dashboard.i18n import tr, resolve_lang, get_text
 
 app = FastAPI(title="DDCBot Dashboard", docs_url=None, redoc_url=None)
@@ -80,6 +81,7 @@ GUILD_MODULES = [
      "table": "welcome_panel"},
     {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
     {"slug": "casino", "key": "module.casino", "icon": "dice", "table": "casino_games"},
+    {"slug": "shop", "key": "module.shop", "icon": "coins", "table": "shop_items"},
     {"slug": "birthdays", "key": "module.birthdays", "icon": "gift", "table": "birthdays"},
     {"slug": "tempvoice", "key": "module.tempvoice", "icon": "mic", "table": "tempvoice_config"},
     {"slug": "statschannels", "key": "module.statschannels", "icon": "chart",
@@ -118,6 +120,7 @@ templates.env.globals["auth_enabled"] = auth_enabled
 DB_PATH = os.environ.get("DDC_DB_PATH", os.path.join(BASE_DIR, "..", "data", "ddcbot.sqlite3"))
 db = Database(path=DB_PATH)
 casino = CasinoEngine(db)
+shop = ShopEngine(db)
 
 DASHBOARD_TOKEN = os.environ.get("DASHBOARD_TOKEN", "")
 API_KEY = os.environ.get("DASHBOARD_API_KEY", "")
@@ -1863,6 +1866,91 @@ async def emojis_page(request: Request, guild_id: int):
     return templates.TemplateResponse(request, "emojis.html", {
         "request": request, "guild_id": guild_id, "emojis": emojis,
     })
+
+
+# ── Boutique ──
+# Distincte du catalogue des jeux : ici on vend des entrees de jeu, des roles
+# et des objets. Un article « ticket » depose une entree dans l'inventaire, que
+# le jeu correspondant consomme ensuite.
+
+@app.get("/guild/{guild_id}/shop", response_class=HTMLResponse)
+async def shop_page(request: Request, guild_id: int):
+    from shop_engine import ITEM_KINDS
+    items = []
+    for item in shop.list_items(guild_id, include_disabled=True):
+        item["sales"] = shop.sales_stats(guild_id, item["slug"])
+        item["describe"] = describe_item(item)
+        items.append(item)
+    return templates.TemplateResponse(request, "shop.html", {
+        "request": request, "guild_id": guild_id, "items": items,
+        "kinds": ITEM_KINDS, "games": casino.list_games(guild_id, include_disabled=True),
+        "stats": shop.sales_stats(guild_id),
+    })
+
+
+@app.post("/guild/{guild_id}/shop/add")
+async def shop_add(
+    guild_id: int,
+    slug: str = Form(...),
+    display_name: str = Form(""),
+    kind: str = Form("ticket"),
+    value: str = Form(...),
+    price: float = Form(0),
+    description: str = Form(""),
+    category: str = Form(""),
+    stock: int = Form(-1),
+    per_user_limit: int = Form(0),
+    required_role_id: str = Form(""),
+):
+    try:
+        shop.create_item(
+            guild_id, slug, display_name or slug, kind, value, price,
+            description=description, stock=stock, per_user_limit=per_user_limit,
+            required_role_id=int(required_role_id) if required_role_id.strip().isdigit() else None,
+            category=category,
+        )
+    except ShopError:
+        pass
+    return RedirectResponse(f"/guild/{guild_id}/shop", status_code=303)
+
+
+@app.post("/guild/{guild_id}/shop/{item_id}/edit")
+async def shop_edit(
+    guild_id: int, item_id: int,
+    display_name: str = Form(""),
+    price: float = Form(0),
+    stock: int = Form(-1),
+    per_user_limit: int = Form(0),
+    enabled: int = Form(0),
+):
+    try:
+        shop.update_item(item_id, display_name=display_name, price=price, stock=stock,
+                         per_user_limit=per_user_limit, enabled=enabled)
+    except ShopError:
+        pass
+    return RedirectResponse(f"/guild/{guild_id}/shop", status_code=303)
+
+
+@app.post("/guild/{guild_id}/shop/delete")
+async def shop_delete(guild_id: int, slug: str = Form(...)):
+    shop.delete_item(guild_id, slug)
+    return RedirectResponse(f"/guild/{guild_id}/shop", status_code=303)
+
+
+@app.post("/guild/{guild_id}/shop/sell-game")
+async def shop_sell_game(guild_id: int, slug: str = Form(...), price: float = Form(0)):
+    """Met en vente l'entree d'un jeu en un clic depuis la page Casino."""
+    game = casino.get_game(guild_id, slug)
+    if game is not None:
+        try:
+            shop.create_item(
+                guild_id, f"ticket-{game['slug']}", f"Entrée — {game['display_name']}",
+                "ticket", game["slug"], price or game["price"] or 0,
+                category="Entrées de jeu",
+            )
+        except ShopError:
+            pass
+    return RedirectResponse(f"/guild/{guild_id}/shop", status_code=303)
 
 
 # ── Alertes sociales (YouTube, Reddit, podcasts/RSS, Kick — sans cle d'API) ──
