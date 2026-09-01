@@ -44,6 +44,7 @@ from cogs.tempvoice import cmdtempvoice
 from cogs.statschannels import cmdstatschannels
 from cogs.socialalerts import cmdsocialalerts
 from cogs.embeds import cmdembeds
+from cogs.achievements import cmdachievements
 import plugin_loader
 
 intents = discord.Intents.default()
@@ -294,6 +295,7 @@ async def main():
     await bot.add_cog(cmdstatschannels(bot, db))
     await bot.add_cog(cmdsocialalerts(bot, db))
     await bot.add_cog(cmdembeds(bot, db))
+    await bot.add_cog(cmdachievements(bot, db))
     await plugin_loader.load_plugins(bot, db)
     await bot.start(token)
 

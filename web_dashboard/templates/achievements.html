@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.achievements') }}{% endblock %}
+{% block crumb %}{{ t('module.achievements') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🏅 {{ t('module.achievements') }}</h2>
+  <p>{{ t('achievements.subtitle') }}</p>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>{{ t('common.config') }}</h3></div>
+  <form method="post" action="/guild/{{ guild_id }}/achievements/config">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('achievements.channel') }}</label>
+        <input type="text" name="channel_id" value="{{ config.channel_id or '' }}"
+               placeholder="123456789012345678">
+      </div>
+      <div class="form-group">
+        <label>{{ t('achievements.enabled') }}</label>
+        <select name="enabled">
+          <option value="1" {% if config.enabled %}selected{% endif %}>{{ t('casino.yes') }}</option>
+          <option value="0" {% if not config.enabled %}selected{% endif %}>{{ t('casino.no') }}</option>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.save') }}</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('achievements.list') }}</h3>
+    <span class="tag tag-info">{{ achievements|length }}</span>
+  </div>
+  {% if achievements %}
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th></th><th>{{ t('achievements.name') }}</th><th>{{ t('achievements.metric') }}</th>
+        <th>{{ t('casino.goal') }}</th><th>{{ t('casino.reward') }}</th>
+        <th>{{ t('achievements.unlocks') }}</th><th></th>
+      </tr>
+      {% for a in achievements %}
+      <tr>
+        <td style="font-size:1.2rem">{{ a.icon }}</td>
+        <td><strong>{{ a.name }}</strong>
+          {% if a.description %}<div class="tile-sub">{{ a.description }}</div>{% endif %}
+        </td>
+        <td><span class="tag tag-info">{{ a.metric }}</span></td>
+        <td>{{ a.goal }}</td>
+        <td>
+          {% if a.reward_kind == 'none' %}—
+          {% else %}{{ t('casino.reward.' ~ a.reward_kind) }} {{ a.reward_value }}{% endif %}
+        </td>
+        <td>{{ a.unlocks }}</td>
+        <td>
+          <form method="post" action="/guild/{{ guild_id }}/achievements/{{ a.id }}/delete">
+            <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <svg class="i"><use href="#i-trophy"/></svg>
+    <p>{{ t('achievements.empty') }}</p>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/guild/{{ guild_id }}/achievements/add" style="margin-top:16px">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('achievements.name') }}</label>
+        <input type="text" name="name" required placeholder="Bavard">
+      </div>
+      <div class="form-group">
+        <label>{{ t('achievements.icon') }}</label>
+        <input type="text" name="icon" value="🏅" maxlength="8">
+      </div>
+      <div class="form-group">
+        <label>{{ t('achievements.metric') }}</label>
+        <select name="metric">
+          {% for key, label in metrics %}
+          <option value="{{ key }}">{{ label }} ({{ key }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.goal') }}</label>
+        <input type="number" name="goal" value="100" min="1">
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.reward') }}</label>
+        <select name="reward_kind">
+          {% for k in reward_kinds %}
+          <option value="{{ k }}">{{ t('achievements.reward.' ~ k) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('casino.lot_value') }}</label>
+        <input type="text" name="reward_value" placeholder="500 / ID de rôle">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>{{ t('casino.description') }}</label>
+        <input type="text" name="description" placeholder="{{ t('achievements.desc_ph') }}">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.automations') }}{% endblock %}
+{% block crumb %}{{ t('module.automations') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>⚙️ {{ t('module.automations') }}</h2>
+  <p>{{ t('automations.subtitle') }}</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('automations.rules') }}</h3>
+    <span class="tag tag-info">{{ rules|length }}</span>
+  </div>
+  {% if rules %}
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>ID</th><th>{{ t('automations.name') }}</th><th>{{ t('automations.event') }}</th>
+        <th>{{ t('automations.condition') }}</th><th>{{ t('automations.actions') }}</th>
+        <th>{{ t('automations.runs') }}</th><th></th>
+      </tr>
+      {% for r in rules %}
+      <tr>
+        <td><code>#{{ r.id }}</code></td>
+        <td>
+          <strong>{{ r.name }}</strong>
+          {% if r.problems %}<span class="tag tag-danger">⚠</span>{% endif %}
+          {% if not r.enabled %}<span class="tag tag-muted">⏸</span>{% endif %}
+        </td>
+        <td><span class="tag tag-info">{{ t('automations.event.' ~ r.event) }}</span></td>
+        <td>
+          {{ t('automations.match.' ~ r.match_type) }}
+          {% if r.match_value %}<code>{{ r.match_value }}</code>{% endif %}
+        </td>
+        <td>
+          {% for a in r.actions %}
+          <div class="tile-sub">{{ t('automations.action.' ~ a.kind) }}
+            {% if a.value %}<code>{{ a.value[:40] }}</code>{% endif %}</div>
+          {% endfor %}
+        </td>
+        <td>{{ r.runs }}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <form method="post" action="/guild/{{ guild_id }}/automations/{{ r.id }}/toggle">
+              <button type="submit" class="btn btn-secondary btn-sm">
+                {{ t('alerts.pause') if r.enabled else t('alerts.resume') }}
+              </button>
+            </form>
+            <form method="post" action="/guild/{{ guild_id }}/automations/{{ r.id }}/delete">
+              <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% for r in rules %}
+    {% if r.problems %}
+    <p style="color:var(--danger-text);margin-top:8px">
+      <strong>{{ r.name }}</strong> — {{ r.problems|join(' ') }}
+    </p>
+    {% endif %}
+  {% endfor %}
+  {% else %}
+  <div class="empty">
+    <svg class="i"><use href="#i-bolt"/></svg>
+    <p>{{ t('automations.empty') }}</p>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/guild/{{ guild_id }}/automations/save" style="margin-top:16px">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('automations.name') }}</label>
+        <input type="text" name="name" required placeholder="Souhaiter la bienvenue">
+      </div>
+      <div class="form-group">
+        <label>{{ t('automations.event') }}</label>
+        <select name="event">
+          {% for e in events %}
+          <option value="{{ e }}">{{ t('automations.event.' ~ e) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('automations.condition') }}</label>
+        <select name="match_type">
+          {% for m in match_types %}
+          <option value="{{ m }}">{{ t('automations.match.' ~ m) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ t('automations.match_value') }}</label>
+        <input type="text" name="match_value" placeholder="{{ t('automations.match_ph') }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('automations.cooldown') }}</label>
+        <input type="number" name="cooldown_seconds" value="0" min="0">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>{{ t('automations.actions') }} (JSON)</label>
+        <textarea name="actions_json" rows="4"
+                  placeholder='[{"kind": "send_message", "target": "123", "value": "Bienvenue {user} !"}]'>[]</textarea>
+        <small style="color:var(--text-muted)">{{ t('automations.actions_hint') }}</small>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.save') }}</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>{{ t('automations.help_title') }}</h3></div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>{{ t('automations.action') }}</th><th>{{ t('col.description') }}</th></tr>
+      {% for k in action_kinds %}
+      <tr>
+        <td><code>{{ k }}</code></td>
+        <td>{{ t('automations.action.help.' ~ k) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  <p style="margin-top:10px;color:var(--text-muted)">{{ t('automations.vars') }}</p>
+</div>
+{% endblock %}

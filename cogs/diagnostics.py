@@ -163,6 +163,12 @@ EXPECTED_COMMANDS = {
     "alerts",
     "embed",
     "emoji",
+    "succes",
+    "succesadd",
+    "succesdel",
+    "autos",
+    "autotoggle",
+    "accueil",
 }
 
 REQUIRED_MODULES = [
@@ -233,6 +239,12 @@ EXPECTED_TABLES = [
     "social_feeds",
     "embeds",
     "guild_emojis",
+    "member_activity",
+    "achievements",
+    "achievement_unlocks",
+    "achievement_config",
+    "automations",
+    "welcome_panel",
     "error_logs",
     "translation_subs",
     "casino_games",

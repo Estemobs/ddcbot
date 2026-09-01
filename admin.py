@@ -33,4 +33,5 @@ ADMIN_COMMANDS = frozenset({
     "addlot", "rmlot", "gamelots", "casinostats", "inviterewards",
     # Modules serveur ajoutes : configuration reservee aux admins.
     "annivconfig", "tempvoice", "statschannel", "alerts", "embed", "emoji",
+    "succesadd", "succesdel", "autos", "autotoggle", "accueil",
 })

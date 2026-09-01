@@ -72,6 +72,12 @@ GUILD_MODULES = [
     {"slug": "alerts", "key": "module.alerts", "icon": "bell", "table": "social_feeds"},
     {"slug": "embeds", "key": "module.embeds", "icon": "note", "table": "embeds"},
     {"slug": "emojis", "key": "module.emojis", "icon": "sparkles", "table": "guild_emojis"},
+    {"slug": "achievements", "key": "module.achievements", "icon": "trophy",
+     "table": "achievements"},
+    {"slug": "automations", "key": "module.automations", "icon": "bolt",
+     "table": "automations"},
+    {"slug": "welcomepanel", "key": "module.welcomepanel", "icon": "wave",
+     "table": "welcome_panel"},
     {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
     {"slug": "casino", "key": "module.casino", "icon": "dice", "table": "casino_games"},
     {"slug": "birthdays", "key": "module.birthdays", "icon": "gift", "table": "birthdays"},
@@ -1584,6 +1590,165 @@ async def api_notes(guild_id: int = 0):
     else:
         notes = db.fetchall("SELECT guild_id, title, content FROM notes ORDER BY guild_id, title")
     return {"notes": [dict(n) for n in notes]}
+
+
+# ── Succes ──
+
+@app.get("/guild/{guild_id}/achievements", response_class=HTMLResponse)
+async def achievements_page(request: Request, guild_id: int):
+    from achievements_engine import METRICS, REWARD_KINDS
+    db.execute("INSERT OR IGNORE INTO achievement_config (guild_id) VALUES (?)", (guild_id,))
+    cfg = db.fetchone("SELECT * FROM achievement_config WHERE guild_id = ?", (guild_id,))
+    rows = db.fetchall(
+        "SELECT a.*, (SELECT COUNT(*) FROM achievement_unlocks u "
+        "WHERE u.achievement_id = a.id) AS unlocks "
+        "FROM achievements a WHERE a.guild_id = ? ORDER BY a.metric, a.goal",
+        (guild_id,),
+    )
+    return templates.TemplateResponse(request, "achievements.html", {
+        "request": request, "guild_id": guild_id, "config": cfg, "achievements": rows,
+        "metrics": [(key, label) for key, (label, _) in METRICS.items()],
+        "reward_kinds": REWARD_KINDS,
+    })
+
+
+@app.post("/guild/{guild_id}/achievements/config")
+async def achievements_config(guild_id: int, channel_id: str = Form(""),
+                              enabled: int = Form(0)):
+    db.execute(
+        "INSERT INTO achievement_config (guild_id, channel_id, enabled) VALUES (?, ?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id, "
+        "enabled=excluded.enabled",
+        (guild_id, int(channel_id) if channel_id.strip().isdigit() else None, enabled),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/achievements", status_code=303)
+
+
+@app.post("/guild/{guild_id}/achievements/add")
+async def achievements_add(
+    guild_id: int,
+    name: str = Form(...),
+    metric: str = Form("messages"),
+    goal: int = Form(1),
+    reward_kind: str = Form("none"),
+    reward_value: str = Form(""),
+    description: str = Form(""),
+    icon: str = Form("🏅"),
+):
+    from achievements_engine import METRICS, REWARD_KINDS
+    if name.strip() and metric in METRICS and reward_kind in REWARD_KINDS:
+        db.execute(
+            "INSERT INTO achievements (guild_id, name, description, icon, metric, goal, "
+            "reward_kind, reward_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(guild_id, name) DO UPDATE SET description=excluded.description, "
+            "icon=excluded.icon, metric=excluded.metric, goal=excluded.goal, "
+            "reward_kind=excluded.reward_kind, reward_value=excluded.reward_value",
+            (guild_id, name.strip(), description, icon or "🏅", metric, max(1, goal),
+             reward_kind, reward_value),
+        )
+    return RedirectResponse(f"/guild/{guild_id}/achievements", status_code=303)
+
+
+@app.post("/guild/{guild_id}/achievements/{achievement_id}/delete")
+async def achievements_delete(guild_id: int, achievement_id: int):
+    db.execute("DELETE FROM achievement_unlocks WHERE achievement_id = ?", (achievement_id,))
+    db.execute(
+        "DELETE FROM achievements WHERE id = ? AND guild_id = ?", (achievement_id, guild_id)
+    )
+    return RedirectResponse(f"/guild/{guild_id}/achievements", status_code=303)
+
+
+# ── Automatisations ──
+
+@app.get("/guild/{guild_id}/automations", response_class=HTMLResponse)
+async def automations_page(request: Request, guild_id: int):
+    import achievements_engine as engine
+    rows = db.fetchall(
+        "SELECT * FROM automations WHERE guild_id = ? ORDER BY id", (guild_id,)
+    )
+    rules = []
+    for row in rows:
+        rule = dict(row)
+        rule["actions"] = engine.parse_actions(rule["actions_json"])
+        rule["problems"] = engine.validate_automation(rule)
+        rules.append(rule)
+    return templates.TemplateResponse(request, "automations.html", {
+        "request": request, "guild_id": guild_id, "rules": rules,
+        "events": engine.EVENTS, "match_types": engine.MATCH_TYPES,
+        "action_kinds": engine.ACTION_KINDS,
+    })
+
+
+@app.post("/guild/{guild_id}/automations/save")
+async def automations_save(
+    guild_id: int,
+    name: str = Form(...),
+    event: str = Form("member_join"),
+    match_type: str = Form("any"),
+    match_value: str = Form(""),
+    actions_json: str = Form("[]"),
+    cooldown_seconds: int = Form(0),
+):
+    import achievements_engine as engine
+    if name.strip() and event in engine.EVENTS and match_type in engine.MATCH_TYPES:
+        normalised = json.dumps(engine.parse_actions(actions_json))
+        db.execute(
+            "INSERT INTO automations (guild_id, name, event, match_type, match_value, "
+            "actions_json, cooldown_seconds) VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(guild_id, name) DO UPDATE SET event=excluded.event, "
+            "match_type=excluded.match_type, match_value=excluded.match_value, "
+            "actions_json=excluded.actions_json, cooldown_seconds=excluded.cooldown_seconds",
+            (guild_id, name.strip(), event, match_type, match_value, normalised,
+             max(0, cooldown_seconds)),
+        )
+    return RedirectResponse(f"/guild/{guild_id}/automations", status_code=303)
+
+
+@app.post("/guild/{guild_id}/automations/{rule_id}/toggle")
+async def automations_toggle(guild_id: int, rule_id: int):
+    db.execute(
+        "UPDATE automations SET enabled = 1 - enabled WHERE id = ? AND guild_id = ?",
+        (rule_id, guild_id),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/automations", status_code=303)
+
+
+@app.post("/guild/{guild_id}/automations/{rule_id}/delete")
+async def automations_delete(guild_id: int, rule_id: int):
+    db.execute("DELETE FROM automations WHERE id = ? AND guild_id = ?", (rule_id, guild_id))
+    return RedirectResponse(f"/guild/{guild_id}/automations", status_code=303)
+
+
+# ── Salon d'accueil ──
+
+@app.get("/guild/{guild_id}/welcomepanel", response_class=HTMLResponse)
+async def welcomepanel_page(request: Request, guild_id: int):
+    db.execute("INSERT OR IGNORE INTO welcome_panel (guild_id) VALUES (?)", (guild_id,))
+    cfg = db.fetchone("SELECT * FROM welcome_panel WHERE guild_id = ?", (guild_id,))
+    available = db.fetchall("SELECT name FROM embeds WHERE guild_id = ? ORDER BY name",
+                            (guild_id,))
+    return templates.TemplateResponse(request, "welcomepanel.html", {
+        "request": request, "guild_id": guild_id, "config": cfg, "embeds": available,
+    })
+
+
+@app.post("/guild/{guild_id}/welcomepanel/config")
+async def welcomepanel_save(
+    guild_id: int,
+    channel_id: str = Form(""),
+    embed_name: str = Form(""),
+    greet_template: str = Form(""),
+    enabled: int = Form(0),
+):
+    db.execute(
+        "INSERT INTO welcome_panel (guild_id, channel_id, embed_name, greet_template, enabled) "
+        "VALUES (?, ?, ?, ?, ?) ON CONFLICT(guild_id) DO UPDATE SET "
+        "channel_id=excluded.channel_id, embed_name=excluded.embed_name, "
+        "greet_template=excluded.greet_template, enabled=excluded.enabled",
+        (guild_id, int(channel_id) if channel_id.strip().isdigit() else None,
+         embed_name, greet_template, enabled),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/welcomepanel", status_code=303)
 
 
 # ── Messages Embed ──

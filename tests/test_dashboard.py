@@ -117,6 +117,8 @@ class TestDashboardSixNewPages(unittest.TestCase):
             f"/guild/{GUILD}/twitch", f"/guild/{GUILD}/birthdays",
             f"/guild/{GUILD}/tempvoice", f"/guild/{GUILD}/statschannels",
             f"/guild/{GUILD}/alerts", f"/guild/{GUILD}/embeds", f"/guild/{GUILD}/emojis",
+            f"/guild/{GUILD}/achievements", f"/guild/{GUILD}/automations",
+            f"/guild/{GUILD}/welcomepanel",
         ]:
             with self.subTest(path=path):
                 resp = self.client.get(path)
@@ -584,6 +586,71 @@ class TestNewModulePages(unittest.TestCase):
         )
         body = self.client.get(f"/guild/{GUILD}/emojis").text
         self.assertIn(":pepe:", body)
+
+    def test_achievement_add_and_delete(self):
+        self.client.post(f"/guild/{GUILD}/achievements/add", data={
+            "name": "Bavard", "metric": "messages", "goal": "500",
+            "reward_kind": "money", "reward_value": "1000",
+            "description": "", "icon": "💬",
+        })
+        rows = dashboard.db.fetchall("SELECT * FROM achievements WHERE guild_id = ?", (GUILD,))
+        self.assertEqual(len(rows), 1)
+        self.client.post(f"/guild/{GUILD}/achievements/{rows[0]['id']}/delete")
+        self.assertEqual(dashboard.db.fetchall("SELECT 1 FROM achievements"), [])
+
+    def test_unknown_metric_is_rejected(self):
+        self.client.post(f"/guild/{GUILD}/achievements/add", data={
+            "name": "X", "metric": "nimportequoi", "goal": "1",
+            "reward_kind": "none", "reward_value": "", "description": "", "icon": "",
+        })
+        self.assertEqual(dashboard.db.fetchall("SELECT 1 FROM achievements"), [])
+
+    def test_automation_save_drops_unknown_actions(self):
+        self.client.post(f"/guild/{GUILD}/automations/save", data={
+            "name": "Accueil", "event": "member_join", "match_type": "any",
+            "match_value": "",
+            "actions_json": json.dumps([
+                {"kind": "send_message", "target": "555", "value": "Bienvenue {user} !"},
+                {"kind": "lancer_les_missiles", "value": "x"},
+            ]),
+            "cooldown_seconds": "0",
+        })
+        row = dashboard.db.fetchone("SELECT * FROM automations WHERE guild_id = ?", (GUILD,))
+        actions = json.loads(row["actions_json"])
+        self.assertEqual([a["kind"] for a in actions], ["send_message"])
+
+    def test_unknown_event_is_rejected(self):
+        self.client.post(f"/guild/{GUILD}/automations/save", data={
+            "name": "Y", "event": "explosion", "match_type": "any", "match_value": "",
+            "actions_json": "[]", "cooldown_seconds": "0",
+        })
+        self.assertEqual(dashboard.db.fetchall("SELECT 1 FROM automations"), [])
+
+    def test_automation_toggle_and_delete(self):
+        self.client.post(f"/guild/{GUILD}/automations/save", data={
+            "name": "A", "event": "message", "match_type": "any", "match_value": "",
+            "actions_json": json.dumps([{"kind": "react", "value": "👍"}]),
+            "cooldown_seconds": "0",
+        })
+        rule_id = dashboard.db.fetchone("SELECT id FROM automations")["id"]
+        self.client.post(f"/guild/{GUILD}/automations/{rule_id}/toggle")
+        self.assertEqual(
+            dashboard.db.fetchone("SELECT enabled FROM automations WHERE id = ?",
+                                  (rule_id,))["enabled"], 0
+        )
+        self.client.post(f"/guild/{GUILD}/automations/{rule_id}/delete")
+        self.assertEqual(dashboard.db.fetchall("SELECT 1 FROM automations"), [])
+
+    def test_welcome_panel_config(self):
+        self.client.post(f"/guild/{GUILD}/welcomepanel/config", data={
+            "channel_id": "777", "embed_name": "reglement",
+            "greet_template": "Salut {user}", "enabled": "1",
+        })
+        row = dashboard.db.fetchone(
+            "SELECT * FROM welcome_panel WHERE guild_id = ?", (GUILD,)
+        )
+        self.assertEqual((row["channel_id"], row["embed_name"], row["enabled"]),
+                         (777, "reglement", 1))
 
     def test_unknown_stats_kind_is_rejected(self):
         self.client.post(f"/guild/{GUILD}/statschannels/add", data={
