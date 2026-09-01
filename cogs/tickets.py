@@ -1,12 +1,79 @@
 """Systeme de tickets de support.
 
-Permet aux membres de creer des tickets de support privees avec les admins.
+Permet aux membres d'ouvrir un salon prive avec le staff, depuis un bouton ou
+la commande `,ticket`.
+
+`,ticketpanel` publie le panneau que les membres cliquent ; `,ticketconfig`
+regroupe les reglages, y compris l'activation et le message de fermeture, qui
+n'etaient joignables que depuis le dashboard.
 """
 
 import time
 
 import discord
 from discord.ext import commands
+
+from settings_fields import Field, FieldError, apply_field, describe_fields
+
+# Les identifiants sont fixes : c'est ce qui permet aux boutons de continuer a
+# fonctionner apres un redemarrage du bot, sur des messages deja publies.
+OPEN_BUTTON_ID = "ddcbot:ticket:open"
+CLOSE_BUTTON_ID = "ddcbot:ticket:close"
+
+TICKET_FIELDS = {
+    "actif": Field("bool", "Tickets activés"),
+    "categorie": Field("id", "Catégorie où créer les salons de ticket"),
+    "salonlogs": Field("id", "Salon de journal des tickets"),
+    "max": Field("int", "Tickets ouverts simultanément par membre", minimum=1, maximum=50),
+    "bienvenue": Field("text", "Message affiché à l'ouverture d'un ticket"),
+    "fermeture": Field("text", "Message affiché à la fermeture"),
+}
+TICKET_FIELD_COLUMNS = {
+    "actif": "enabled", "categorie": "category_id", "salonlogs": "log_channel_id",
+    "max": "max_open_tickets", "bienvenue": "welcome_message",
+    "fermeture": "close_message",
+}
+
+
+class TicketPanelView(discord.ui.View):
+    """Panneau permanent : un bouton qui ouvre un ticket.
+
+    timeout=None et un custom_id fixe rendent la vue persistante : le bouton
+    reste actif sur un message publie il y a des semaines, tant que le cog
+    reenregistre la vue au demarrage.
+    """
+
+    def __init__(self, cog):
+        super().__init__(timeout=None)
+        self.cog = cog
+
+    @discord.ui.button(label="Ouvrir un ticket", emoji="🎫",
+                       style=discord.ButtonStyle.primary, custom_id=OPEN_BUTTON_ID)
+    async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        channel, problem = await self.cog.open_ticket(interaction.guild, interaction.user)
+        if problem:
+            await interaction.response.send_message(f"❌ {problem}", ephemeral=True)
+            return
+        await interaction.response.send_message(
+            f"✅ Votre ticket : {channel.mention}", ephemeral=True
+        )
+
+
+class TicketCloseView(discord.ui.View):
+    """Bouton de fermeture, publie dans le salon du ticket."""
+
+    def __init__(self, cog):
+        super().__init__(timeout=None)
+        self.cog = cog
+
+    @discord.ui.button(label="Fermer le ticket", emoji="🔒",
+                       style=discord.ButtonStyle.danger, custom_id=CLOSE_BUTTON_ID)
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🔒 Fermeture du ticket…")
+        await self.cog.close_and_delete(
+            interaction.channel, interaction.user, "Fermé depuis le bouton"
+        )
+
 
 DEFAULT_TICKET_CONFIG = {
     "enabled": False,
@@ -82,20 +149,126 @@ class cmdtickets(commands.Cog):
         row = self.db.fetchone("SELECT counter FROM ticket_counter WHERE guild_id = ?", (guild_id,))
         return row["counter"] if row else 0
 
-    def build_panel_embed(self, guild, cfg):
-        embed = discord.Embed(title="Configuration Tickets", color=discord.Color.blue())
-        embed.add_field(name="Active", value="✅" if cfg["enabled"] else "❌", inline=True)
-        embed.add_field(name="Categorie", value=f"<#{cfg['category_id']}>" if cfg["category_id"] else "—", inline=True)
-        embed.add_field(name="Canal logs", value=f"<#{cfg['log_channel_id']}>" if cfg["log_channel_id"] else "—", inline=True)
-        embed.add_field(name="Max ouverts", value=str(cfg["max_open_tickets"]), inline=True)
-        return embed
+    async def open_ticket(self, guild, member):
+        """Cree le salon de ticket. Renvoie (salon, None) ou (None, raison du refus)."""
+        cfg = self.get_config(guild.id)
+        if not cfg["enabled"]:
+            return None, "Les tickets sont désactivés sur ce serveur."
+        if self.get_open_count(guild.id, member.id) >= cfg["max_open_tickets"]:
+            return None, f"Vous avez déjà {cfg['max_open_tickets']} ticket(s) ouvert(s)."
+        if not cfg["category_id"]:
+            return None, "Les tickets ne sont pas configurés (catégorie manquante)."
+        category = guild.get_channel(cfg["category_id"])
+        if category is None:
+            return None, "La catégorie de tickets n'existe plus."
+
+        number = self.get_ticket_number(guild.id) + 1
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            member: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(
+                view_channel=True, send_messages=True, manage_channels=True
+            ),
+        }
+        try:
+            channel = await guild.create_text_channel(
+                f"ticket-{number:04d}", category=category, overwrites=overwrites,
+                topic=f"Ticket #{number} de {member}",
+            )
+        except discord.Forbidden:
+            return None, "Le bot n'a pas la permission de créer le salon."
+        except discord.HTTPException as exc:
+            return None, f"Création impossible : {exc}"
+
+        self.create_ticket_record(guild.id, member.id, channel.id)
+        embed = discord.Embed(
+            title=f"🎫 Ticket #{number:04d}",
+            description=cfg["welcome_message"],
+            color=discord.Color.green(),
+        )
+        embed.set_footer(text=f"Ticket cree par {member}")
+        await channel.send(content=member.mention, embed=embed, view=TicketCloseView(self))
+        return channel, None
+
+    async def close_and_delete(self, channel, author, reason: str):
+        """Journalise la fermeture puis supprime le salon."""
+        guild = channel.guild
+        cfg = self.get_config(guild.id)
+        self.close_ticket(channel.id)
+
+        log_channel = self.bot.get_channel(cfg["log_channel_id"]) if cfg["log_channel_id"] else None
+        if log_channel is not None:
+            log_embed = discord.Embed(
+                title="🎫 Ticket ferme",
+                description=f"Salon: {channel.name}\nFerme par: {author.mention}\n"
+                            f"Raison: {reason}",
+                color=discord.Color.orange(),
+            )
+            try:
+                await log_channel.send(embed=log_embed)
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+        try:
+            await channel.delete(reason=f"Ticket ferme par {author}")
+        except discord.NotFound:
+            pass  # salon deja supprime : rien a signaler
+        except discord.Forbidden:
+            pass
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        # Reenregistre les vues pour que les boutons deja publies restent actifs.
+        try:
+            self.bot.add_view(TicketPanelView(self))
+            self.bot.add_view(TicketCloseView(self))
+        except Exception as exc:
+            print(f"[DEBUG] Vues tickets non reenregistrees: {exc}")
 
     @commands.command()
-    async def ticketpanel(self, ctx):
-        """Affiche le panneau de configuration des tickets."""
+    async def ticketpanel(self, ctx, channel: discord.TextChannel = None):
+        """Publie le panneau que les membres cliquent pour ouvrir un ticket."""
         cfg = self.get_config(ctx.guild.id)
-        embed = self.build_panel_embed(ctx.guild, cfg)
-        await ctx.send(embed=embed)
+        target = channel or ctx.channel
+        embed = discord.Embed(
+            title="🎫 Besoin d'aide ?",
+            description=cfg["welcome_message"],
+            color=discord.Color.blurple(),
+        )
+        embed.set_footer(text="Cliquez sur le bouton pour ouvrir un ticket privé.")
+        try:
+            await target.send(embed=embed, view=TicketPanelView(self))
+        except discord.Forbidden:
+            await ctx.send("❌ Le bot ne peut pas écrire dans ce salon.")
+            return
+        if not cfg["enabled"]:
+            await ctx.send(
+                "⚠️ Panneau publié, mais les tickets sont désactivés : "
+                "`,ticketconfig actif on`."
+            )
+        elif target.id != ctx.channel.id:
+            await ctx.send(f"✅ Panneau publié dans {target.mention}.")
+
+    @commands.command()
+    async def ticketconfig(self, ctx, field: str = None, *, value: str = None):
+        """,ticketconfig <champ> <valeur> — sans champ, affiche les réglages."""
+        cfg = self.get_config(ctx.guild.id)
+        if field is None:
+            current = {key: cfg[column] for key, column in TICKET_FIELD_COLUMNS.items()}
+            embed = discord.Embed(
+                title="🎫 Réglages des tickets",
+                description=describe_fields(TICKET_FIELDS, current),
+                color=discord.Color.blue(),
+            )
+            embed.set_footer(text="Publier le panneau : ,ticketpanel [#salon]")
+            await ctx.send(embed=embed)
+            return
+        try:
+            key, parsed = apply_field(TICKET_FIELDS, field, value)
+        except FieldError as exc:
+            await ctx.send(f"❌ {exc}")
+            return
+        self.save_config(ctx.guild.id, **{TICKET_FIELD_COLUMNS[key]: parsed})
+        await ctx.send(f"✅ `{key}` = **{parsed}**")
 
     @commands.command()
     async def ticketcategory(self, ctx, category: discord.CategoryChannel = None):
@@ -113,7 +286,7 @@ class cmdtickets(commands.Cog):
             await ctx.send("Usage: `,ticketwelcome Votre message`")
             return
         self.save_config(ctx.guild.id, welcome_message=message)
-        await ctx.send(f"✅ Message de bienvenue mis a jour.")
+        await ctx.send("✅ Message de bienvenue mis a jour.")
 
     @commands.command()
     async def ticketmax(self, ctx, max_tickets: int = None):
@@ -137,46 +310,10 @@ class cmdtickets(commands.Cog):
     @commands.command()
     async def ticket(self, ctx):
         """Cree un ticket de support."""
-        cfg = self.get_config(ctx.guild.id)
-        if not cfg["enabled"]:
-            await ctx.send("❌ Les tickets sont desactives sur ce serveur.")
+        channel, problem = await self.open_ticket(ctx.guild, ctx.author)
+        if problem:
+            await ctx.send(f"❌ {problem}")
             return
-
-        open_count = self.get_open_count(ctx.guild.id, ctx.author.id)
-        if open_count >= cfg["max_open_tickets"]:
-            await ctx.send(f"❌ Vous avez deja {open_count} ticket(s) ouvert(s).")
-            return
-
-        if not cfg["category_id"]:
-            await ctx.send("❌ Les tickets ne sont pas configures (categorie manquante).")
-            return
-
-        category = ctx.guild.get_channel(cfg["category_id"])
-        if not category:
-            await ctx.send("❌ La categorie de tickets n'existe plus.")
-            return
-
-        ticket_number = self.get_ticket_number(ctx.guild.id) + 1
-        overwrites = {
-            ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            ctx.author: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-            ctx.guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True),
-        }
-        channel = await ctx.guild.create_text_channel(
-            f"ticket-{ticket_number:04d}",
-            category=category,
-            overwrites=overwrites,
-            topic=f"Ticket #{ticket_number} de {ctx.author}",
-        )
-        self.create_ticket_record(ctx.guild.id, ctx.author.id, channel.id)
-
-        embed = discord.Embed(
-            title=f"🎫 Ticket #{ticket_number:04d}",
-            description=cfg["welcome_message"],
-            color=discord.Color.green(),
-        )
-        embed.set_footer(text=f"Ticket cree par {ctx.author}")
-        await channel.send(content=ctx.author.mention, embed=embed)
         await ctx.send(f"✅ Ticket cree : {channel.mention}", delete_after=10)
 
     @commands.command()
@@ -187,32 +324,14 @@ class cmdtickets(commands.Cog):
             return
 
         cfg = self.get_config(ctx.guild.id)
-        self.close_ticket(ctx.channel.id)
-
-        close_msg = cfg["close_message"] or "Ticket ferme."
         embed = discord.Embed(
             title="🔒 Ticket ferme",
-            description=f"{close_msg}\n\nRaison: {reason}",
+            description=f"{cfg['close_message'] or 'Ticket ferme.'}\n\nRaison: {reason}",
             color=discord.Color.red(),
         )
         embed.set_footer(text=f"Ferme par {ctx.author}")
         await ctx.send(embed=embed)
-
-        log_channel = self.bot.get_channel(cfg["log_channel_id"]) if cfg["log_channel_id"] else None
-        if log_channel:
-            log_embed = discord.Embed(
-                title="🎫 Ticket ferme",
-                description=f"Salon: {ctx.channel.name}\nFerme par: {ctx.author.mention}\nRaison: {reason}",
-                color=discord.Color.orange(),
-            )
-            await log_channel.send(embed=log_embed)
-
-        try:
-            await ctx.channel.delete(reason=f"Ticket ferme par {ctx.author}")
-        except discord.NotFound:
-            pass  # salon deja supprime : rien a signaler a l'utilisateur
-        except discord.Forbidden:
-            await ctx.send("❌ Permission manquante pour supprimer ce salon.")
+        await self.close_and_delete(ctx.channel, ctx.author, reason)
 
 
 def setup(bot, db):

@@ -124,6 +124,7 @@ EXPECTED_COMMANDS = {
     "ticket",
     "ticketpanel",
     "ticketcategory",
+    "ticketconfig",
     "ticketwelcome",
     "ticketmax",
     "ticketlog",
