@@ -207,7 +207,12 @@ class cmdtickets(commands.Cog):
             )
             await log_channel.send(embed=log_embed)
 
-        await ctx.channel.delete(reason=f"Ticket ferme par {ctx.author}")
+        try:
+            await ctx.channel.delete(reason=f"Ticket ferme par {ctx.author}")
+        except discord.NotFound:
+            pass  # salon deja supprime : rien a signaler a l'utilisateur
+        except discord.Forbidden:
+            await ctx.send("❌ Permission manquante pour supprimer ce salon.")
 
 
 def setup(bot, db):
