@@ -68,6 +68,7 @@ GUILD_MODULES = [
     {"slug": "rss", "key": "module.rss", "icon": "tv", "table": None},
     {"slug": "minecraft", "key": "module.minecraft", "icon": "cube", "table": "minecraft_config"},
     {"slug": "steam", "key": "module.steam", "icon": "gamepad", "table": "steam_config"},
+    {"slug": "twitch", "key": "module.twitch", "icon": "tv", "table": "twitch_watch"},
     {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
     {"slug": "casino", "key": "module.casino", "icon": "dice", "table": "casino_games"},
     {"slug": "notes", "key": "module.notes", "icon": "note", "table": "notes"},
@@ -943,17 +944,55 @@ async def steam_page(request: Request, guild_id: int):
     })
 
 
-@app.post("/guild/{guild_id}/steam/config")
-async def steam_save(
-    request: Request, guild_id: int,
-    api_key: str = Form(""),
-):
-    db.execute(
-        "INSERT INTO steam_config (guild_id, api_key) VALUES (?, ?) "
-        "ON CONFLICT(guild_id) DO UPDATE SET api_key=excluded.api_key",
-        (guild_id, api_key or None),
+# Steam ne se configure plus : le cog passe par les pages publiques de
+# steamcommunity.com, sans cle d'API.
+
+
+# ── Twitch (sans cle d'API : endpoint GraphQL public de twitch.tv) ──
+
+@app.get("/guild/{guild_id}/twitch", response_class=HTMLResponse)
+async def twitch_page(request: Request, guild_id: int):
+    cfg = db.fetchone(
+        "SELECT channel_id, enabled FROM twitch_config WHERE guild_id = ?", (guild_id,)
     )
-    return RedirectResponse(f"/guild/{guild_id}/steam", status_code=303)
+    watched = db.fetchall(
+        "SELECT user_login FROM twitch_watch WHERE guild_id = ? ORDER BY user_login",
+        (guild_id,),
+    )
+    return templates.TemplateResponse(request, "twitch.html", {
+        "request": request, "guild_id": guild_id, "config": cfg, "watched": watched,
+    })
+
+
+@app.post("/guild/{guild_id}/twitch/config")
+async def twitch_save(guild_id: int, channel_id: str = Form(""), enabled: int = Form(0)):
+    db.execute(
+        "INSERT INTO twitch_config (guild_id, channel_id, enabled) VALUES (?, ?, ?) "
+        "ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id, "
+        "enabled=excluded.enabled",
+        (guild_id, int(channel_id) if channel_id.strip().isdigit() else None, enabled),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/twitch", status_code=303)
+
+
+@app.post("/guild/{guild_id}/twitch/watch")
+async def twitch_watch_add(guild_id: int, user_login: str = Form(...)):
+    login = user_login.strip().lower().rsplit("/", 1)[-1]
+    if login:
+        db.execute(
+            "INSERT OR IGNORE INTO twitch_watch (guild_id, user_login) VALUES (?, ?)",
+            (guild_id, login),
+        )
+    return RedirectResponse(f"/guild/{guild_id}/twitch", status_code=303)
+
+
+@app.post("/guild/{guild_id}/twitch/unwatch")
+async def twitch_watch_remove(guild_id: int, user_login: str = Form(...)):
+    db.execute(
+        "DELETE FROM twitch_watch WHERE guild_id = ? AND user_login = ?",
+        (guild_id, user_login.strip().lower()),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/twitch", status_code=303)
 
 
 # ── Work / Income ──

@@ -329,13 +329,11 @@ STRINGS = {
         "en": "✅ {member} marked as having left the server.",
     },
     # --- steam ---
-    "steam_config_saved": {
-        "fr": "✅ Clé API Steam enregistrée pour ce serveur.",
-        "en": "✅ Steam API key saved for this server.",
-    },
-    "steam_no_key": {
-        "fr": "❌ Aucune clé API Steam configurée. Un admin doit lancer `,steamconfig <cle_api>`.",
-        "en": "❌ No Steam API key configured. An admin must run `,steamconfig <api_key>`.",
+    "steam_no_config_needed": {
+        "fr": "✅ Rien à configurer : Steam passe par les pages publiques de "
+              "steamcommunity.com, sans clé d'API. Essayez `,steaminv <pseudo>`.",
+        "en": "✅ Nothing to configure: Steam goes through the public "
+              "steamcommunity.com pages, with no API key. Try `,steaminv <name>`.",
     },
     "steam_resolving": {
         "fr": "🔎 Résolution du pseudo Steam…",

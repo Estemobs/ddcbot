@@ -212,6 +212,7 @@ EXPECTED_TABLES = [
     "polls",
     "twitch_config",
     "twitch_notifications",
+    "twitch_watch",
     "error_logs",
     "translation_subs",
     "casino_games",

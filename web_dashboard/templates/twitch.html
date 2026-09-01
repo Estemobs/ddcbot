@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ t('module.twitch') }}{% endblock %}
+{% block crumb %}{{ t('module.twitch') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ t('twitch.heading') }}</h2>
+  <p>{{ t('twitch.subtitle') }}</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('common.config') }}</h3>
+    <span class="tag tag-success">{{ t('nokey.badge') }}</span>
+  </div>
+  <form method="post" action="/guild/{{ guild_id }}/twitch/config">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>{{ t('twitch.channel') }}</label>
+        <input type="text" name="channel_id" value="{{ config.channel_id or '' if config else '' }}"
+               placeholder="{{ t('twitch.channel_ph') }}">
+      </div>
+      <div class="form-group">
+        <label>{{ t('twitch.enabled') }}</label>
+        <select name="enabled">
+          <option value="1" {% if config and config.enabled %}selected{% endif %}>{{ t('casino.yes') }}</option>
+          <option value="0" {% if not config or not config.enabled %}selected{% endif %}>{{ t('casino.no') }}</option>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.save') }}</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ t('twitch.watched') }}</h3>
+    <span class="tag tag-info">{{ watched|length }}</span>
+  </div>
+  {% if watched %}
+  <div class="table-wrap">
+    <table>
+      <tr><th>{{ t('twitch.channel_name') }}</th><th></th></tr>
+      {% for w in watched %}
+      <tr>
+        <td><a href="https://www.twitch.tv/{{ w.user_login }}" target="_blank"
+               rel="noopener">{{ w.user_login }}</a></td>
+        <td>
+          <form method="post" action="/guild/{{ guild_id }}/twitch/unwatch">
+            <input type="hidden" name="user_login" value="{{ w.user_login }}">
+            <button type="submit" class="btn btn-danger btn-sm">{{ t('btn.delete') }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>{{ t('twitch.empty') }}</p></div>
+  {% endif %}
+
+  <form method="post" action="/guild/{{ guild_id }}/twitch/watch"
+        style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:14px">
+    <div class="form-group" style="margin:0;flex:1">
+      <label>{{ t('twitch.channel_name') }}</label>
+      <input type="text" name="user_login" required placeholder="zerator">
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.add') }}</button>
+  </form>
+</div>
+{% endblock %}

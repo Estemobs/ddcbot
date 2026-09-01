@@ -1,19 +1,25 @@
-"""Intégration Steam (intègre ProjetsDivers/CSGO.py).
+"""Integration Steam, sans aucune cle d'API.
 
-Affiche l'inventaire public d'un utilisateur Steam (par vanity URL ou SteamID64)
-via l'API Steam Web officielle. La clé API est stockée par serveur dans la table
-`steam_config` (commande `,steamconfig`), et n'est plus en dur comme dans le
-prototype original (CSGO.py contenait une clé en clair).
+Steam expose deux points d'acces publics qui suffisent, et qui ne demandent
+ni cle ni compte developpeur :
+
+- ``https://steamcommunity.com/id/<pseudo>?xml=1`` renvoie le profil en XML,
+  dont le SteamID64 ;
+- ``https://steamcommunity.com/inventory/<steamid>/<appid>/<contextid>``
+  renvoie l'inventaire en JSON, tant que le profil est public.
+
+L'ancienne version passait par api.steampowered.com, qui exige une cle Steam Web
+stockee par serveur. La colonne `steam_config.api_key` reste en base pour ne
+rien casser, mais plus rien ne la lit.
 
 Commandes :
-  ,steamconfig <cle_api>  — enregistre la clé API Steam (admin)
-  ,steaminv <pseudo|id>   — affiche l'inventaire CS:GO d'un utilisateur
-  ,steamid <pseudo>       — résout un pseudo en SteamID64
+  ,steaminv <pseudo|id>   — affiche l'inventaire CS2/CS:GO d'un utilisateur
+  ,steamid <pseudo>       — resout un pseudo en SteamID64
+  ,steamconfig            — rappelle qu'aucune configuration n'est necessaire
 """
 
 from __future__ import annotations
 
-import asyncio
 import re
 
 import aiohttp
@@ -24,103 +30,117 @@ from cogs.i18n import t
 
 STEAM_APP_CSGO = 730
 STEAM_CONTEXT_2 = 2
+STEAM_ID_RE = re.compile(r"\d{17}")
+# Le profil XML expose le SteamID64 sans authentification.
+STEAM_ID64_RE = re.compile(r"<steamID64>(\d{17})</steamID64>")
+
+# steamcommunity refuse les requetes sans navigateur identifiable.
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    ),
+    "Accept-Language": "fr,en;q=0.8",
+}
 
 
 def _clean_steam_username(name: str) -> str:
-    return name.strip().strip("/")
+    """Accepte un pseudo, une URL de profil complete ou un SteamID64."""
+    name = name.strip().strip("/")
+    for prefix in ("https://steamcommunity.com/id/", "https://steamcommunity.com/profiles/",
+                   "steamcommunity.com/id/", "steamcommunity.com/profiles/"):
+        if name.lower().startswith(prefix):
+            name = name[len(prefix):]
+            break
+    return name.strip("/")
 
 
 class cmdsteam(commands.Cog):
-    """Cog d'intégration Steam."""
+    """Cog d'integration Steam (sans cle d'API)."""
 
     def __init__(self, bot, db):
         self.bot = bot
         self.db = db
         self._session: aiohttp.ClientSession | None = None
 
-    # --- accès données ---
-
-    def get_api_key(self, guild_id: int) -> str | None:
-        row = self.db.fetchone("SELECT api_key FROM steam_config WHERE guild_id = ?", (guild_id,))
-        if row is None or not row["api_key"]:
-            return None
-        return row["api_key"]
-
-    def set_api_key(self, guild_id: int, api_key: str) -> None:
-        self.db.execute(
-            "INSERT INTO steam_config (guild_id, api_key) VALUES (?, ?) "
-            "ON CONFLICT(guild_id) DO UPDATE SET api_key=excluded.api_key",
-            (guild_id, api_key),
-        )
-
     async def _http(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
+            self._session = aiohttp.ClientSession(headers=BROWSER_HEADERS)
         return self._session
 
     async def cog_unload(self):
         if self._session is not None and not self._session.closed:
             await self._session.close()
 
-    async def resolve_vanity(self, api_key: str, vanity: str) -> str | None:
-        """Résout une vanity URL (pseudo) en SteamID64 via ResolveVanityURL."""
-        session = await self._http()
-        url = "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/"
-        params = {"key": api_key, "vanityurl": vanity}
-        async with session.get(url, params=params, timeout=10) as resp:
-            if resp.status != 200:
-                return None
-            data = await resp.json()
-        body = data.get("response", {})
-        if body.get("success") == 1:
-            return body.get("steamid")
-        return None
+    # --- acces Steam, endpoints publics ---
 
-    async def fetch_inventory(self, api_key: str, steam_id: str) -> list[dict]:
-        """Récupère l'inventaire CS:GO (app 730, contexte 2) via IInventoryService."""
+    async def resolve_vanity(self, vanity: str) -> str | None:
+        """Resout un pseudo en SteamID64 via le profil XML public."""
+        if STEAM_ID_RE.fullmatch(vanity):
+            return vanity
         session = await self._http()
-        url = "https://api.steampowered.com/IInventoryService/GetInventory/v1/"
-        params = {
-            "key": api_key,
-            "steamid": steam_id,
-            "appid": STEAM_APP_CSGO,
-            "contextid": STEAM_CONTEXT_2,
-            "count": 5000,
+        url = f"https://steamcommunity.com/id/{vanity}"
+        try:
+            async with session.get(url, params={"xml": 1}, timeout=10) as resp:
+                if resp.status != 200:
+                    return None
+                body = await resp.text()
+        except aiohttp.ClientError:
+            return None
+        match = STEAM_ID64_RE.search(body)
+        return match.group(1) if match else None
+
+    async def fetch_inventory(self, steam_id: str, appid: int = STEAM_APP_CSGO,
+                              contextid: int = STEAM_CONTEXT_2) -> list[dict]:
+        """Inventaire public d'un joueur. Liste vide si le profil est prive."""
+        session = await self._http()
+        url = f"https://steamcommunity.com/inventory/{steam_id}/{appid}/{contextid}"
+        try:
+            async with session.get(url, params={"l": "french", "count": 500},
+                                   timeout=15) as resp:
+                if resp.status != 200:
+                    return []
+                data = await resp.json(content_type=None)
+        except (aiohttp.ClientError, ValueError):
+            return []
+        if not isinstance(data, dict):
+            return []
+
+        # `assets` porte les quantites, `descriptions` les noms lisibles ; la
+        # jointure se fait sur (classid, instanceid).
+        descriptions = {
+            (d.get("classid"), d.get("instanceid")): d
+            for d in data.get("descriptions") or []
         }
-        async with session.get(url, params=params, timeout=15) as resp:
-            if resp.status != 200:
-                return []
-            data = await resp.json()
-        items = data.get("response", {}).get("items", [])
+        items = []
+        for asset in data.get("assets") or []:
+            description = descriptions.get((asset.get("classid"), asset.get("instanceid")), {})
+            items.append({
+                "name": description.get("market_hash_name") or description.get("name") or "?",
+                "amount": int(asset.get("amount") or 1),
+            })
         return items
 
     # --- commandes ---
 
     @commands.command()
-    async def steamconfig(self, ctx, api_key: str):
-        """Enregistre la clé API Steam pour ce serveur (admin)."""
-        self.set_api_key(ctx.guild.id, api_key)
-        await ctx.send(t(self.db, "steam_config_saved", ctx.guild.id, ctx.author.id))
+    async def steamconfig(self, ctx):
+        """Steam ne demande plus aucune configuration."""
+        await ctx.send(t(self.db, "steam_no_config_needed", ctx.guild.id, ctx.author.id))
 
     @commands.command()
     async def steaminv(self, ctx, *, username: str):
-        """Affiche l'inventaire CS:GO d'un utilisateur Steam."""
-        api_key = self.get_api_key(ctx.guild.id)
-        if not api_key:
-            await ctx.send(t(self.db, "steam_no_key", ctx.guild.id, ctx.author.id))
+        """Affiche l'inventaire CS2/CS:GO d'un utilisateur Steam."""
+        username = _clean_steam_username(username)
+
+        await ctx.send(t(self.db, "steam_resolving", ctx.guild.id, ctx.author.id))
+        steam_id = await self.resolve_vanity(username)
+        if steam_id is None:
+            await ctx.send(t(self.db, "steam_not_found", ctx.guild.id, ctx.author.id, name=username))
             return
 
-        username = _clean_steam_username(username)
-        steam_id = username if re.fullmatch(r"\d{17}", username) else None
-        if steam_id is None:
-            await ctx.send(t(self.db, "steam_resolving", ctx.guild.id, ctx.author.id))
-            steam_id = await self.resolve_vanity(api_key, username)
-            if steam_id is None:
-                await ctx.send(t(self.db, "steam_not_found", ctx.guild.id, ctx.author.id, name=username))
-                return
-
         await ctx.send(t(self.db, "steam_fetching", ctx.guild.id, ctx.author.id, steam_id=steam_id))
-        items = await asyncio.wait_for(self.fetch_inventory(api_key, steam_id), timeout=20)
+        items = await self.fetch_inventory(steam_id)
 
         if not items:
             await ctx.send(t(self.db, "steam_empty", ctx.guild.id, ctx.author.id, steam_id=steam_id))
@@ -128,35 +148,28 @@ class cmdsteam(commands.Cog):
 
         by_name: dict[str, int] = {}
         for item in items:
-            name = item.get("item_description", {}).get("market_hash_name") or item.get("item_id") or "?"
-            by_name[name] = by_name.get(name, 0) + 1
+            by_name[item["name"]] = by_name.get(item["name"], 0) + item["amount"]
 
         lines = [f"- {name} (x{count})" for name, count in sorted(by_name.items())]
         chunk_size = 15
-        embeds = []
         for i in range(0, len(lines), chunk_size):
-            embed = discord.Embed(
-                title=t(self.db, "steam_inventory_title", ctx.guild.id, ctx.author.id, steam_id=steam_id),
+            await ctx.send(embed=discord.Embed(
+                title=t(self.db, "steam_inventory_title", ctx.guild.id, ctx.author.id,
+                        steam_id=steam_id),
                 description="\n".join(lines[i:i + chunk_size]),
                 color=discord.Color.blue(),
-            )
-            embeds.append(embed)
-        for embed in embeds:
-            await ctx.send(embed=embed)
+            ))
 
     @commands.command()
     async def steamid(self, ctx, *, username: str):
-        """Résout un pseudo Steam en SteamID64."""
-        api_key = self.get_api_key(ctx.guild.id)
-        if not api_key:
-            await ctx.send(t(self.db, "steam_no_key", ctx.guild.id, ctx.author.id))
-            return
+        """Resout un pseudo Steam en SteamID64."""
         username = _clean_steam_username(username)
-        steam_id = await self.resolve_vanity(api_key, username)
+        steam_id = await self.resolve_vanity(username)
         if steam_id is None:
             await ctx.send(t(self.db, "steam_not_found", ctx.guild.id, ctx.author.id, name=username))
             return
-        await ctx.send(t(self.db, "steam_id_result", ctx.guild.id, ctx.author.id, name=username, steam_id=steam_id))
+        await ctx.send(t(self.db, "steam_id_result", ctx.guild.id, ctx.author.id,
+                         name=username, steam_id=steam_id))
 
 
 def setup(bot, db):

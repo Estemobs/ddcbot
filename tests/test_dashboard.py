@@ -77,10 +77,11 @@ class TestDashboardSixNewPages(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("tmux", resp.text)
 
-    def test_steam_page(self):
+    def test_steam_page_advertises_no_api_key(self):
         resp = self.client.get(f"/guild/{GUILD}/steam")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("STEAM_KEY_TEST", resp.text)
+        self.assertIn("Sans cle d&#39;API", resp.text)
+        self.assertNotIn('name="api_key"', resp.text)
 
     def test_work_income_page(self):
         resp = self.client.get(f"/guild/{GUILD}/work")
@@ -112,6 +113,7 @@ class TestDashboardSixNewPages(unittest.TestCase):
             f"/guild/{GUILD}/lang", f"/guild/{GUILD}/notes",
             f"/guild/{GUILD}/transactions", f"/guild/{GUILD}/reminders",
             f"/guild/{GUILD}/giveaways", f"/guild/{GUILD}/casino",
+            f"/guild/{GUILD}/twitch",
         ]:
             with self.subTest(path=path):
                 resp = self.client.get(path)

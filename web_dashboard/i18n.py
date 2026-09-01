@@ -45,6 +45,7 @@ STRINGS = {
     "module.steam": {"fr": "Steam", "en": "Steam"},
     "module.lang": {"fr": "Langue", "en": "Language"},
     "module.casino": {"fr": "Casino", "en": "Casino"},
+    "module.twitch": {"fr": "Twitch", "en": "Twitch"},
     "module.notes": {"fr": "Notes", "en": "Notes"},
     "module.transactions": {"fr": "Transactions", "en": "Transactions"},
     "module.reminders": {"fr": "Rappels", "en": "Reminders"},
@@ -67,6 +68,7 @@ STRINGS = {
     "module.desc.steam": {"fr": "Cle API et profils Steam", "en": "Steam API key and profiles"},
     "module.desc.lang": {"fr": "Langue du bot sur ce serveur", "en": "Bot language on this server"},
     "module.desc.casino": {"fr": "Jeux, lots, quetes et effets", "en": "Games, prizes, quests and effects"},
+    "module.desc.twitch": {"fr": "Alertes de direct Twitch", "en": "Twitch live alerts"},
     "module.desc.notes": {"fr": "Notes et tags du serveur", "en": "Server notes and tags"},
     "module.desc.transactions": {"fr": "Historique economique du serveur", "en": "Server economy history"},
     "module.desc.reminders": {"fr": "Rappels programmes sur ce serveur", "en": "Reminders scheduled on this server"},
@@ -376,9 +378,12 @@ STRINGS = {
     # Steam
     "steam.heading": {"fr": "Steam", "en": "Steam"},
     "steam.subtitle": {"fr": "Serveur {id} - Integration Steam", "en": "Server {id} - Steam integration"},
-    "steam.api_key": {"fr": "API Key Steam", "en": "Steam API Key"},
-    "steam.api_key_ph": {"fr": "Cle API Steam", "en": "Steam API Key"},
-    "steam.api_key_hint": {"fr": "Obtenir sur {url}", "en": "Get it at {url}"},
+    "steam.nokey_desc": {
+        "fr": "Rien a configurer : les pseudos et inventaires sont lus sur les pages "
+              "publiques de steamcommunity.com. Le profil doit juste etre public.",
+        "en": "Nothing to configure: names and inventories are read from the public "
+              "steamcommunity.com pages. The profile just has to be public.",
+    },
     "steam.cmd_config": {"fr": "Configure la cle API Steam", "en": "Configure the Steam API key"},
     "steam.cmd_inv": {"fr": "Invitations Steam d'un utilisateur", "en": "Steam invitations of a user"},
     "steam.cmd_id": {"fr": "ID Steam d'un utilisateur", "en": "Steam ID of a user"},
@@ -620,6 +625,21 @@ STRINGS = {
         "fr": "Credite une fois, quand un membre rejoint le serveur (0 = desactive)",
         "en": "Credited once when a member joins the server (0 = off)",
     },
+
+    "nokey.badge": {"fr": "Sans cle d'API", "en": "No API key"},
+    "twitch.heading": {"fr": "Alertes Twitch", "en": "Twitch alerts"},
+    "twitch.subtitle": {
+        "fr": "Annonce les directs des chaines suivies. Aucune cle d'API : le bot "
+              "interroge le endpoint public de twitch.tv.",
+        "en": "Announces live streams from watched channels. No API key: the bot "
+              "queries the public twitch.tv endpoint.",
+    },
+    "twitch.channel": {"fr": "Salon d'annonce (ID)", "en": "Announcement channel (ID)"},
+    "twitch.channel_ph": {"fr": "123456789012345678", "en": "123456789012345678"},
+    "twitch.enabled": {"fr": "Alertes activees", "en": "Alerts enabled"},
+    "twitch.watched": {"fr": "Chaines suivies", "en": "Watched channels"},
+    "twitch.channel_name": {"fr": "Chaine", "en": "Channel"},
+    "twitch.empty": {"fr": "Aucune chaine suivie", "en": "No channel watched"},
 }
 
 SUPPORTED_LANGS = ("fr", "en")
