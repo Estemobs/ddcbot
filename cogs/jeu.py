@@ -12,7 +12,8 @@ from discord.ext import commands
 from discord import Embed
 
 from casino_engine import (
-    CasinoEngine, CasinoError, Reward, format_duration, normalize_slug,
+    ACCESS_KINDS, CasinoEngine, CasinoError, Reward, describe_access,
+    format_duration, normalize_access, normalize_slug,
 )
 
 DEFAULT_GAME_PANEL_CONFIG = {
@@ -37,6 +38,20 @@ KIND_ALIASES = {
     "loto": "dice_sum", "des": "dice_sum", "dés": "dice_sum", "dice_sum": "dice_sum",
     "de": "dice_guess", "dé": "dice_guess", "pari": "dice_guess", "dice_guess": "dice_guess",
 }
+
+
+def parse_access_args(tokens) -> list:
+    """Transforme `ticket role:123 price` en conditions exploitables."""
+    options = []
+    for token in tokens or []:
+        token = token.strip().lower().strip(",")
+        if not token:
+            continue
+        if token.startswith("role:") or token.startswith("grade:"):
+            options.append({"kind": "role", "value": token.split(":", 1)[1]})
+        elif token in ACCESS_KINDS:
+            options.append({"kind": token, "value": ""})
+    return normalize_access(options)
 
 
 class GamePanelView(discord.ui.View):
@@ -237,6 +252,17 @@ class cmdjeu(commands.Cog):
             await ctx.send("⏱️ Temps écoulé. La commande a été annulée.")
             return None
 
+    def describe_game_access(self, guild, game: dict) -> str:
+        """Conditions d'acces d'un jeu, avec les noms de roles du serveur."""
+        style = self.engine.get_style(guild.id)
+        role_names = {}
+        for option in game.get("access") or []:
+            if option["kind"] == "role" and option["value"].isdigit():
+                role = guild.get_role(int(option["value"]))
+                if role is not None:
+                    role_names[int(option["value"])] = role.name
+        return describe_access(game, role_names, style["currency_symbol"])
+
     def money(self, style: dict, amount: float) -> str:
         return f"{amount:,.0f}".replace(",", " ") + style["currency_symbol"]
 
@@ -322,20 +348,34 @@ class cmdjeu(commands.Cog):
                 return
 
             price = float(game["price"] or 0)
-            paid_with_ticket = self.engine.take_ticket(ctx.guild.id, user_id, game["slug"])
-            if paid_with_ticket:
+            role_ids = [role.id for role in getattr(ctx.author, "roles", [])]
+            has_ticket = self.engine.has_ticket(ctx.guild.id, user_id, game["slug"])
+            chosen = self.engine.resolve_access(
+                game, has_ticket=has_ticket, role_ids=role_ids,
+                balance=self.get_balance(user_id),
+            )
+            if chosen is None:
+                await ctx.send(
+                    f"🔒 Vous n'avez pas accès à **{game['display_name']}**.\n"
+                    f"Conditions : {self.describe_game_access(ctx.guild, game)}"
+                )
+                return
+
+            # On ne consomme que ce que la condition retenue demande : un role
+            # donne l'acces sans bruler de ticket ni debiter le solde.
+            paid_with_ticket = False
+            if chosen["kind"] == "ticket":
+                paid_with_ticket = self.engine.take_ticket(
+                    ctx.guild.id, user_id, game["slug"]
+                )
                 price = 0.0
-            elif price > 0:
-                if self.get_balance(user_id) < price:
-                    await ctx.send(
-                        f"❌ Il vous faut **{self.money(style, price)}** pour jouer à "
-                        f"**{game['display_name']}**."
-                    )
-                    return
+            elif chosen["kind"] == "price" and price > 0:
                 self.add_balance(user_id, -price)
                 self.db.log_transaction(
                     ctx.guild.id, user_id, -price, "casino", f"mise {game['slug']}"
                 )
+            else:
+                price = 0.0
 
             try:
                 outcome = self.engine.draw(game, guess=guess)
@@ -433,7 +473,6 @@ class cmdjeu(commands.Cog):
             )
             return
 
-        style = self.engine.get_style(ctx.guild.id)
         by_category = {}
         for game in games:
             by_category.setdefault(game["category"] or "Jeux", []).append(game)
@@ -442,8 +481,8 @@ class cmdjeu(commands.Cog):
         for category, entries in by_category.items():
             lines = []
             for game in entries:
-                price = "Gratuit" if not game["price"] else self.money(style, game["price"])
-                line = f"`,{game['slug']}` — **{game['display_name']}** · {price}"
+                access = self.describe_game_access(ctx.guild, game)
+                line = f"`,{game['slug']}` — **{game['display_name']}** · {access}"
                 if game["cooldown_seconds"]:
                     line += f" · 1× / {format_duration(game['cooldown_seconds'])}"
                 lines.append(line)
@@ -458,16 +497,19 @@ class cmdjeu(commands.Cog):
         if game is None:
             await ctx.send("❌ Ce jeu n'existe pas.")
             return
-        style = self.engine.get_style(ctx.guild.id)
         lots = self.engine.list_lots(game["id"])
         embed = Embed(
             title=game["display_name"],
             description=game["description"] or None,
             color=discord.Color.blurple(),
         )
-        embed.add_field(name="Prix",
-                        value="Gratuit" if not game["price"] else self.money(style, game["price"]),
-                        inline=True)
+        embed.add_field(name="Accès", value=self.describe_game_access(ctx.guild, game),
+                        inline=False)
+        if "ticket" in self.engine.access_kinds(game):
+            owned = self.engine.inventory(ctx.guild.id, ctx.author.id).get(
+                ("ticket", game["slug"]), 0
+            )
+            embed.add_field(name="Vos tickets", value=str(owned), inline=True)
         if game["cooldown_seconds"]:
             embed.add_field(name="Disponible",
                             value=f"1× / {format_duration(game['cooldown_seconds'])}", inline=True)
@@ -557,13 +599,16 @@ class cmdjeu(commands.Cog):
 
     @commands.command()
     async def addgame(self, ctx, slug: str = None, price: float = None,
-                      category: str = "box", kind: str = "box"):
-        """,addgame <nom> <prix> [categorie] [type] — puis ,addlot pour les lots."""
+                      category: str = "box", kind: str = "box", *, access: str = None):
+        """,addgame <nom> <prix> [categorie] [type] [conditions]"""
         if slug is None:
             await ctx.send(
-                "Usage : `,addgame <nom> <prix> [catégorie] [type]`\n"
+                "Usage : `,addgame <nom> <prix> [catégorie] [type] [conditions]`\n"
                 "Types : `box` (tirage pondéré), `loto` (somme de dés), `de` (pari sur un dé).\n"
-                "Exemple : `,addgame \"Machine Bois\" 250 machine box`"
+                "Conditions : `price`, `ticket`, `role:<id>`, `free` — séparées par des "
+                "espaces, une seule suffit au joueur.\n"
+                "Exemples : `,addgame \"Machine Bois\" 250 machine box` · "
+                "`,addgame Loto 5000 loto loto ticket role:123 price`"
             )
             return
         try:
@@ -573,6 +618,7 @@ class cmdjeu(commands.Cog):
                 kind=KIND_ALIASES.get(kind.lower(), "weighted"),
                 category=category.lower(),
                 price=price or 0,
+                access=parse_access_args(access.split()) if access else None,
             )
         except CasinoError as exc:
             await ctx.send(f"❌ {exc}")
@@ -602,6 +648,37 @@ class cmdjeu(commands.Cog):
             return
         total = len(self.engine.list_lots(game["id"]))
         await ctx.send(f"✅ Lot ajouté à **{game['display_name']}** ({total} lot(s)).")
+
+    @commands.command()
+    async def gameaccess(self, ctx, slug: str, *, conditions: str = None):
+        """,gameaccess <jeu> <price|ticket|role:ID|free…> — une condition suffit au joueur."""
+        game = self.engine.get_game(ctx.guild.id, normalize_slug(slug))
+        if game is None:
+            await ctx.send("❌ Ce jeu n'existe pas.")
+            return
+        if not conditions:
+            await ctx.send(
+                f"**{game['display_name']}** — accès actuel : "
+                f"{self.describe_game_access(ctx.guild, game)}\n"
+                f"Pour changer : `,gameaccess {game['slug']} ticket role:123 price`\n"
+                f"Conditions : `free`, `price`, `ticket`, `role:<id>`. "
+                f"Le joueur n'a besoin d'en remplir qu'une."
+            )
+            return
+
+        parsed = parse_access_args(conditions.split())
+        if not parsed:
+            await ctx.send(
+                "❌ Aucune condition valide. Utilisez `free`, `price`, `ticket` "
+                "ou `role:<id du rôle>`."
+            )
+            return
+        self.engine.update_game(game["id"], access=parsed)
+        refreshed = self.engine.get_game(ctx.guild.id, game["slug"])
+        await ctx.send(
+            f"✅ **{game['display_name']}** — accès : "
+            f"{self.describe_game_access(ctx.guild, refreshed)}"
+        )
 
     @commands.command()
     async def rmlot(self, ctx, lot_id: int):

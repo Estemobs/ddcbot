@@ -166,7 +166,7 @@ class TestLegacyMigration(unittest.TestCase):
 
         staging = tempfile.mkdtemp()
         for name in sorted(os.listdir(MIGRATIONS_DIR)):
-            if not name.startswith("0013"):
+            if name[:4].isdigit() and int(name[:4]) < 13:
                 shutil.copy(os.path.join(MIGRATIONS_DIR, name), staging)
         path = os.path.join(tempfile.mkdtemp(), "legacy.sqlite3")
 

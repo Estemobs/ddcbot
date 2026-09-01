@@ -1360,3 +1360,32 @@ details.disclosure[open] summary .chev { transform: rotate(90deg); }
 @media (max-width: 900px) {
   .embed-editor { grid-template-columns: 1fr; }
 }
+
+/* Conditions d'acces d'un jeu : une seule suffit au joueur */
+.access-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.access-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  font-size: 0.84rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.access-choice:hover { border-color: var(--border-strong); }
+.access-choice input { margin: 0; }
+.access-choice:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}

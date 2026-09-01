@@ -82,6 +82,26 @@
         <label>{{ t('casino.description') }}</label>
         <input type="text" name="description" placeholder="">
       </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>{{ t('casino.access') }}</label>
+        <div class="access-choices">
+          <label class="access-choice">
+            <input type="checkbox" name="access_price" value="1" >
+            <span>{{ t('casino.access.price') }}</span>
+          </label>
+          <label class="access-choice">
+            <input type="checkbox" name="access_ticket" value="1" >
+            <span>{{ t('casino.access.ticket') }}</span>
+          </label>
+          <label class="access-choice">
+            <input type="checkbox" name="access_free" value="1" >
+            <span>{{ t('casino.access.free') }}</span>
+          </label>
+          <input type="text" name="access_roles" value=""
+                 placeholder="{{ t('casino.access.roles_ph') }}" style="flex:1;min-width:200px">
+        </div>
+        <small style="color:var(--text-muted)">{{ t('casino.access_hint') }}</small>
+      </div>
     </div>
     <div class="form-grid kind-dice" hidden>
       <div class="form-group">
@@ -119,6 +139,12 @@
       </span>
       {% endif %}
       <span class="tag tag-info">{{ t('casino.avg_gain') }} {{ '%.0f'|format(game.expected) }}</span>
+      {% if 'ticket' in game.access_kinds %}
+      <span class="tag tag-info">🎟️ {{ t('casino.access.ticket_short') }}</span>
+      {% endif %}
+      {% if game.access_roles %}
+      <span class="tag tag-info">🛡️ {{ t('casino.access.role_short') }}</span>
+      {% endif %}
       {% if not game.enabled %}<span class="tag tag-muted">{{ t('casino.disabled') }}</span>{% endif %}
       {% if game.guild_id == 0 %}<span class="tag tag-muted">{{ t('notes.legacy') }}</span>{% endif %}
     </span>
@@ -159,6 +185,26 @@
           <option value="1" {% if game.enabled %}selected{% endif %}>{{ t('casino.yes') }}</option>
           <option value="0" {% if not game.enabled %}selected{% endif %}>{{ t('casino.no') }}</option>
         </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>{{ t('casino.access') }}</label>
+        <div class="access-choices">
+          <label class="access-choice">
+            <input type="checkbox" name="access_price" value="1" {% if 'price' in game.access_kinds %}checked{% endif %}>
+            <span>{{ t('casino.access.price') }}</span>
+          </label>
+          <label class="access-choice">
+            <input type="checkbox" name="access_ticket" value="1" {% if 'ticket' in game.access_kinds %}checked{% endif %}>
+            <span>{{ t('casino.access.ticket') }}</span>
+          </label>
+          <label class="access-choice">
+            <input type="checkbox" name="access_free" value="1" {% if 'free' in game.access_kinds %}checked{% endif %}>
+            <span>{{ t('casino.access.free') }}</span>
+          </label>
+          <input type="text" name="access_roles" value="{{ game.access_roles }}"
+                 placeholder="{{ t('casino.access.roles_ph') }}" style="flex:1;min-width:200px">
+        </div>
+        <small style="color:var(--text-muted)">{{ t('casino.access_hint') }}</small>
       </div>
     </div>
     <button type="submit" class="btn btn-primary btn-sm">{{ t('btn.save') }}</button>

@@ -592,6 +592,22 @@ STRINGS = {
     "casino.win_amount": {"fr": "Gain si trouve", "en": "Payout on a hit"},
     "casino.lose_amount": {"fr": "Perte sinon", "en": "Loss otherwise"},
     "casino.enabled": {"fr": "Actif", "en": "Enabled"},
+    "casino.access": {"fr": "Conditions d'acces", "en": "Access conditions"},
+    "casino.access_hint": {
+        "fr": "Le joueur n'a besoin d'en remplir qu'une seule. Rien de coche = "
+              "payant si un prix est defini, libre sinon. Le bot retient la condition "
+              "la moins couteuse : un role donne l'acces sans bruler de ticket.",
+        "en": "The player only needs to meet one. Nothing ticked = paid if a price is set, "
+              "free otherwise. The bot picks the cheapest condition: a role grants access "
+              "without burning a ticket.",
+    },
+    "casino.access.price": {"fr": "Payer le prix", "en": "Pay the price"},
+    "casino.access.ticket": {"fr": "Avoir un ticket", "en": "Hold a ticket"},
+    "casino.access.free": {"fr": "Libre", "en": "Free"},
+    "casino.access.roles_ph": {"fr": "IDs de roles, separes par des virgules",
+                               "en": "Role ids, comma separated"},
+    "casino.access.ticket_short": {"fr": "Ticket", "en": "Ticket"},
+    "casino.access.role_short": {"fr": "Role", "en": "Role"},
     "casino.disabled": {"fr": "Desactive", "en": "Disabled"},
     "casino.yes": {"fr": "Oui", "en": "Yes"},
     "casino.no": {"fr": "Non", "en": "No"},

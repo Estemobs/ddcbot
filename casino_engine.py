@@ -25,6 +25,17 @@ import time
 REWARD_KINDS = ("money", "role", "ticket", "item", "nothing")
 GAME_KINDS = ("weighted", "dice_sum", "dice_guess")
 
+# Conditions d'acces a un jeu. Une seule suffit ; le joueur emprunte la moins
+# couteuse de celles qu'il remplit.
+#   free   : libre
+#   role   : posseder un role, ne consomme rien
+#   ticket : consommer un ticket au nom du jeu
+#   price  : payer le prix du jeu
+ACCESS_KINDS = ("free", "role", "ticket", "price")
+
+# Ordre de resolution : du moins couteux au plus couteux pour le joueur.
+ACCESS_PRIORITY = ("free", "role", "ticket", "price")
+
 LEGACY_GUILD = 0
 
 
@@ -103,6 +114,7 @@ class CasinoEngine:
                 continue  # un jeu du serveur masque l'herite de meme slug
             seen.add(game["slug"])
             game["config"] = _load_json(game["config_json"])
+            game["access"] = parse_access(game)
             games.append(game)
         return games
 
@@ -116,12 +128,13 @@ class CasinoEngine:
             return None
         game = dict(row)
         game["config"] = _load_json(game["config_json"])
+        game["access"] = parse_access(game)
         return game
 
     def create_game(self, guild_id: int, slug: str, display_name: str = "",
                     kind: str = "weighted", category: str = "", price: float = 0,
                     cooldown_seconds: int = 0, description: str = "",
-                    config: dict = None) -> int:
+                    config: dict = None, access: list = None) -> int:
         if kind not in GAME_KINDS:
             raise CasinoError(f"Type de jeu inconnu : {kind}")
         slug = normalize_slug(slug)
@@ -129,15 +142,17 @@ class CasinoEngine:
             raise CasinoError("Le nom du jeu ne peut pas etre vide.")
         cur = self.db.execute(
             "INSERT INTO casino_games (guild_id, slug, display_name, kind, category, "
-            "price, cooldown_seconds, description, config_json) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "price, cooldown_seconds, description, config_json, access_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(guild_id, slug) DO UPDATE SET "
             "display_name=excluded.display_name, kind=excluded.kind, "
             "category=excluded.category, price=excluded.price, "
             "cooldown_seconds=excluded.cooldown_seconds, "
-            "description=excluded.description, config_json=excluded.config_json",
+            "description=excluded.description, config_json=excluded.config_json, "
+            "access_json=excluded.access_json",
             (guild_id, slug, display_name or slug, kind, category, price,
-             cooldown_seconds, description, json.dumps(config or {})),
+             cooldown_seconds, description, json.dumps(config or {}),
+             json.dumps(normalize_access(access))),
         )
         if cur.lastrowid:
             return cur.lastrowid
@@ -148,8 +163,10 @@ class CasinoEngine:
             fields["config_json"] = json.dumps(fields.pop("config"))
         if not fields:
             return
+        if "access" in fields:
+            fields["access_json"] = json.dumps(normalize_access(fields.pop("access")))
         allowed = {"display_name", "kind", "category", "price", "cooldown_seconds",
-                   "enabled", "description", "config_json", "slug"}
+                   "enabled", "description", "config_json", "slug", "access_json"}
         unknown = set(fields) - allowed
         if unknown:
             raise CasinoError(f"Champs inconnus : {sorted(unknown)}")
@@ -203,6 +220,44 @@ class CasinoEngine:
 
     def delete_lot(self, lot_id: int):
         self.db.execute("DELETE FROM casino_lots WHERE id = ?", (lot_id,))
+
+    # ── Acces ────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def resolve_access(game: dict, *, has_ticket: bool = False, role_ids=None,
+                       balance: float = 0.0):
+        """Condition que le joueur peut emprunter, ou None s'il n'en remplit aucune.
+
+        Les conditions sont examinees de la moins couteuse a la plus couteuse :
+        inutile de bruler un ticket quand un role donne deja l'acces.
+        """
+        options = game.get("access") or parse_access(game)
+        role_ids = set(role_ids or [])
+        price = float(game.get("price") or 0)
+
+        by_kind = {}
+        for option in options:
+            by_kind.setdefault(option["kind"], []).append(option)
+
+        for kind in ACCESS_PRIORITY:
+            for option in by_kind.get(kind, []):
+                if kind == "free":
+                    return option
+                if kind == "role":
+                    try:
+                        if int(option.get("value") or 0) in role_ids:
+                            return option
+                    except (TypeError, ValueError):
+                        continue
+                elif kind == "ticket" and has_ticket:
+                    return option
+                elif kind == "price" and balance >= price:
+                    return option
+        return None
+
+    @staticmethod
+    def access_kinds(game: dict) -> set:
+        return {option["kind"] for option in (game.get("access") or parse_access(game))}
 
     # ── Cooldowns et compteurs ───────────────────────────────────────────────
 
@@ -564,6 +619,74 @@ def _load_json(raw):
 
 def _lot_reward(lot: dict) -> Reward:
     return Reward(lot["reward_kind"], lot["reward_value"], lot.get("label") or "")
+
+
+def normalize_access(raw) -> list:
+    """Conditions d'acces normalisees. Ignore ce qui est invalide."""
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        candidate = raw
+    else:
+        try:
+            candidate = json.loads(raw or "[]")
+        except (TypeError, ValueError):
+            return []
+    if not isinstance(candidate, list):
+        return []
+    options, seen = [], set()
+    for entry in candidate:
+        if isinstance(entry, str):
+            entry = {"kind": entry}
+        if not isinstance(entry, dict):
+            continue
+        kind = str(entry.get("kind") or "").strip().lower()
+        if kind not in ACCESS_KINDS:
+            continue
+        value = str(entry.get("value") or "").strip()
+        if kind == "role":
+            if not value.isdigit():
+                continue  # un role sans identifiant n'ouvre rien
+        else:
+            value = ""
+        key = (kind, value)
+        if key in seen:
+            continue
+        seen.add(key)
+        options.append({"kind": kind, "value": value})
+    return options
+
+
+def parse_access(game: dict) -> list:
+    """Conditions d'un jeu, avec le repli historique si rien n'est defini.
+
+    Sans condition explicite, un jeu reste payant s'il a un prix et libre
+    sinon : les jeux crees avant l'ajout des conditions ne changent pas de
+    comportement.
+    """
+    options = normalize_access(game.get("access_json"))
+    if options:
+        return options
+    return [{"kind": "price", "value": ""}] if (game.get("price") or 0) > 0 \
+        else [{"kind": "free", "value": ""}]
+
+
+def describe_access(game: dict, role_names: dict = None, currency: str = "") -> str:
+    """Phrase lisible decrivant comment acceder au jeu."""
+    role_names = role_names or {}
+    price = float(game.get("price") or 0)
+    parts = []
+    for option in (game.get("access") or parse_access(game)):
+        kind = option["kind"]
+        if kind == "free":
+            parts.append("libre")
+        elif kind == "ticket":
+            parts.append("🎟️ ticket")
+        elif kind == "price":
+            parts.append(f"{price:,.0f}{currency}".replace(",", " ") if price else "gratuit")
+        elif kind == "role":
+            parts.append("🛡️ " + (role_names.get(int(option["value"]), f"role {option['value']}")))
+    return " ou ".join(parts) if parts else "libre"
 
 
 def normalize_slug(name: str) -> str:

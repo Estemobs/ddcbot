@@ -1,0 +1,16 @@
+-- Conditions d'acces a un jeu.
+--
+-- Jusqu'ici un ticket n'etait qu'une dispense de paiement : il etait consomme
+-- s'il existait, sinon on payait le prix. Un jeu a prix 0 obtenu par ticket
+-- (loto, de de la chance) etait donc jouable gratuitement et sans limite par
+-- n'importe qui, ce qui vide le ticket de son sens.
+--
+-- Un jeu porte desormais une LISTE de conditions, dont une seule suffit :
+--   {"kind": "free"}                    acces libre
+--   {"kind": "price"}                   payer le prix du jeu (achat en boutique)
+--   {"kind": "ticket"}                  consommer un ticket a son nom
+--   {"kind": "role", "value": "<id>"}   posseder ce role (ne consomme rien)
+--
+-- Une liste vide garde le comportement historique : payant si un prix est
+-- defini, libre sinon. Aucun jeu existant ne change donc de comportement.
+ALTER TABLE casino_games ADD COLUMN access_json TEXT NOT NULL DEFAULT '[]';

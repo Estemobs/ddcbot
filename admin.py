@@ -30,7 +30,7 @@ ADMIN_COMMANDS = frozenset({
     # Ecriture des notes du serveur : n'etait protegee par rien.
     "addtag", "removetag", "tagedit", "tagrename",
     # Casino : creation/edition des jeux, lots, quetes et statistiques.
-    "addlot", "rmlot", "gamelots", "casinostats", "inviterewards",
+    "addlot", "rmlot", "gamelots", "gameaccess", "casinostats", "inviterewards",
     # Modules serveur ajoutes : configuration reservee aux admins.
     "annivconfig", "tempvoice", "statschannel", "alerts", "embed", "emoji",
     "succesadd", "succesdel", "autos", "autotoggle", "accueil",

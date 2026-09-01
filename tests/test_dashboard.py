@@ -389,6 +389,29 @@ class TestCasinoDashboard(unittest.TestCase):
         self.assertIn("Machine de DIEU", body)
         self.assertIn("RTP 135", body)
 
+    def test_access_conditions_round_trip(self):
+        self.client.post(f"/guild/{GUILD}/casino/game/add", data={
+            "display_name": "Loto", "kind": "weighted", "category": "loto",
+            "price": "5000", "cooldown_seconds": "0", "description": "",
+            "dice": "2", "faces": "6", "win_amount": "0", "lose_amount": "0",
+            "access_ticket": "1", "access_price": "1", "access_roles": "777, 888",
+        })
+        game = dashboard.casino.get_game(GUILD, "loto")
+        self.assertEqual(
+            sorted((o["kind"], o["value"]) for o in game["access"]),
+            [("price", ""), ("role", "777"), ("role", "888"), ("ticket", "")],
+        )
+
+    def test_no_box_ticked_falls_back_to_the_price(self):
+        self.client.post(f"/guild/{GUILD}/casino/game/add", data={
+            "display_name": "Machine", "kind": "weighted", "category": "machine",
+            "price": "250", "cooldown_seconds": "0", "description": "",
+            "dice": "2", "faces": "6", "win_amount": "0", "lose_amount": "0",
+            "access_roles": "",
+        })
+        game = dashboard.casino.get_game(GUILD, "machine")
+        self.assertEqual([o["kind"] for o in game["access"]], ["price"])
+
     def test_effects_are_configurable(self):
         resp = self.client.post(f"/guild/{GUILD}/casino/style", data={
             "animations_enabled": "1", "frame_count": "6", "frame_delay_ms": "400",

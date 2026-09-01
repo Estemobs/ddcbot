@@ -149,6 +149,7 @@ EXPECTED_COMMANDS = {
     "addlot",
     "rmlot",
     "gamelots",
+    "gameaccess",
     "casinostats",
     "inviterewards",
     "collect_income",

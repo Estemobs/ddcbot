@@ -344,9 +344,12 @@ class TestLegacyMigration(unittest.TestCase):
         import tempfile
         from data.db import MIGRATIONS_DIR
 
+        # Base telle qu'elle etait avant le moteur de casino : on s'arrete juste
+        # avant 0012, sinon les migrations suivantes, qui s'appuient dessus,
+        # echouent faute de tables.
         staging = tempfile.mkdtemp()
         for name in sorted(os.listdir(MIGRATIONS_DIR)):
-            if not name.startswith("0012"):
+            if name[:4].isdigit() and int(name[:4]) < 12:
                 shutil.copy(os.path.join(MIGRATIONS_DIR, name), staging)
         path = os.path.join(tempfile.mkdtemp(), "legacy.sqlite3")
 
@@ -373,3 +376,111 @@ class TestLegacyMigration(unittest.TestCase):
         self.assertEqual(quest["goal"], 20)
         self.assertEqual(quest["reward_kind"], "money")
         self.assertEqual(quest["reward_value"], "2000")
+
+
+class TestAccessConditions(unittest.TestCase):
+    """Un jeu porte une liste de conditions : une seule suffit au joueur."""
+
+    def setUp(self):
+        self.engine = _engine()
+
+    def _game(self, access, price=0):
+        self.engine.create_game(GUILD, "loto", price=price, access=access)
+        return self.engine.get_game(GUILD, "loto")
+
+    def test_no_condition_keeps_the_historical_behaviour(self):
+        """Les jeux crees avant les conditions ne doivent pas changer."""
+        paid = self._game(None, price=250)
+        self.assertEqual([o["kind"] for o in paid["access"]], ["price"])
+        self.engine.create_game(GUILD, "box", price=0)
+        free = self.engine.get_game(GUILD, "box")
+        self.assertEqual([o["kind"] for o in free["access"]], ["free"])
+
+    def test_ticket_only_game_refuses_a_rich_player(self):
+        """Le vrai trou : un jeu a prix 0 se jouait gratuitement sans ticket."""
+        game = self._game([{"kind": "ticket"}])
+        self.assertIsNone(
+            self.engine.resolve_access(game, has_ticket=False, balance=10 ** 9)
+        )
+        chosen = self.engine.resolve_access(game, has_ticket=True)
+        self.assertEqual(chosen["kind"], "ticket")
+
+    def test_role_grants_access_without_consuming_anything(self):
+        game = self._game([{"kind": "ticket"}, {"kind": "role", "value": "777"}])
+        chosen = self.engine.resolve_access(game, has_ticket=True, role_ids=[777])
+        self.assertEqual(chosen["kind"], "role")
+
+    def test_cheapest_condition_wins(self):
+        game = self._game(
+            [{"kind": "price"}, {"kind": "ticket"}, {"kind": "role", "value": "777"}],
+            price=5000,
+        )
+        cases = [
+            (dict(has_ticket=True, role_ids=[777], balance=9000), "role"),
+            (dict(has_ticket=True, role_ids=[], balance=9000), "ticket"),
+            (dict(has_ticket=False, role_ids=[], balance=9000), "price"),
+        ]
+        for kwargs, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(self.engine.resolve_access(game, **kwargs)["kind"], expected)
+
+    def test_price_condition_needs_enough_money(self):
+        game = self._game([{"kind": "price"}], price=5000)
+        self.assertIsNone(self.engine.resolve_access(game, balance=4999))
+        self.assertIsNotNone(self.engine.resolve_access(game, balance=5000))
+
+    def test_free_condition_always_wins(self):
+        game = self._game([{"kind": "price"}, {"kind": "free"}], price=5000)
+        self.assertEqual(self.engine.resolve_access(game, balance=0)["kind"], "free")
+
+    def test_wrong_role_does_not_grant_access(self):
+        game = self._game([{"kind": "role", "value": "777"}])
+        self.assertIsNone(self.engine.resolve_access(game, role_ids=[1, 2]))
+
+    def test_several_roles_can_open_the_same_game(self):
+        game = self._game([{"kind": "role", "value": "777"},
+                           {"kind": "role", "value": "888"}])
+        for role_id in (777, 888):
+            with self.subTest(role=role_id):
+                self.assertIsNotNone(self.engine.resolve_access(game, role_ids=[role_id]))
+
+
+class TestAccessNormalisation(unittest.TestCase):
+    def test_unknown_kinds_are_dropped(self):
+        from casino_engine import normalize_access
+        self.assertEqual(
+            normalize_access([{"kind": "licorne"}, {"kind": "ticket"}]),
+            [{"kind": "ticket", "value": ""}],
+        )
+
+    def test_a_role_without_an_id_is_dropped(self):
+        from casino_engine import normalize_access
+        self.assertEqual(normalize_access([{"kind": "role", "value": "abc"}]), [])
+        self.assertEqual(normalize_access([{"kind": "role"}]), [])
+
+    def test_duplicates_are_removed(self):
+        from casino_engine import normalize_access
+        self.assertEqual(
+            len(normalize_access([{"kind": "ticket"}, {"kind": "ticket"}])), 1
+        )
+
+    def test_plain_strings_are_accepted(self):
+        from casino_engine import normalize_access
+        self.assertEqual([o["kind"] for o in normalize_access(["ticket", "price"])],
+                         ["ticket", "price"])
+
+    def test_broken_json_yields_nothing(self):
+        from casino_engine import normalize_access
+        for raw in ("{casse", "42", '"texte"', None):
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_access(raw), [])
+
+    def test_description_is_readable(self):
+        from casino_engine import describe_access
+        game = {"price": 5000, "access": [
+            {"kind": "ticket", "value": ""},
+            {"kind": "role", "value": "777"},
+            {"kind": "price", "value": ""},
+        ]}
+        self.assertEqual(describe_access(game, {777: "VIP"}, "$"),
+                         "🎟️ ticket ou 🛡️ VIP ou 5 000$")

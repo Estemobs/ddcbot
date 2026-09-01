@@ -1375,6 +1375,26 @@ async def api_giveaways():
     }
 
 
+def _access_from_form(free: int, price: int, ticket: int, roles: str) -> list:
+    """Cases cochees + identifiants de roles -> conditions d'acces.
+
+    Aucune case cochee laisse la liste vide, ce que le moteur interprete comme
+    le comportement historique : payant si un prix est defini, libre sinon.
+    """
+    options = []
+    if free:
+        options.append({"kind": "free"})
+    if ticket:
+        options.append({"kind": "ticket"})
+    if price:
+        options.append({"kind": "price"})
+    for token in (roles or "").replace(";", ",").split(","):
+        token = token.strip()
+        if token.isdigit():
+            options.append({"kind": "role", "value": token})
+    return options
+
+
 # ── Casino ──
 # Les jeux sont des donnees : tout ce qui est editable ici (jeux, lots, poids,
 # cooldowns, quetes, effets) est lu tel quel par le bot via casino_engine.
@@ -1387,6 +1407,10 @@ async def casino_page(request: Request, guild_id: int):
         game["expected"] = casino.expected_value(game)
         game["rtp"] = casino.theoretical_rtp(game)
         game["stats"] = casino.actual_stats(guild_id, game["slug"])
+        game["access_kinds"] = {o["kind"] for o in game["access"]}
+        game["access_roles"] = ", ".join(
+            o["value"] for o in game["access"] if o["kind"] == "role"
+        )
     return templates.TemplateResponse(request, "casino.html", {
         "request": request, "guild_id": guild_id, "games": games,
         "quests": casino.list_quests(guild_id, include_disabled=True),
@@ -1409,6 +1433,10 @@ async def casino_game_add(
     faces: int = Form(6),
     win_amount: float = Form(0),
     lose_amount: float = Form(0),
+    access_free: int = Form(0),
+    access_price: int = Form(0),
+    access_ticket: int = Form(0),
+    access_roles: str = Form(""),
 ):
     config = {}
     if kind == "dice_sum":
@@ -1420,6 +1448,7 @@ async def casino_game_add(
             guild_id, slug or display_name, display_name=display_name, kind=kind,
             category=category, price=price, cooldown_seconds=cooldown_seconds,
             description=description, config=config,
+            access=_access_from_form(access_free, access_price, access_ticket, access_roles),
         )
     except CasinoError:
         pass
@@ -1435,10 +1464,15 @@ async def casino_game_edit(
     cooldown_seconds: int = Form(0),
     description: str = Form(""),
     enabled: int = Form(0),
+    access_free: int = Form(0),
+    access_price: int = Form(0),
+    access_ticket: int = Form(0),
+    access_roles: str = Form(""),
 ):
     casino.update_game(
         game_id, display_name=display_name, category=category, price=price,
         cooldown_seconds=cooldown_seconds, description=description, enabled=enabled,
+        access=_access_from_form(access_free, access_price, access_ticket, access_roles),
     )
     return RedirectResponse(f"/guild/{guild_id}/casino#jeu-{game_id}", status_code=303)
 
