@@ -32,5 +32,5 @@ ADMIN_COMMANDS = frozenset({
     # Casino : creation/edition des jeux, lots, quetes et statistiques.
     "addlot", "rmlot", "gamelots", "casinostats", "inviterewards",
     # Modules serveur ajoutes : configuration reservee aux admins.
-    "annivconfig", "tempvoice", "statschannel",
+    "annivconfig", "tempvoice", "statschannel", "alerts",
 })

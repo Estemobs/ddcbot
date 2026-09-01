@@ -115,6 +115,7 @@ class TestDashboardSixNewPages(unittest.TestCase):
             f"/guild/{GUILD}/giveaways", f"/guild/{GUILD}/casino",
             f"/guild/{GUILD}/twitch", f"/guild/{GUILD}/birthdays",
             f"/guild/{GUILD}/tempvoice", f"/guild/{GUILD}/statschannels",
+            f"/guild/{GUILD}/alerts",
         ]:
             with self.subTest(path=path):
                 resp = self.client.get(path)
@@ -496,6 +497,43 @@ class TestNewModulePages(unittest.TestCase):
         self.assertEqual(
             dashboard.db.fetchall("SELECT 1 FROM stats_channels WHERE guild_id = ?", (GUILD,)), []
         )
+
+    def test_social_alert_add_normalises_the_target(self):
+        for kind, given, stored in [("reddit", "r/france", "france"),
+                                    ("kick", "https://kick.com/XQc", "xqc")]:
+            with self.subTest(kind=kind):
+                self.client.post(f"/guild/{GUILD}/alerts/add", data={
+                    "kind": kind, "target": given, "channel_id": "555",
+                    "label": "", "mention": "",
+                })
+                row = dashboard.db.fetchone(
+                    "SELECT target FROM social_feeds WHERE guild_id = ? AND kind = ?",
+                    (GUILD, kind),
+                )
+                self.assertEqual(row["target"], stored)
+
+    def test_unknown_alert_kind_is_rejected(self):
+        self.client.post(f"/guild/{GUILD}/alerts/add", data={
+            "kind": "nimportequoi", "target": "x", "channel_id": "555",
+            "label": "", "mention": "",
+        })
+        self.assertEqual(
+            dashboard.db.fetchall("SELECT 1 FROM social_feeds WHERE guild_id = ?", (GUILD,)), []
+        )
+
+    def test_alert_toggle_and_delete(self):
+        self.client.post(f"/guild/{GUILD}/alerts/add", data={
+            "kind": "youtube", "target": "UCX6OQ3DkcsbYNE6H8uQQuVA",
+            "channel_id": "555", "label": "", "mention": "",
+        })
+        feed_id = dashboard.db.fetchone("SELECT id FROM social_feeds")["id"]
+        self.client.post(f"/guild/{GUILD}/alerts/{feed_id}/toggle")
+        self.assertEqual(
+            dashboard.db.fetchone("SELECT enabled FROM social_feeds WHERE id = ?",
+                                  (feed_id,))["enabled"], 0
+        )
+        self.client.post(f"/guild/{GUILD}/alerts/{feed_id}/delete")
+        self.assertEqual(dashboard.db.fetchall("SELECT 1 FROM social_feeds"), [])
 
     def test_unknown_stats_kind_is_rejected(self):
         self.client.post(f"/guild/{GUILD}/statschannels/add", data={

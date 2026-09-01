@@ -160,6 +160,7 @@ EXPECTED_COMMANDS = {
     "vocalnom",
     "vocallimite",
     "statschannel",
+    "alerts",
 }
 
 REQUIRED_MODULES = [
@@ -227,6 +228,7 @@ EXPECTED_TABLES = [
     "tempvoice_config",
     "tempvoice_channels",
     "stats_channels",
+    "social_feeds",
     "error_logs",
     "translation_subs",
     "casino_games",

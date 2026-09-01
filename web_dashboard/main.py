@@ -69,6 +69,7 @@ GUILD_MODULES = [
     {"slug": "minecraft", "key": "module.minecraft", "icon": "cube", "table": "minecraft_config"},
     {"slug": "steam", "key": "module.steam", "icon": "gamepad", "table": "steam_config"},
     {"slug": "twitch", "key": "module.twitch", "icon": "tv", "table": "twitch_watch"},
+    {"slug": "alerts", "key": "module.alerts", "icon": "bell", "table": "social_feeds"},
     {"slug": "lang", "key": "module.lang", "icon": "globe", "table": "guild_lang"},
     {"slug": "casino", "key": "module.casino", "icon": "dice", "table": "casino_games"},
     {"slug": "birthdays", "key": "module.birthdays", "icon": "gift", "table": "birthdays"},
@@ -1581,6 +1582,62 @@ async def api_notes(guild_id: int = 0):
     else:
         notes = db.fetchall("SELECT guild_id, title, content FROM notes ORDER BY guild_id, title")
     return {"notes": [dict(n) for n in notes]}
+
+
+# ── Alertes sociales (YouTube, Reddit, podcasts/RSS, Kick — sans cle d'API) ──
+
+@app.get("/guild/{guild_id}/alerts", response_class=HTMLResponse)
+async def alerts_page(request: Request, guild_id: int):
+    from social_feeds import KINDS
+    feeds = db.fetchall(
+        "SELECT * FROM social_feeds WHERE guild_id = ? ORDER BY kind, id", (guild_id,)
+    )
+    return templates.TemplateResponse(request, "alerts.html", {
+        "request": request, "guild_id": guild_id, "feeds": feeds, "kinds": KINDS,
+    })
+
+
+@app.post("/guild/{guild_id}/alerts/add")
+async def alerts_add(
+    guild_id: int,
+    kind: str = Form("youtube"),
+    target: str = Form(...),
+    channel_id: str = Form(...),
+    label: str = Form(""),
+    mention: str = Form(""),
+):
+    from social_feeds import KINDS
+    target = target.strip()
+    if kind in KINDS and target and channel_id.strip().isdigit():
+        if kind == "reddit":
+            target = target.lstrip("/").removeprefix("r/")
+        elif kind == "kick":
+            target = target.lower().rstrip("/").rsplit("/", 1)[-1]
+        db.execute(
+            "INSERT INTO social_feeds (guild_id, kind, target, label, channel_id, mention) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(guild_id, kind, target) DO UPDATE SET "
+            "channel_id=excluded.channel_id, label=excluded.label, "
+            "mention=excluded.mention, enabled=1",
+            (guild_id, kind, target, label or target, int(channel_id), mention),
+        )
+    return RedirectResponse(f"/guild/{guild_id}/alerts", status_code=303)
+
+
+@app.post("/guild/{guild_id}/alerts/{feed_id}/toggle")
+async def alerts_toggle(guild_id: int, feed_id: int):
+    db.execute(
+        "UPDATE social_feeds SET enabled = 1 - enabled, failures = 0 "
+        "WHERE id = ? AND guild_id = ?",
+        (feed_id, guild_id),
+    )
+    return RedirectResponse(f"/guild/{guild_id}/alerts", status_code=303)
+
+
+@app.post("/guild/{guild_id}/alerts/{feed_id}/delete")
+async def alerts_delete(guild_id: int, feed_id: int):
+    db.execute("DELETE FROM social_feeds WHERE id = ? AND guild_id = ?", (feed_id, guild_id))
+    return RedirectResponse(f"/guild/{guild_id}/alerts", status_code=303)
 
 
 # ── Anniversaires ──

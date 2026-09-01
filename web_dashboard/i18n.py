@@ -46,6 +46,7 @@ STRINGS = {
     "module.lang": {"fr": "Langue", "en": "Language"},
     "module.casino": {"fr": "Casino", "en": "Casino"},
     "module.twitch": {"fr": "Twitch", "en": "Twitch"},
+    "module.alerts": {"fr": "Alertes sociales", "en": "Social alerts"},
     "module.birthdays": {"fr": "Anniversaires", "en": "Birthdays"},
     "module.tempvoice": {"fr": "Vocaux temporaires", "en": "Temp voice"},
     "module.statschannels": {"fr": "Salons de stats", "en": "Stats channels"},
@@ -72,6 +73,8 @@ STRINGS = {
     "module.desc.lang": {"fr": "Langue du bot sur ce serveur", "en": "Bot language on this server"},
     "module.desc.casino": {"fr": "Jeux, lots, quetes et effets", "en": "Games, prizes, quests and effects"},
     "module.desc.twitch": {"fr": "Alertes de direct Twitch", "en": "Twitch live alerts"},
+    "module.desc.alerts": {"fr": "YouTube, Reddit, podcasts et Kick",
+                           "en": "YouTube, Reddit, podcasts and Kick"},
     "module.desc.birthdays": {"fr": "Annonce et role du jour", "en": "Announcement and day role"},
     "module.desc.tempvoice": {"fr": "Vocaux crees a la demande", "en": "Voice channels on demand"},
     "module.desc.statschannels": {"fr": "Compteurs dans les noms de salons",
@@ -702,6 +705,63 @@ STRINGS = {
     "statschannels.role_ph": {"fr": "Uniquement pour le compteur 'role'",
                               "en": "Only for the 'role' counter"},
     "statschannels.empty": {"fr": "Aucun salon de statistiques", "en": "No stats channel"},
+
+    "alerts.subtitle": {
+        "fr": "Annonce les nouvelles publications. Aucune cle d'API : chaque source "
+              "expose un acces public.",
+        "en": "Announces new posts. No API key: every source has a public endpoint.",
+    },
+    "alerts.sources": {"fr": "Sources suivies", "en": "Watched sources"},
+    "alerts.kind": {"fr": "Type", "en": "Type"},
+    "alerts.kind.youtube": {"fr": "YouTube", "en": "YouTube"},
+    "alerts.kind.reddit": {"fr": "Reddit", "en": "Reddit"},
+    "alerts.kind.rss": {"fr": "RSS / Podcast", "en": "RSS / Podcast"},
+    "alerts.kind.kick": {"fr": "Kick", "en": "Kick"},
+    "alerts.target": {"fr": "Cible", "en": "Target"},
+    "alerts.target_ph": {"fr": "@MrBeast, france, https://…/flux.xml, xqc",
+                         "en": "@MrBeast, france, https://…/feed.xml, xqc"},
+    "alerts.target_hint": {
+        "fr": "YouTube : @pseudo, URL ou identifiant UC… · Reddit : nom du subreddit · "
+              "RSS : URL du flux · Kick : nom de la chaine",
+        "en": "YouTube: @handle, URL or UC… id · Reddit: subreddit name · "
+              "RSS: feed URL · Kick: channel name",
+    },
+    "alerts.channel": {"fr": "Salon (ID)", "en": "Channel (ID)"},
+    "alerts.label": {"fr": "Nom affiche", "en": "Display name"},
+    "alerts.label_ph": {"fr": "Facultatif", "en": "Optional"},
+    "alerts.mention": {"fr": "Mention", "en": "Mention"},
+    "alerts.state": {"fr": "Etat", "en": "State"},
+    "alerts.active": {"fr": "Active", "en": "Active"},
+    "alerts.paused": {"fr": "En veille", "en": "Paused"},
+    "alerts.failures": {"fr": "echecs", "en": "failures"},
+    "alerts.pause": {"fr": "Mettre en veille", "en": "Pause"},
+    "alerts.resume": {"fr": "Reactiver", "en": "Resume"},
+    "alerts.empty": {"fr": "Aucune source suivie", "en": "No source watched"},
+    "alerts.notes_title": {"fr": "Bon a savoir", "en": "Good to know"},
+    "alerts.note_youtube": {
+        "fr": "YouTube passe par son flux Atom officiel : fiable, mais une video "
+              "peut mettre quelques minutes a y apparaitre.",
+        "en": "YouTube uses its official Atom feed: reliable, but a video can take "
+              "a few minutes to show up there.",
+    },
+    "alerts.note_reddit": {
+        "fr": "Reddit limite fortement les requetes venant d'un hebergeur. Le flux "
+              "peut echouer par moments ; la source est reessayee au tour suivant.",
+        "en": "Reddit heavily rate-limits requests from a server. The feed may fail "
+              "at times; the source is retried on the next pass.",
+    },
+    "alerts.note_kick": {
+        "fr": "Kick n'annonce que les directs en cours, et son API publique n'est "
+              "pas documentee : elle peut changer sans preavis.",
+        "en": "Kick only reports ongoing streams, and its public API is undocumented: "
+              "it may change without notice.",
+    },
+    "alerts.note_first": {
+        "fr": "Le premier passage sur une source ne fait qu'enregistrer un repere, "
+              "pour ne pas annoncer tout l'historique d'un coup.",
+        "en": "The first pass on a source only records a marker, so the whole backlog "
+              "is not announced at once.",
+    },
 }
 
 SUPPORTED_LANGS = ("fr", "en")
