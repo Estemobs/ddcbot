@@ -173,7 +173,7 @@ class cmdcustom(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         # Ne PAS appeler bot.process_commands ici : un listener de Cog s'ajoute
-        # au on_message par defaut de commands.Bot, il ne le remplace pas. Le
+        # au on_message par défaut de commands.Bot, il ne le remplace pas. Le
         # dispatch a donc deja lieu, et un second appel executait chaque
         # commande du bot une deuxieme fois (double debit, doublons de logs,
         # et 404 sur les commandes qui suppriment leur propre salon).
