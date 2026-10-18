@@ -6,7 +6,7 @@ Un plugin est un dossier sous `plugins/<nom>/` contenant un module
 via `manifest.json` dans le dossier du plugin.
 
 Les plugins actives/inactives sont suivis dans la table `plugins`.
-Par defaut, un plugin non reference est considere comme actif.
+Par défaut, un plugin non reference est considere comme actif.
 """
 
 import importlib
@@ -38,7 +38,7 @@ def _plugin_dir(name):
 
 
 def plugin_metadata(name):
-    """Retourne les metadonnees d'un plugin (manifest.json + defauts)."""
+    """Retourne les metadonnees d'un plugin (manifest.json + défauts)."""
     metadata = {"name": name, "version": "0.0.0"}
     manifest = os.path.join(_plugin_dir(name), "manifest.json")
     if os.path.exists(manifest):
@@ -62,7 +62,7 @@ def get_enabled(db):
 
 
 def is_enabled(db, name):
-    """Un plugin non reference est considere actif par defaut."""
+    """Un plugin non reference est considere actif par défaut."""
     return get_enabled(db).get(name, True)
 
 
@@ -111,7 +111,7 @@ async def load_plugins(bot, db):
 
 
 async def unload_plugins(bot, db, names=None):
-    """Decharge les plugins (par defaut tous ceux actuellement charges)."""
+    """Decharge les plugins (par défaut tous ceux actuellement charges)."""
     for name in names or list(_loaded_cogs):
         module = sys.modules.get(f"plugins.{name}.plugin")
         if module is None:

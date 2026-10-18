@@ -1,7 +1,7 @@
 """i18n pour le dashboard web.
 
 Traductions fr/en des textes du dashboard. Le francais est la langue par
-defaut (fallback cle -> francais -> cle), comme pour le bot Discord.
+défaut (fallback cle -> francais -> cle), comme pour le bot Discord.
 """
 
 # flake8: noqa: E501
@@ -427,7 +427,7 @@ STRINGS = {
     "income.config": {"fr": "Configuration Revenus", "en": "Income configuration"},
     "income.enabled": {"fr": "Revenus actives", "en": "Income enabled"},
     "income.enabled_desc": {"fr": "Permettre la collecte de revenus passifs", "en": "Allow collecting passive income"},
-    "income.default_amount": {"fr": "Montant par defaut", "en": "Default amount"},
+    "income.default_amount": {"fr": "Montant par défaut", "en": "Default amount"},
     "income.interval": {"fr": "Intervalle (heures)", "en": "Interval (hours)"},
     "income.log_channel": {"fr": "Canal de log", "en": "Log channel"},
     "income.log_channel_ph": {"fr": "ID du canal", "en": "Channel ID"},

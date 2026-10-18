@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestNoDoubleCommandDispatch(unittest.TestCase):
-    """Un listener de Cog s'ajoute au on_message par defaut, il ne le remplace pas.
+    """Un listener de Cog s'ajoute au on_message par défaut, il ne le remplace pas.
 
     Appeler bot.process_commands depuis un @commands.Cog.listener() relance donc
     le dispatch : chaque commande du bot s'executait deux fois. Symptomes
@@ -30,7 +30,7 @@ class TestNoDoubleCommandDispatch(unittest.TestCase):
         self.assertEqual(offenders, [], "process_commands relance le dispatch")
 
     def test_main_does_not_override_on_message(self):
-        """Un @bot.event on_message remplacerait le defaut et couperait les commandes."""
+        """Un @bot.event on_message remplacerait le défaut et couperait les commandes."""
         source = (ROOT / "main.py").read_text()
         self.assertNotRegex(source, r"@bot\.event\s*\n\s*async def on_message")
 

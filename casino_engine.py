@@ -494,7 +494,7 @@ class CasinoEngine:
     # ── Presentation et effets ───────────────────────────────────────────────
 
     def get_style(self, guild_id: int) -> dict:
-        """Reglages d'affichage/animation du serveur, defauts si jamais configures."""
+        """Reglages d'affichage/animation du serveur, défauts si jamais configures."""
         self.db.execute(
             "INSERT OR IGNORE INTO casino_config (guild_id) VALUES (?)", (guild_id,)
         )

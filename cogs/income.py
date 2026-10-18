@@ -44,14 +44,14 @@ class IncomePanelView(discord.ui.View):
         self.cog.update_income_config(self.guild_id, collect_enabled=not cfg["collect_enabled"])
         await self.refresh(interaction)
 
-    @discord.ui.button(label="Montant defaut +10", style=discord.ButtonStyle.secondary, row=0)
+    @discord.ui.button(label="Montant défaut +10", style=discord.ButtonStyle.secondary, row=0)
     async def amount_plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_income_config(self.guild_id)
         new_amount = round(float(cfg["default_amount"]) + 10.0, 2)
         self.cog.update_income_config(self.guild_id, default_amount=new_amount)
         await self.refresh(interaction)
 
-    @discord.ui.button(label="Montant defaut -10", style=discord.ButtonStyle.secondary, row=0)
+    @discord.ui.button(label="Montant défaut -10", style=discord.ButtonStyle.secondary, row=0)
     async def amount_minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_income_config(self.guild_id)
         new_amount = max(1.0, round(float(cfg["default_amount"]) - 10.0, 2))
@@ -261,8 +261,8 @@ class cmdincome(commands.Cog):
             color=discord.Color.teal(),
         )
         embed.add_field(name="Collecte active", value="Oui" if cfg["collect_enabled"] else "Non", inline=True)
-        embed.add_field(name="Montant defaut", value=f"{float(cfg['default_amount']):.2f}", inline=True)
-        embed.add_field(name="Intervalle defaut", value=f"{int(cfg['default_interval_hours'])}h", inline=True)
+        embed.add_field(name="Montant défaut", value=f"{float(cfg['default_amount']):.2f}", inline=True)
+        embed.add_field(name="Intervalle défaut", value=f"{int(cfg['default_interval_hours'])}h", inline=True)
         embed.add_field(name="Canal logs", value=log_label, inline=False)
         embed.set_footer(text=f"Serveur: {guild.name}")
         return embed

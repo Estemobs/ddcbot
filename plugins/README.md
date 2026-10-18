@@ -57,7 +57,7 @@ def setup(bot, db):
 - `,plugins reload [nom]` — recharge tous les plugins ou un seul (admin).
 
 L'etat (actif/inactif) est persiste dans la table `plugins`. Un plugin non
-reference est active par defaut au demarrage.
+reference est active par défaut au demarrage.
 
 Note : si un plugin ajoute des commandes Discord, elles se retrouveront
 dans le registre du bot ; commandez-les via `,plugins` / `,selftest`,

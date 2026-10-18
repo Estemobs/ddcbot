@@ -158,28 +158,28 @@ class ActionsPanelView(BaseModPanelView):
         self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
-    @discord.ui.button(label="Clear par defaut +1", style=discord.ButtonStyle.secondary, row=3)
+    @discord.ui.button(label="Clear par défaut +1", style=discord.ButtonStyle.secondary, row=3)
     async def clear_plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["defaults"]["clear_amount"] += 1
         self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
-    @discord.ui.button(label="Clear par defaut -1", style=discord.ButtonStyle.secondary, row=3)
+    @discord.ui.button(label="Clear par défaut -1", style=discord.ButtonStyle.secondary, row=3)
     async def clear_minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["defaults"]["clear_amount"] = max(1, cfg["defaults"]["clear_amount"] - 1)
         self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
-    @discord.ui.button(label="Timeout defaut +5m", style=discord.ButtonStyle.secondary, row=4)
+    @discord.ui.button(label="Timeout défaut +5m", style=discord.ButtonStyle.secondary, row=4)
     async def default_timeout_plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["defaults"]["timeout_minutes"] += 5
         self.cog.save_guild_config(self.guild_id, cfg)
         await self._refresh(interaction)
 
-    @discord.ui.button(label="Timeout defaut -5m", style=discord.ButtonStyle.secondary, row=4)
+    @discord.ui.button(label="Timeout défaut -5m", style=discord.ButtonStyle.secondary, row=4)
     async def default_timeout_minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         cfg = self.cog.get_guild_config(self.guild_id)
         cfg["defaults"]["timeout_minutes"] = max(1, cfg["defaults"]["timeout_minutes"] - 5)
@@ -466,12 +466,12 @@ class cmdmoderation(commands.Cog):
         elif page == "actions":
             actions_cfg = cfg["actions"]
             defaults_cfg = cfg["defaults"]
-            embed.description = "Section Actions: automatisations et valeurs par defaut."
+            embed.description = "Section Actions: automatisations et valeurs par défaut."
             embed.add_field(name="Auto-timeout", value="Active" if actions_cfg["auto_timeout_enabled"] else "Desactive", inline=True)
             embed.add_field(name="Seuil warns", value=str(actions_cfg["auto_timeout_after_warns"]), inline=True)
             embed.add_field(name="Duree auto-timeout", value=f"{actions_cfg['auto_timeout_minutes']} min", inline=True)
-            embed.add_field(name="Clear par defaut", value=str(defaults_cfg["clear_amount"]), inline=True)
-            embed.add_field(name="Timeout par defaut", value=f"{defaults_cfg['timeout_minutes']} min", inline=True)
+            embed.add_field(name="Clear par défaut", value=str(defaults_cfg["clear_amount"]), inline=True)
+            embed.add_field(name="Timeout par défaut", value=f"{defaults_cfg['timeout_minutes']} min", inline=True)
         else:
             notif_cfg = cfg["notifications"]
             embed.description = "Section Notifications: messages envoyes aux membres sanctionnes."

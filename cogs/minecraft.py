@@ -9,7 +9,7 @@ Deux méthodes d'envoi vers Minecraft :
   - tmux : envoi via `tmux send-keys` sur la session du serveur (fallback).
     Exige que le bot tourne sur la machine du serveur Minecraft. En deploiement
     Docker, tmux n'est pas dans l'image et les sessions de l'hote sont hors de
-    portee : seule la methode RCON fonctionne, d'ou le defaut.
+    portee : seule la methode RCON fonctionne, d'ou le défaut.
 
 La lecture du tchat Minecraft -> Discord se fait en suivant le fichier
 `latest.log` avec `tail -F` (gère la rotation des logs) via un sous-processus

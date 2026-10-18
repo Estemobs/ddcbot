@@ -1,7 +1,7 @@
 """Systeme de langues du bot.
 
 Resolution : langue du serveur d'abord (table guild_lang), puis langue de
-l'utilisateur (table user_lang), puis francais par defaut.
+l'utilisateur (table user_lang), puis francais par défaut.
 Les messages non encore traduits retombent sur leur cle / le francais.
 """
 
