@@ -199,6 +199,12 @@ pytest -q                                                             # suite de
 
 Les cogs vivent dans [cogs/](cogs/) et la base SQLite / ses migrations dans [data/](data/) ; `main.py` reste à la racine. Voir [CLAUDE.md](CLAUDE.md) pour le détail de l'architecture (cogs, persistance SQLite, gate admin, diagnostics).
 
+## État du projet
+
+Version stable — les modules décrits ci-dessus sont livrés.
+Aucun ticket fonctionnel ouvert ; les mises à jour de dépendances sont automatisées par Renovate.
+Conformément à la section Versioning, la version déployée reste identifiée par le hash du commit.
+
 ## Licence
 
 Ce projet est sous licence [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html) (GPL-3.0) : vous pouvez l'utiliser, le modifier et le redistribuer librement, à condition que toute version modifiée ou distribuée reste sous GPL-3.0 avec le code source. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
