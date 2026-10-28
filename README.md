@@ -24,6 +24,7 @@ Bot Discord francophone tout-en-un : modération, économie/travail, mini-jeux, 
 - [Commandes](#commandes)
 - [Développement](#développement)
 - [Licence](#licence)
+- [État du projet](#état-du-projet)
 
 ## Fonctionnalités
 
@@ -201,7 +202,7 @@ Les cogs vivent dans [cogs/](cogs/) et la base SQLite / ses migrations dans [dat
 
 ## État du projet
 
-Version stable — les modules décrits ci-dessus sont livrés.
+Version actuelle — les modules décrits ci-dessus sont livrés.
 Aucun ticket fonctionnel ouvert ; les mises à jour de dépendances sont automatisées par Renovate.
 Conformément à la section Versioning, la version déployée reste identifiée par le hash du commit.
 
